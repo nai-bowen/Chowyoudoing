@@ -20,49 +20,52 @@ model Post {
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    createdBy   User   @relation(fields: [createdById], references: [id])
+    createdBy   Patron   @relation(fields: [createdById], references: [id])
     createdById String
 
     @@index([name])
 }
 
-// Necessary for Next auth
+model Patron {
+    id            String    @id @default(cuid())
+    firstName     String
+    lastName      String
+    email         String    @unique
+    password      String
+    interests     String?   // Can be NULL
+    emailVerified DateTime?
+    
+    // Relations
+    accounts      Account[]
+    sessions      Session[]
+    posts         Post[]
+}
+
 model Account {
     id                       String  @id @default(cuid())
-    userId                   String
+    patronId                 String
     type                     String
     provider                 String
     providerAccountId        String
-    refresh_token            String? // @db.Text
-    access_token             String? // @db.Text
+    refresh_token            String?
+    access_token             String?
     expires_at               Int?
     token_type               String?
     scope                    String?
-    id_token                 String? // @db.Text
+    id_token                 String?
     session_state            String?
-    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
     refresh_token_expires_in Int?
-
+    
+    patron                   Patron  @relation(fields: [patronId], references: [id], onDelete: Cascade)
     @@unique([provider, providerAccountId])
 }
 
 model Session {
     id           String   @id @default(cuid())
     sessionToken String   @unique
-    userId       String
+    patronId     String
     expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
-    posts         Post[]
+    patron       Patron   @relation(fields: [patronId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
