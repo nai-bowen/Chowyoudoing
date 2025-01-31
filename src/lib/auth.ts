@@ -1,4 +1,4 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -14,7 +14,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<{ id: string; email: string; firstName: string; lastName: string } | null> {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email and password are required.");
         }
@@ -46,15 +46,20 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, token }: { session: any; token: JWT }) {
-      session.user = {
-        ...session.user,
-        id: token.id as string,
-        email: token.email as string,
-      };
+    async session({ session, token }: { session: Session; token: JWT }): Promise<Session> {
+      if (session.user) {
+        session.user = {
+          ...session.user, 
+          id: token.id as string, 
+          email: token.email ?? session.user.email, 
+        };
+      }
       return session;
     },
   },
+  
+  
+  
   session: {
     strategy: "jwt",
   },

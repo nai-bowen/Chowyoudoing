@@ -1,17 +1,13 @@
 import Link from "next/link";
-
 import { LatestPost } from "@/app/_components/post";
-import { auth } from "@/server/auth";
 import { api, HydrateClient } from "@/trpc/server";
-import { useSession } from "next-auth/react";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth"; 
 
 export default async function Home() {
   const hello = await api.post.hello({ text: "from tRPC" });
-  const { data: session } = useSession();
+  const session = await getServerSession(authOptions); 
 
-  if (session?.user) {
-    console.log(session.user.id); // ✅ Safe access using optional chaining
-  }
   return (
     <HydrateClient>
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
@@ -50,7 +46,7 @@ export default async function Home() {
 
             <div className="flex flex-col items-center justify-center gap-4">
               <p className="text-center text-2xl text-white">
-                {session && <span>Logged in as {session.user?.name}</span>}
+                {session ? <span>Logged in as {session.user?.name}</span> : "Not logged in"}
               </p>
               <Link
                 href={session ? "/api/auth/signout" : "/api/auth/signin"}

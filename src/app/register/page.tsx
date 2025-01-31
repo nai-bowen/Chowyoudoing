@@ -19,7 +19,6 @@ export default function RegisterPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ Explicitly type e as React.FormEvent<HTMLFormElement>
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
@@ -30,14 +29,15 @@ export default function RegisterPage() {
       body: JSON.stringify(formData),
     });
   
-    const data: { error?: string } = await response.json(); 
+    const data = (await response.json()) as { error?: string }; 
   
     if (!response.ok) {
-      setError(data.error ?? "An unexpected error occurred."); 
+      setError(data.error ?? "An unexpected error occurred.");
     } else {
       router.push("/login");
     }
   };
+  
 
   return (
     <div>

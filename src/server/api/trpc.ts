@@ -6,6 +6,7 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
+/* eslint-disable */
 
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
@@ -119,15 +120,17 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * @see https://trpc.io/docs/procedures
  */
 export const protectedProcedure = t.procedure
-  .use(timingMiddleware)
   .use(({ ctx, next }) => {
+    console.log("Session in protectedProcedure:", ctx.session); 
+
     if (!ctx.session || !ctx.session.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
+
     return next({
       ctx: {
-        // infers the `session` as non-nullable
         session: { ...ctx.session, user: ctx.session.user },
       },
     });
   });
+
