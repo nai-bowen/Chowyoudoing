@@ -1,23 +1,21 @@
 /* eslint-disable */
 
 import { NextResponse } from 'next/server';
-import { scrapeMenu } from '@/server/services/scraper/menuScraper';
+import { saveScrapedData } from '@/server/services/scraperService';  // Ensure the import path is correct
 
-export async function POST(req: Request) {
-  const { url } = await req.json();
+export async function POST(request: Request) {
+    try {
+        const { url } = await request.json();
 
-  if (!url) {
-    return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
-  }
+        if (!url) {
+            return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
+        }
 
-  try {
-    const data = await scrapeMenu(url);
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('Scraping failed:', error); // Log the error for debugging
-    return NextResponse.json(
-      { error: 'Failed to scrape menu', details: (error as Error).message || error },
-      { status: 500 }
-    );
-  }
+        await saveScrapedData(url);
+
+        return NextResponse.json({ message: 'Scraping and saving successful!' });
+    } catch (error) {
+        console.error('Error during scraping:', error);
+        return NextResponse.json({ error: 'Failed to scrape and save data' }, { status: 500 });
+    }
 }

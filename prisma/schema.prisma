@@ -60,6 +60,42 @@ model Account {
     @@unique([provider, providerAccountId])
 }
 
+model Restaurant {
+    id          String        @id @default(cuid())
+    title       String
+    detail      String?
+    rating      String
+    num_reviews String
+    createdAt   DateTime      @default(now())
+    updatedAt   DateTime      @updatedAt
+
+    // Relations
+    menuSections MenuSection[]
+}
+
+model MenuSection {
+    id           String      @id @default(cuid())
+    category     String
+    restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+    restaurantId String
+
+    // Relations
+    items MenuItem[]
+}
+
+model MenuItem {
+    id           String      @id @default(cuid())
+    name         String
+    description  String?
+    price        String
+    img_url      String?
+    status       String
+
+    menuSection   MenuSection  @relation(fields: [menuSectionId], references: [id], onDelete: Cascade)
+    menuSectionId String
+}
+
+
 model Session {
     id           String   @id @default(cuid())
     sessionToken String   @unique
