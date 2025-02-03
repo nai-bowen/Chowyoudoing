@@ -1,10 +1,9 @@
 /* eslint-disable */
 
-
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import GoogleProvider from "next-auth/providers/google";
 import { type DefaultSession, type NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
-import { db } from "@/server/db";
+import { CustomPrismaAdapter } from "./custom-prisma-adapter";
 
 /**
  * Module augmentation for `next-auth` types.
@@ -26,17 +25,23 @@ export const authConfig: NextAuthOptions = {
       clientId: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      
+    }),
   ],
-  adapter: PrismaAdapter(db) as any, 
+  adapter: CustomPrismaAdapter,  // ✅ Use custom adapter to map `Patron` instead of `User`
   callbacks: {
-    async session({ session, user }: { session: any; user: any }) {
+    async session({ session, token }) {
       return {
         ...session,
         user: {
           ...session.user,
-          id: user.id,
+          id: token.sub,  // ✅ Use token.sub for OAuth-based users like Google
         },
       };
     },
   },
+  secret: process.env.NEXTAUTH_SECRET,
 };
