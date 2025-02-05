@@ -33,7 +33,7 @@ export async function POST(req: Request) {
           lastName: body.lastName,
           email: body.email,
           password: hashedPassword,
-          interests: body.interests ?? null, // Ensure `interests` is either a string or null
+          interests: body.interests && Array.isArray(body.interests) ? body.interests : [],  // Ensure it's always an array
         },
       });
   

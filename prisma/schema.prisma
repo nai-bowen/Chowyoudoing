@@ -32,7 +32,7 @@ model Patron {
     lastName      String
     email         String    @unique
     password      String
-    interests     String?   // Can be NULL
+    interests     String[]  @default([])  // Array of strings with default empty array
     emailVerified DateTime?
     
     // Relations
