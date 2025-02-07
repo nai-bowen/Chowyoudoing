@@ -32,14 +32,16 @@ model Patron {
     lastName      String
     email         String    @unique
     password      String
-    interests     String[]  @default([])  // Array of strings with default empty array
+    interests     String[]  @default([])  // Array of food interests
     emailVerified DateTime?
-    
+
     // Relations
     accounts      Account[]
     sessions      Session[]
     posts         Post[]
+    reviews       Review[] 
 }
+
 
 model Account {
     id                       String  @id @default(cuid())
@@ -61,17 +63,21 @@ model Account {
 }
 
 model Restaurant {
-    id          String        @id @default(cuid())
+    id          String    @id @default(cuid())
     title       String
+    url         String?   @unique  // Avoid duplicate menus
     detail      String?
     rating      String
     num_reviews String
-    createdAt   DateTime      @default(now())
-    updatedAt   DateTime      @updatedAt
+    location    String?   // Store city, country for map feature
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
 
     // Relations
     menuSections MenuSection[]
+    reviews      Review[] // Add this line
 }
+
 
 model MenuSection {
     id           String      @id @default(cuid())
@@ -79,8 +85,10 @@ model MenuSection {
     restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
     restaurantId String
 
-    // Relations
-    items MenuItem[]
+    items        MenuItem[]
+
+    interest     Interest?   @relation("MenuSectionInterest", fields: [interestId], references: [id], onDelete: SetNull)  
+    interestId   String?
 }
 
 model MenuItem {
@@ -90,10 +98,17 @@ model MenuItem {
     price        String
     img_url      String?
     status       String
+    totalUpvotes Int         @default(0) // Track how many upvotes a menu item has
+    createdAt    DateTime    @default(now())
 
     menuSection   MenuSection  @relation(fields: [menuSectionId], references: [id], onDelete: Cascade)
     menuSectionId String
+
+    // Inherit Interest from MenuSection
+    interest     Interest?  @relation("MenuItemInterest", fields: [interestId], references: [id], onDelete: SetNull)  
+    interestId   String?
 }
+
 
 
 model Session {
@@ -110,4 +125,28 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+model Interest {
+    id           String         @id @default(cuid())
+    name         String         @unique
+
+    // Back-relations from MenuSection and MenuItem
+    menuSections MenuSection[] @relation("MenuSectionInterest")
+    menuItems    MenuItem[]    @relation("MenuItemInterest")
+}
+
+model Review {
+    id          String   @id @default(cuid())
+    content     String
+    rating      Int      // 1-5 star rating
+    upvotes     Int      @default(0)  // Number of upvotes
+    createdAt   DateTime @default(now())
+
+    // Relations
+    patron      Patron   @relation(fields: [patronId], references: [id], onDelete: Cascade)
+    patronId    String
+
+    restaurant  Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+    restaurantId String
 }

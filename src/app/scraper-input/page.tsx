@@ -38,6 +38,17 @@ export default function ScraperInput() {
         }
     };
 
+    const interestOptions = [
+        "Pizza", "Japanese", "Chinese", "Fish & Chips", "Italian",
+        "Greek", "Caribbean", "American", "Sushi", "Sandwiches",
+        "Dessert", "Vegan/Vegetarian", "Lebanese", "Mexican",
+        "Burgers", "Indian", "Mediterranean", "Steak", "Breakfast",
+        "Salads", "Tacos", "Chicken", "Boba/Juice"
+      ];
+      
+      const [interest, setInterest] = useState("");
+      
+
     return (
         <div className="p-6">
             <h1 className="text-2xl font-bold mb-4">Scrape Uber Eats Menu</h1>
@@ -50,6 +61,19 @@ export default function ScraperInput() {
                     className="w-full p-2 border border-gray-300 rounded"
                     required
                 />
+                
+                <select
+                    value={interest}
+                    onChange={(e) => setInterest(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded"
+                    required
+                >
+                    <option value="">Select a Category</option>
+                    {interestOptions.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                    ))}
+                </select>
+
                 <button
                     type="submit"
                     disabled={loading}
