@@ -1,7 +1,7 @@
-/* eslint-disable */
+/*eslint-disable*/
 
 import { NextResponse } from 'next/server';
-import { saveScrapedData } from '@/server/services/scraperService';  // Ensure the import path is correct
+import { scrapeUberEatsData } from '@/server/services/scraper/uberEatsScraper';
 
 export async function POST(request: Request) {
     try {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
         }
 
-        await saveScrapedData(url);
+        await scrapeUberEatsData(url);
 
         return NextResponse.json({ message: 'Scraping and saving successful!' });
     } catch (error) {

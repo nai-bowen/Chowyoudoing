@@ -53,15 +53,15 @@ export default function ScraperInput() {
         <div className="p-6">
             <h1 className="text-2xl font-bold mb-4">Scrape Uber Eats Menu</h1>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <input
-                    type="text"
-                    placeholder="Enter Uber Eats restaurant URL"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded"
-                    required
-                />
-                
+            <input
+                type="text"
+                placeholder="Enter Uber Eats city category URL"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded"
+                required
+            />
+
                 <select
                     value={interest}
                     onChange={(e) => setInterest(e.target.value)}
