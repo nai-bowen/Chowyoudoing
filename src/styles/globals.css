@@ -2,3 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+.spacer {
+    width: 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+  }
+
+  .layer1 {
+    background-image: url('/assets/home_layer1.svg'); /* ✅ Correct path */
+}
