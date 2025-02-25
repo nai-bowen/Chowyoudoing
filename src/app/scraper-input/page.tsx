@@ -62,18 +62,6 @@ export default function ScraperInput() {
                 required
             />
 
-                <select
-                    value={interest}
-                    onChange={(e) => setInterest(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded"
-                    required
-                >
-                    <option value="">Select a Category</option>
-                    {interestOptions.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                    ))}
-                </select>
-
                 <button
                     type="submit"
                     disabled={loading}

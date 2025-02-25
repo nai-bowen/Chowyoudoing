@@ -10,5 +10,23 @@
   }
 
   .layer1 {
-    background-image: url('/assets/home_layer1.svg'); /* ✅ Correct path */
+    background-image: url('/assets/home_layer1.svg'); 
+}
+.layer2 {
+    background-image: url('/assets/home_layer2.svg'); 
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    pointer-events: none; /* Prevents interaction issues */
+    z-index: 2; /* Above blurred background, below content */
+}
+
+.search-dropdown {
+  max-height: calc(100vh - 200px); /* Ensures dropdown doesn't get cut off */
+  overflow-y: auto; /* Enables scrolling */
+  padding-bottom: 10px; /* Ensures last item is not hidden */
 }

@@ -1,6 +1,5 @@
-import fs from 'fs';
+
 import { scrapeRestaurants } from './restaurantScraper';
-import { scrapeMenu } from './menuScraper';
 import { saveScrapedData } from '@/server/services/scraperService';
 
 
@@ -22,33 +21,21 @@ interface RestaurantData {
   }[];
 }
 
-type CityData = Record<string, RestaurantData[]>;
-
-
-interface UberEatsData {
-  cities: CityData[];
-}
-
-// Base URL and cities
-const baseUrl = 'https://www.ubereats.com/gb/category/';
-const cityList = ['london', 'manchester', 'birmingham'];
-
 
 export async function scrapeUberEatsData(cityUrl: string): Promise<void> {
-  console.log(`Starting Uber Eats scraping for city: ${cityUrl}`);
+  console.log(`🚀 Starting Uber Eats scraping for city: ${cityUrl}`);
 
-  const restaurantUrls = await scrapeRestaurants(cityUrl);
+  const restaurantData = await scrapeRestaurants(cityUrl);
 
-  for (const url of restaurantUrls) {
+  for (const { url, category } of restaurantData) {
       try {
           const fullUrl = `https://www.ubereats.com${url}`;
-          await saveScrapedData(fullUrl);
-          console.log(`Scraped and saved: ${fullUrl}`);
+          await saveScrapedData(fullUrl, category);
+          console.log(`✅ Scraped and saved: ${fullUrl} under categories: ${category}`);
       } catch (error) {
-          console.error(`Failed to scrape menu for ${url}:`, error);
+          console.error(`❌ Failed to scrape menu for ${url}:`, error);
       }
   }
 
-  console.log(`Scraping completed for city: ${cityUrl}`);
+  console.log(`✅ Scraping completed for city: ${cityUrl}`);
 }
-

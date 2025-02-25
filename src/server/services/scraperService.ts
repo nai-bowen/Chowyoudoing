@@ -3,33 +3,44 @@ import { scrapeMenu } from './scraper/menuScraper';  // Ensure this path is corr
 
 const prisma = new PrismaClient();
 
-// Function to save restaurant data to the database
-export async function saveScrapedData(url: string, interest?: string) {  
+export async function saveScrapedData(url: string, newCategory: string) {  
     const restaurantData = await scrapeMenu(url);
 
     try {
-        // Check if restaurant already exists based on URL
+        // Check if the restaurant already exists
         const existingRestaurant = await prisma.restaurant.findUnique({
             where: { url }
         });
 
         if (existingRestaurant) {
-            throw new Error("Menu already saved");  // Throw error if the menu is already in the database
+            // Append new category if it's not already in the array
+            const updatedCategories = new Set([...existingRestaurant.category, newCategory]);
+
+            await prisma.restaurant.update({
+                where: { url },
+                data: {
+                    category: Array.from(updatedCategories), // Ensure no duplicates
+                    updatedAt: new Date()
+                }
+            });
+
+            console.log(`✅ Updated categories for: ${restaurantData.title}`);
+            return;
         }
 
-        // Create the restaurant if it does not exist
-        const newRestaurant = await prisma.restaurant.create({
+        // Create new restaurant if not found
+        await prisma.restaurant.create({
             data: {
                 title: restaurantData.title ?? 'Unknown',
                 url: url,
                 detail: restaurantData.detail,
                 rating: restaurantData.rating,
                 num_reviews: restaurantData.num_reviews,
-                location: restaurantData.location ?? 'Unknown', // Save location
+                location: restaurantData.location ?? 'Unknown',
+                category: [newCategory], // Store category as an array
                 menuSections: {
                     create: restaurantData.menu.map(section => ({
                         category: section.category,
-                        interest: interest ? { connect: { name: interest } } : undefined,
                         items: {
                             create: section.items.map(item => ({
                                 name: item.name,
@@ -44,11 +55,10 @@ export async function saveScrapedData(url: string, interest?: string) {
             }
         });
 
-        console.log('Restaurant and menu saved successfully:', newRestaurant);
-        return newRestaurant;
+        console.log(`✅ Saved new restaurant: ${restaurantData.title}`);
     } catch (error) {
-        console.error('Error saving restaurant data:', error);
-        throw error;  // Ensure the error is propagated
+        console.error('❌ Error saving restaurant data:', error);
+        throw error;
     } finally {
         await prisma.$disconnect();
     }
