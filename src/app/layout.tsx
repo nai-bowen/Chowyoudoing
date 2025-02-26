@@ -1,5 +1,6 @@
-import "@/styles/globals.css";
-
+import '../styles/globals.css'
+import '../styles/navbar.css'
+import '../styles/dashboard.css'
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 

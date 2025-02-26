@@ -1,18 +1,31 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPalette, faImages, faThumbtack, faHeart, faChartLine, faFire, faMagic, faGem, faCaretUp } from "@fortawesome/free-solid-svg-icons";
-import { faCodepen } from "@fortawesome/free-brands-svg-icons";
-import "./navbar.css"; // Ensure this contains your styles
-import "./navbar.sass"; // Ensure this contains your styles
+import { faHome, faStar, faPencilAlt, faMapMarkerAlt, faCog, faSignOutAlt, faCaretUp } from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import Link from "next/link";
+
+interface NavButtonProps {
+  icon: IconDefinition;
+  label: string;
+  index: number;
+  onMouseEnter: (index: number) => void;
+}
 
 export default function Navbar() {
-  const [navOpen, setNavOpen] = useState(false);
-  const [footerOpen, setFooterOpen] = useState(false);
-  const [highlightPosition, setHighlightPosition] = useState(-70); // Start position of hover effect
+  const [navOpen, setNavOpen] = useState<boolean>(false);
+  const [footerOpen, setFooterOpen] = useState<boolean>(false);
+  const [highlightPosition, setHighlightPosition] = useState<number>(-70); // Start position of hover effect
 
-  const handleHover = (index: number) => {
+  const handleHover = (index: number): void => {
     setHighlightPosition(index * 54 + 16); // Moves the highlight effect
   };
+
+  const NavButton = ({ icon, label, index, onMouseEnter }: NavButtonProps) => (
+    <div className="nav-button" onMouseEnter={() => onMouseEnter(index)}>
+      <FontAwesomeIcon icon={icon} />
+      <span>{label}</span>
+    </div>
+  );
 
   return (
     <div id="nav-bar" className={`${navOpen ? "expanded" : "collapsed"} ${footerOpen ? "footer-expanded" : "footer-collapsed"}`}>
@@ -27,9 +40,9 @@ export default function Navbar() {
       
       {/* Navbar Header */}
       <div id="nav-header">
-        <a id="nav-title" href="https://codepen.io" target="_blank" rel="noopener noreferrer">
-          C<FontAwesomeIcon icon={faCodepen} />DEPEN
-        </a>
+        <Link id="nav-title" href="/" rel="noopener noreferrer">
+          FoodFinder
+        </Link>
         <label htmlFor="nav-toggle">
           <span id="nav-toggle-burger" onClick={() => setNavOpen(!navOpen)}></span>
         </label>
@@ -38,40 +51,14 @@ export default function Navbar() {
 
       {/* Navigation Menu */}
       <div id="nav-content" className={navOpen ? "expanded" : "collapsed"}>
-        <div className="nav-button" onMouseEnter={() => handleHover(0)}>
-          <FontAwesomeIcon icon={faPalette} />
-          <span>Your Work</span>
-        </div>
-        <div className="nav-button" onMouseEnter={() => handleHover(1)}>
-          <FontAwesomeIcon icon={faImages} />
-          <span>Assets</span>
-        </div>
-        <div className="nav-button" onMouseEnter={() => handleHover(2)}>
-          <FontAwesomeIcon icon={faThumbtack} />
-          <span>Pinned Items</span>
-        </div>
+        <NavButton icon={faHome} label="Dashboard" index={0} onMouseEnter={handleHover} />
+        <NavButton icon={faStar} label="Top Menus" index={1} onMouseEnter={handleHover} />
+        <NavButton icon={faPencilAlt} label="My Reviews" index={2} onMouseEnter={handleHover} />
         <hr />
-        <div className="nav-button" onMouseEnter={() => handleHover(3)}>
-          <FontAwesomeIcon icon={faHeart} />
-          <span>Following</span>
-        </div>
-        <div className="nav-button" onMouseEnter={() => handleHover(4)}>
-          <FontAwesomeIcon icon={faChartLine} />
-          <span>Trending</span>
-        </div>
-        <div className="nav-button" onMouseEnter={() => handleHover(5)}>
-          <FontAwesomeIcon icon={faFire} />
-          <span>Challenges</span>
-        </div>
-        <div className="nav-button" onMouseEnter={() => handleHover(6)}>
-          <FontAwesomeIcon icon={faMagic} />
-          <span>Spark</span>
-        </div>
-        <hr />
-        <div className="nav-button" onMouseEnter={() => handleHover(7)}>
-          <FontAwesomeIcon icon={faGem} />
-          <span>Codepen Pro</span>
-        </div>
+        <NavButton icon={faMapMarkerAlt} label="Explore" index={3} onMouseEnter={handleHover} />
+        <NavButton icon={faCog} label="Settings" index={4} onMouseEnter={handleHover} />
+        <NavButton icon={faSignOutAlt} label="Logout" index={5} onMouseEnter={handleHover} />
+        
         <div 
           id="nav-content-highlight" 
           style={{ top: `${highlightPosition}px` }} 
@@ -92,20 +79,20 @@ export default function Navbar() {
         <div id="nav-footer-heading">
           <div id="nav-footer-avatar">
             <img 
-              src="https://gravatar.com/avatar/4474ca42d303761c2901fa819c4f2547" 
+              src="/avatar-placeholder.jpg" 
               alt="User Avatar" 
             />
           </div>
           <div id="nav-footer-titlebox" className={footerOpen ? "expanded" : "collapsed"}>
-            <a id="nav-footer-title" href="https://codepen.io/uahnbu/pens/public" target="_blank" rel="noopener noreferrer">uahnbu</a>
-            <span id="nav-footer-subtitle">Admin</span>
+            <a id="nav-footer-title" href="/profile" rel="noopener noreferrer">John Doe</a>
+            <span id="nav-footer-subtitle">Foodie</span>
           </div>
           <label htmlFor="nav-footer-toggle">
             <FontAwesomeIcon icon={faCaretUp} onClick={() => setFooterOpen(!footerOpen)} />
           </label>
         </div>
         <div id="nav-footer-content" className={footerOpen ? "expanded" : "collapsed"}>
-          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+          <p>Active since January 2024. Reviewed 15 restaurants.</p>
         </div>
       </div>
     </div>
