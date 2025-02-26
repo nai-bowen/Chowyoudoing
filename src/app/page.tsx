@@ -33,6 +33,11 @@ type Filters = {
   locations: boolean;
 };
 
+// Define a type for the API response
+type SearchResponse = {
+  results: SearchResult[];
+};
+
 
 
 export default function Home() {
@@ -130,7 +135,7 @@ export default function Home() {
       setResults([]);
       return;
     }
-
+  
     const fetchResults = async () => {
       try {
         // Build query string with filters
@@ -139,22 +144,26 @@ export default function Home() {
         queryString += `&meals=${filters.meals}`;
         queryString += `&categories=${filters.categories}`;
         queryString += `&locations=${filters.locations}`;
-        
+  
         const res = await fetch(`/api/search?${queryString}`);
         if (!res.ok) {
           throw new Error(`Error: ${res.status}`);
         }
-        const data = await res.json();
-        setResults(data.results || []);
+        const data = await res.json() as SearchResponse;
+        setResults(data.results);
       } catch (error) {
         console.error("Error fetching search results:", error);
         setResults([]);
       }
     };
-
-    const timeoutId = setTimeout(fetchResults, 300); // Debounce API calls
+  
+    const timeoutId = setTimeout(() => {
+      void fetchResults(); // ✅ Ensure fetchResults is called without returning a Promise
+    }, 300);
+  
     return () => clearTimeout(timeoutId);
   }, [query, filters]);
+  
 
   // Handler for updating the query state
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -283,13 +292,13 @@ export default function Home() {
               
               {/* Filter Button */}
               <div className="absolute right-14 top-1/2 transform -translate-y-1/2" ref={filterRef}>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation(); 
-                    setShowFilters(!showFilters);
-                  }}
-                  className="flex items-center justify-center p-2 rounded-full hover:bg-gray-100 transition-colors"
-                >
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation(); 
+                  setShowFilters(!showFilters);
+                }}
+                className="flex items-center justify-center p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                   </svg>
@@ -543,8 +552,18 @@ export default function Home() {
               className="absolute left-0 w-full bg-white shadow-lg rounded-lg border border-gray-300 z-40 overflow-y-auto"
               style={{ top: "100%", marginTop: "8px" }}
             >
-              {results.map((result) => (
-                <a key={result.id} href={result.url} className="flex items-center px-4 py-2 hover:bg-gray-100">
+            {results.map((result) => {
+              const isExternal = result.url.startsWith("http"); // Check if it's an external link
+              const link = isExternal ? result.url : `/restaurants/${result.id}`; // Ensure correct path
+
+              return (
+                <a 
+                  key={result.id} 
+                  href={link} 
+                  target={isExternal ? "_blank" : "_self"} 
+                  rel={isExternal ? "noopener noreferrer" : undefined} 
+                  className="flex items-center px-4 py-2 hover:bg-gray-100"
+                >
                   <div className="flex-1">
                     <p className="text-gray-800 font-medium">{result.name}</p>
                     <div className="flex items-center">
@@ -557,7 +576,9 @@ export default function Home() {
                     </div>
                   </div>
                 </a>
-              ))}
+              );
+            })}
+
             </div>
           )}
         </div>
