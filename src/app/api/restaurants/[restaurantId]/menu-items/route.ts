@@ -10,14 +10,11 @@ interface MenuItem {
   description: string | null;
 }
 
-// Using the exact structure Next.js expects for App Router
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ restaurantId: string }> }
 ): Promise<NextResponse> {
   const { restaurantId } = await context.params;  // Await in case params is a Promise
-
-
 
   try {
     // Find all menu sections for this restaurant

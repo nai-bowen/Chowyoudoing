@@ -23,10 +23,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -35,15 +37,20 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = (await response.json()) as LoginResponse;
+      const data = await response.json() as LoginResponse;
 
       if (!response.ok) {
         setError(data.error ?? "An unexpected error occurred.");
       } else {
-        router.push("/patron-dashboard");
+        // Use router.replace instead of router.push for a full navigation
+        // This helps avoid some of the client-side navigation issues
+        router.replace("/patron-dashboard");
       }
     } catch (err) {
       setError("An unexpected error occurred.");
+      console.error("Login error:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -123,9 +130,12 @@ export default function LoginPage() {
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full py-3 bg-[#FFC1B5] text-white rounded-[100px] shadow-md hover:bg-[#FFB4A3] transition-all"
+            disabled={isLoading}
+            className={`w-full py-3 bg-[#FFC1B5] text-white rounded-[100px] shadow-md ${
+              isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#FFB4A3]'
+            } transition-all`}
           >
-            Login
+            {isLoading ? 'Loading...' : 'Login'}
           </button>
         </form>
 
@@ -142,13 +152,20 @@ export default function LoginPage() {
           <button
             onClick={() => signIn("google", { callbackUrl: "/patron-dashboard" })}
             className="w-full flex items-center justify-center p-3 border rounded-[1rem] shadow hover:bg-gray-100 transition"
+            disabled={isLoading}
           >
             <FcGoogle size={24} className="mr-2" /> Sign in with Google
           </button>
-          <button className="w-full flex items-center justify-center p-3 border rounded-[1rem] shadow hover:bg-gray-100 transition">
+          <button 
+            className="w-full flex items-center justify-center p-3 border rounded-[1rem] shadow hover:bg-gray-100 transition"
+            disabled={isLoading}
+          >
             <FaFacebookF size={24} className="text-blue-600 mr-2" /> Sign in with Facebook
           </button>
-          <button className="w-full flex items-center justify-center p-3 border rounded-[1rem] shadow hover:bg-gray-100 transition">
+          <button 
+            className="w-full flex items-center justify-center p-3 border rounded-[1rem] shadow hover:bg-gray-100 transition"
+            disabled={isLoading}
+          >
             <FaApple size={24} className="mr-2" /> Sign in with Apple
           </button>
         </div>
@@ -156,7 +173,7 @@ export default function LoginPage() {
         {/* Register Here Link */}
         <p className="mt-6 text-center">
           <span className={`${kufam.className} text-[15px] text-[#B1B1B1]`}>
-            Don’t have an account?{" "}
+            Dont have an account?{" "}
           </span>
           <a
             href="/register"

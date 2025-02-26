@@ -109,6 +109,8 @@ model MenuItem {
     // Inherit Interest from MenuSection
     interest     Interest?  @relation("MenuItemInterest", fields: [interestId], references: [id], onDelete: SetNull)  
     interestId   String?
+
+     reviews     Review[]
 }
 
 
@@ -138,13 +140,24 @@ model Interest {
     menuItems    MenuItem[]    @relation("MenuItemInterest")
 }
 
+// Add these fields to your Review model in schema.prisma
 model Review {
     id          String   @id @default(cuid())
     content     String
     rating      Int      // 1-5 star rating
     upvotes     Int      @default(0)  // Number of upvotes
     createdAt   DateTime @default(now())
+    
+    // Add these fields
+    imageUrl        String?
+    videoUrl        String?
+    asExpected      Int     @default(0)
+    wouldRecommend  Int     @default(0)
+    valueForMoney   Int     @default(0)
 
+    // Optional relation to a specific menu item
+    menuItem    MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+    menuItemId  String?
     // Relations
     patron      Patron   @relation(fields: [patronId], references: [id], onDelete: Cascade)
     patronId    String
