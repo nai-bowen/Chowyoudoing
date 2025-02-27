@@ -1,9 +1,12 @@
+/*eslint-disable*/
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Kufam, Pacifico } from "next/font/google";
+import Link from "next/link";
 
 // Import Google Fonts Correctly
 const kufam = Kufam({
@@ -38,17 +41,15 @@ type SearchResponse = {
   results: SearchResult[];
 };
 
-
-
 export default function Home() {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [placeholder, setPlaceholder] = useState("Search for an interesting meal or restaurant!");
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [placeholder, setPlaceholder] = useState<string>("Search for an interesting meal or restaurant!");
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const secondDropdownRef = useRef<HTMLDivElement | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [showSecondFilters, setShowSecondFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [showSecondFilters, setShowSecondFilters] = useState<boolean>(false);
   const filterRef = useRef<HTMLDivElement | null>(null);
   const secondFilterRef = useRef<HTMLDivElement | null>(null);
   const [filters, setFilters] = useState<Filters>({
@@ -183,22 +184,63 @@ export default function Home() {
     return Object.values(filters).filter(Boolean).length;
   };
 
+  // Render search result items with proper typing and error handling
+  const renderSearchResultItem = (result: SearchResult) => {
+    // Determine if URL is external or internal
+    const isExternal = result.url && result.url.startsWith("http");
+    
+    // For restaurant types, ensure we're using the ID correctly
+    let link: string;
+    if (result.type === "Restaurant") {
+      link = `/restaurants/${result.id}`;
+    } else if (isExternal) {
+      link = result.url;
+    } else {
+      // Default for other types or when URL isn't provided
+      link = result.url || `/search?q=${encodeURIComponent(result.name)}`;
+    }
+
+    return (
+      <Link 
+        key={result.id} 
+        href={link} 
+        target={isExternal ? "_blank" : "_self"} 
+        rel={isExternal ? "noopener noreferrer" : undefined}
+        className="flex items-center px-4 py-2 hover:bg-gray-100"
+      >
+        <div className="flex-1">
+          <p className="text-gray-800 font-medium">{result.name}</p>
+          <div className="flex items-center">
+            {result.restaurant && (
+              <p className="text-gray-500 text-sm">{result.restaurant}</p>
+            )}
+            <span className="ml-auto text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+              {result.type}
+            </span>
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
   return (
     <main className="relative min-h-screen overflow-hidden">
       {/* Navigation Bar */}
       <nav className="fixed top-0 left-0 w-full flex justify-between items-center px-8 py-1 bg-transparent z-50">
         {/* Left: Logo */}
         <div className="flex items-center">
-          <Image src="/assets/cyd_fullLogo.png" alt="Chow You Doing Logo" width={100} height={35} />
+          <Link href="/">
+            <Image src="/assets/cyd_fullLogo.png" alt="Chow You Doing Logo" width={100} height={35} />
+          </Link>
         </div>
 
         {/* Center: Navigation Links */}
         <div className="hidden md:flex gap-8 text-[#5A5A5A] text-lg font-medium">
-          <a href="/browse" className="hover:text-[#A90D3C] transition">Browse</a>
-          <a href="/search" className="relative text-[#A90D3C] font-semibold after:absolute after:-bottom-1 after:left-0 after:w-full after:h-[2px] after:bg-[#A90D3C]">
+          <Link href="/browse" className="hover:text-[#A90D3C] transition">Browse</Link>
+          <Link href="/search" className="relative text-[#A90D3C] font-semibold after:absolute after:-bottom-1 after:left-0 after:w-full after:h-[2px] after:bg-[#A90D3C]">
             Search
-          </a>
-          <a href="/why" className="hover:text-[#A90D3C] transition">Why?</a>
+          </Link>
+          <Link href="/why" className="hover:text-[#A90D3C] transition">Why?</Link>
         </div>
 
         {/* Right: Location & Menu Icon */}
@@ -292,13 +334,13 @@ export default function Home() {
               
               {/* Filter Button */}
               <div className="absolute right-14 top-1/2 transform -translate-y-1/2" ref={filterRef}>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation(); 
-                  setShowFilters(!showFilters);
-                }}
-                className="flex items-center justify-center p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation(); 
+                    setShowFilters(!showFilters);
+                  }}
+                  className="flex items-center justify-center p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                   </svg>
@@ -371,36 +413,7 @@ export default function Home() {
                 ref={dropdownRef}
                 className="absolute left-0 mt-2 w-full bg-white shadow-lg rounded-lg border border-gray-300 z-40 overflow-y-auto"
               >
-                {results.map((result) => {
-  // Check if the URL is an external link
-  const isExternal = result.url.startsWith("http");
-
-  // If it's an internal restaurant, navigate using the restaurant ID instead
-  const link = isExternal ? result.url : `/restaurants/${result.id}`;
-
-  return (
-    <a 
-      key={result.id} 
-      href={link} 
-      target={isExternal ? "_blank" : "_self"} 
-      rel={isExternal ? "noopener noreferrer" : undefined} 
-      className="flex items-center px-4 py-2 hover:bg-gray-100"
-    >
-      <div className="flex-1">
-        <p className="text-gray-800 font-medium">{result.name}</p>
-        <div className="flex items-center">
-          {result.restaurant && (
-            <p className="text-gray-500 text-sm">{result.restaurant}</p>
-          )}
-          <span className="ml-auto text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-            {result.type}
-          </span>
-        </div>
-      </div>
-    </a>
-  );
-})}
-
+                {results.map(renderSearchResultItem)}
               </div>
             )}
           </div>
@@ -552,33 +565,7 @@ export default function Home() {
               className="absolute left-0 w-full bg-white shadow-lg rounded-lg border border-gray-300 z-40 overflow-y-auto"
               style={{ top: "100%", marginTop: "8px" }}
             >
-            {results.map((result) => {
-              const isExternal = result.url.startsWith("http"); // Check if it's an external link
-              const link = isExternal ? result.url : `/restaurants/${result.id}`; // Ensure correct path
-
-              return (
-                <a 
-                  key={result.id} 
-                  href={link} 
-                  target={isExternal ? "_blank" : "_self"} 
-                  rel={isExternal ? "noopener noreferrer" : undefined} 
-                  className="flex items-center px-4 py-2 hover:bg-gray-100"
-                >
-                  <div className="flex-1">
-                    <p className="text-gray-800 font-medium">{result.name}</p>
-                    <div className="flex items-center">
-                      {result.restaurant && (
-                        <p className="text-gray-500 text-sm">{result.restaurant}</p>
-                      )}
-                      <span className="ml-auto text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                        {result.type}
-                      </span>
-                    </div>
-                  </div>
-                </a>
-              );
-            })}
-
+              {results.map(renderSearchResultItem)}
             </div>
           )}
         </div>

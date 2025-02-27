@@ -1,76 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/server/db";
+import { PrismaClient } from "@prisma/client";
 
-// Define item type to avoid TypeScript errors
-interface MenuItem {
-  id: string;
-  name: string;
-  price: string;
-  category: string;
-  description: string | null;
-}
+const prisma = new PrismaClient();
 
-// Using the exact structure Next.js expects for App Router
+// Using the structure that properly handles Promise params
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ restaurantId: string }> }
 ): Promise<NextResponse> {
-  const { restaurantId } = await context.params;  // Await in case params is a Promise
-
-
-
+  // Await the params before accessing its properties
+  const { restaurantId } = await context.params;
+  
   try {
-    // Find all menu sections for this restaurant
-    const menuSections = await db.menuSection.findMany({
-      where: { restaurantId },
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
       include: {
-        items: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            description: true
-          }
+        reviews: { 
+          select: { 
+            content: true, 
+            rating: true, 
+            patron: { select: { firstName: true, lastName: true } } 
+          } 
+        },
+        menuSections: { 
+          select: { 
+            category: true,
+            items: { select: { name: true, description: true, price: true } }
+          } 
         }
       },
-      orderBy: { category: 'asc' }
     });
 
-    // Format the data with proper TypeScript types
-    const allItems: MenuItem[] = [];
-    const itemsByCategory: Record<string, MenuItem[]> = {};
-
-    // Process menu sections
-    for (const section of menuSections) {
-      const category = section.category;
-      
-      // Initialize the category array
-      if (!itemsByCategory[category]) {
-        itemsByCategory[category] = [];
-      }
-      
-      // Process items in this section
-      for (const item of section.items) {
-        const formattedItem: MenuItem = {
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          category,
-          description: item.description
-        };
-
-        allItems.push(formattedItem);
-        itemsByCategory[category].push(formattedItem);
-      }
-    }
+    if (!restaurant) return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
 
     return NextResponse.json({
-      restaurantId,
-      items: allItems,
-      itemsByCategory
+      id: restaurant.id,
+      name: restaurant.title, 
+      address: restaurant.location ?? "Address not available", 
+      reviews: restaurant.reviews || [],
+      menuItems: restaurant.menuSections.flatMap(section => section.items) || [],
     });
+
   } catch (error) {
-    console.error("Error fetching menu items:", error);
-    return NextResponse.json({ error: "Failed to fetch menu items" }, { status: 500 });
+    console.error("Error fetching restaurant:", error);
+    return NextResponse.json({ error: "Failed to fetch restaurant data" }, { status: 500 });
   }
 }

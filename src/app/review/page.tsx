@@ -39,6 +39,7 @@ export default function ReviewPage() {
   const [video, setVideo] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,6 +61,7 @@ export default function ReviewPage() {
           if (!response.ok) throw new Error("Search failed");
           
           const data = await response.json();
+          console.log("Search results:", data);
           setSearchResults(data.results);
           setShowResults(true);
         } catch (error) {
@@ -94,6 +96,7 @@ export default function ReviewPage() {
         }
         
         const data = await response.json();
+        console.log("Menu items:", data);
         setMenuItems(data.items || []);
       } catch (error) {
         console.error("Error fetching menu items:", error);
@@ -107,6 +110,7 @@ export default function ReviewPage() {
   }, [restaurantId]);
 
   const handleRestaurantSelect = (result: SearchResult) => {
+    console.log("Selected restaurant:", result);
     setRestaurantId(result.id);
     setRestaurantName(result.name);
     setSearchQuery(result.name);
@@ -126,6 +130,7 @@ export default function ReviewPage() {
     
     const selectedItem = menuItems.find(item => item.id === selectedId);
     if (selectedItem) {
+      console.log("Selected menu item:", selectedItem);
       setMenuItemId(selectedItem.id);
       setMenuItemName(selectedItem.name);
     }
@@ -165,6 +170,7 @@ export default function ReviewPage() {
       }
 
       const data = await res.json();
+      console.log(`${type} upload response:`, data);
       if (data.url) {
         type === "image" ? setImage(data.url) : setVideo(data.url);
       }
@@ -178,6 +184,7 @@ export default function ReviewPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     
     if (!restaurantName) {
       alert("Please select a restaurant.");
@@ -191,32 +198,49 @@ export default function ReviewPage() {
     
     setIsSubmitting(true);
     
+    const reviewData = {
+      restaurant: restaurantName,
+      menuItem: menuItemName || undefined, // Only include if selected
+      standards: {
+        asExpected: standards.asExpected,
+        wouldRecommend: standards.wouldRecommend,
+        valueForMoney: standards.valueForMoney
+      },
+      content: reviewText,
+      imageUrl: image,
+      videoUrl: video,
+      rating: 5, // Default rating, you might want to add a rating component
+    };
+    
+    console.log("Submitting review:", reviewData);
+    
     try {
       const response = await fetch("/api/review", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          restaurant: restaurantName,
-          menuItem: menuItemName || undefined, // Only include if selected
-          standards: {
-            asExpected: standards.asExpected,
-            wouldRecommend: standards.wouldRecommend,
-            valueForMoney: standards.valueForMoney
-          },
-          content: reviewText,
-          imageUrl: image,
-          videoUrl: video,
-          rating: 5, // Default rating, you might want to add a rating component
-        }),
+        body: JSON.stringify(reviewData),
+        credentials: "include", // Include cookies for auth
       });
       
+      console.log("Review submission status:", response.status);
+      
       if (!response.ok) {
-        throw new Error("Failed to submit review");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Error response:", errorData);
+        
+        if (response.status === 401) {
+          setErrorMessage("You must be logged in to submit a review. Please log in and try again.");
+          throw new Error("Unauthorized: You must be logged in to submit a review");
+        } else {
+          setErrorMessage(`Error: ${errorData.error || response.statusText}`);
+          throw new Error(`Failed to submit review: ${errorData.error || response.statusText}`);
+        }
       }
       
       const data = await response.json();
+      console.log("Review submission response:", data);
       
       if (data.success) {
         // Redirect to the restaurant page or review confirmation
@@ -224,9 +248,11 @@ export default function ReviewPage() {
       } else {
         throw new Error(data.error || "Failed to submit review");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting review:", error);
-      alert("Failed to submit review. Please try again.");
+      if (!errorMessage) {
+        setErrorMessage(error.message || "Failed to submit review. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -267,6 +293,12 @@ export default function ReviewPage() {
     <div className="container mx-auto p-4 bg-amber-50 min-h-screen">
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-2xl font-bold text-amber-600 mb-6">Write Your Review</h2>
+        
+        {errorMessage && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <p>{errorMessage}</p>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Restaurant Search */}

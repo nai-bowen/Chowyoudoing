@@ -201,6 +201,13 @@ label[for=nav-toggle] {
   cursor: pointer;
   z-index: 1;
   transition: color 0.2s;
+  user-select: none;
+  outline: none;
+}
+
+.nav-button:focus-visible {
+  outline: 2px solid var(--navbar-light-secondary);
+  border-radius: 4px;
 }
 .nav-button span {
   transition: opacity 1s;

@@ -3,12 +3,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHome, faStar, faPencilAlt, faMapMarkerAlt, faCog, faSignOutAlt, faCaretUp } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface NavButtonProps {
   icon: IconDefinition;
   label: string;
   index: number;
   onMouseEnter: (index: number) => void;
+  href?: string;
 }
 
 export default function Navbar() {
@@ -20,12 +22,28 @@ export default function Navbar() {
     setHighlightPosition(index * 54 + 16); // Moves the highlight effect
   };
 
-  const NavButton = ({ icon, label, index, onMouseEnter }: NavButtonProps) => (
-    <div className="nav-button" onMouseEnter={() => onMouseEnter(index)}>
-      <FontAwesomeIcon icon={icon} />
-      <span>{label}</span>
-    </div>
-  );
+  const router = useRouter();
+
+  const NavButton = ({ icon, label, index, onMouseEnter, href }: NavButtonProps) => {
+    const handleClick = () => {
+      if (href) {
+        router.push(href);
+      }
+    };
+
+    return (
+      <div 
+        className="nav-button" 
+        onMouseEnter={() => onMouseEnter(index)}
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+      >
+        <FontAwesomeIcon icon={icon} />
+        <span>{label}</span>
+      </div>
+    );
+  };
 
   return (
     <div id="nav-bar" className={`${navOpen ? "expanded" : "collapsed"} ${footerOpen ? "footer-expanded" : "footer-collapsed"}`}>
@@ -51,12 +69,12 @@ export default function Navbar() {
 
       {/* Navigation Menu */}
       <div id="nav-content" className={navOpen ? "expanded" : "collapsed"}>
-        <NavButton icon={faHome} label="Dashboard" index={0} onMouseEnter={handleHover} />
-        <NavButton icon={faStar} label="Top Menus" index={1} onMouseEnter={handleHover} />
-        <NavButton icon={faPencilAlt} label="My Reviews" index={2} onMouseEnter={handleHover} />
+        <NavButton icon={faHome} label="Dashboard" index={0} onMouseEnter={handleHover} href="/dashboard" />
+        <NavButton icon={faStar} label="Top Menus" index={1} onMouseEnter={handleHover} href="/reviews" />
+        <NavButton icon={faPencilAlt} label="My Reviews" index={2} onMouseEnter={handleHover} href="/review" />
         <hr />
-        <NavButton icon={faMapMarkerAlt} label="Explore" index={3} onMouseEnter={handleHover} />
-        <NavButton icon={faCog} label="Settings" index={4} onMouseEnter={handleHover} />
+        <NavButton icon={faMapMarkerAlt} label="Explore" index={3} onMouseEnter={handleHover} href="/explore" />
+        <NavButton icon={faCog} label="Settings" index={4} onMouseEnter={handleHover} href="/settings" />
         <NavButton icon={faSignOutAlt} label="Logout" index={5} onMouseEnter={handleHover} />
         
         <div 
