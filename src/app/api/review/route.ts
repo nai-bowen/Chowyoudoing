@@ -1,22 +1,23 @@
 /*eslint-disable*/
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authConfig as authOptions } from "@/server/auth/config";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/server/db";
 
 export async function POST(req: NextRequest) {
   try {
     console.log("Review API: Beginning request processing");
     
-    // Get server session
+    // Get server session with authOptions from lib/auth.ts
     const session = await getServerSession(authOptions);
-    console.log("Review API: Session retrieved", { 
+    console.log("Review API: Session data retrieved:", { 
       hasSession: !!session, 
-      userId: session?.user?.id 
+      userId: session?.user?.id,
+      userEmail: session?.user?.email
     });
     
-    if (!session || !session.user) {
-      console.log("Review API: Unauthorized - No valid session");
+    if (!session || !session.user || !session.user.id) {
+      console.log("Review API: Unauthorized - No valid session or user ID");
       return NextResponse.json({ error: "Unauthorized - Please log in to submit a review" }, { status: 401 });
     }
     
@@ -74,6 +75,16 @@ export async function POST(req: NextRequest) {
     const asExpectedRating = standards?.asExpected ? parseInt(String(standards.asExpected)) : 0;
     const wouldRecommendRating = standards?.wouldRecommend ? parseInt(String(standards.wouldRecommend)) : 0;
     const valueForMoneyRating = standards?.valueForMoney ? parseInt(String(standards.valueForMoney)) : 0;
+    
+    // Find patron record to ensure it exists
+    const patron = await db.patron.findUnique({
+      where: { id: session.user.id }
+    });
+    
+    if (!patron) {
+      console.log("Review API: Patron not found with ID:", session.user.id);
+      return NextResponse.json({ error: "User account not found" }, { status: 404 });
+    }
     
     // Create review
     const reviewData: any = {

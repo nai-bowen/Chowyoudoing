@@ -1,9 +1,11 @@
-/*eslint-disable*/
+/*eslint-disable */
 
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession, signIn } from "next-auth/react";
+import Link from "next/link";
 
 // Define types for search results
 type SearchResult = {
@@ -25,31 +27,45 @@ interface MenuItem {
 
 export default function ReviewPage() {
   const router = useRouter();
-  const [restaurantId, setRestaurantId] = useState("");
-  const [restaurantName, setRestaurantName] = useState("");
-  const [menuItemId, setMenuItemId] = useState("");
-  const [menuItemName, setMenuItemName] = useState("");
+  const { data: session, status } = useSession();
+  const isLoading = status === "loading";
+  const isAuthenticated = status === "authenticated";
+
+  const [restaurantId, setRestaurantId] = useState<string>("");
+  const [restaurantName, setRestaurantName] = useState<string>("");
+  const [menuItemId, setMenuItemId] = useState<string>("");
+  const [menuItemName, setMenuItemName] = useState<string>("");
   const [standards, setStandards] = useState({
     asExpected: 0,
     wouldRecommend: 0,
     valueForMoney: 0
   });
-  const [reviewText, setReviewText] = useState("");
+  const [reviewText, setReviewText] = useState<string>("");
   const [image, setImage] = useState<string | null>(null);
   const [video, setVideo] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Search states
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [showResults, setShowResults] = useState<boolean>(false);
   
   // Menu items dropdown
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [isLoadingMenuItems, setIsLoadingMenuItems] = useState(false);
+  const [isLoadingMenuItems, setIsLoadingMenuItems] = useState<boolean>(false);
+
+  // Clear any error messages when session status changes
+  useEffect(() => {
+    console.log("Session status:", status);
+    console.log("Session data:", session);
+    if (status === "authenticated") {
+      setErrorMessage(null);
+      console.log("User is authenticated:", session?.user);
+    }
+  }, [status, session]);
 
   // Handle restaurant search
   useEffect(() => {
@@ -184,7 +200,15 @@ export default function ReviewPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear previous error messages
     setErrorMessage(null);
+    
+    // Check if user is logged in
+    if (status !== "authenticated") {
+      setErrorMessage("You must be logged in to submit a review. Please log in and try again.");
+      return;
+    }
     
     if (!restaurantName) {
       alert("Please select a restaurant.");
@@ -213,6 +237,7 @@ export default function ReviewPage() {
     };
     
     console.log("Submitting review:", reviewData);
+    console.log("Current session:", session);
     
     try {
       const response = await fetch("/api/review", {
@@ -288,6 +313,38 @@ export default function ReviewPage() {
       </div>
     );
   };
+
+  // Show a login prompt if user is not authenticated
+  if (status === "unauthenticated") {
+    return (
+      <div className="container mx-auto p-4 bg-amber-50 min-h-screen">
+        <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold text-amber-600 mb-6">Write Your Review</h2>
+          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 p-4 rounded-lg mb-4">
+            <p className="font-semibold">You need to be logged in to submit a review.</p>
+            <button
+              onClick={() => signIn()}
+              className="mt-4 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-md font-medium"
+            >
+              Log in now
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while checking authentication
+  if (status === "loading") {
+    return (
+      <div className="container mx-auto p-4 bg-amber-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500 mx-auto"></div>
+          <p className="mt-4 text-lg font-medium text-amber-800">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 bg-amber-50 min-h-screen">

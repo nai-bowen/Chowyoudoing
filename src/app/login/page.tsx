@@ -29,22 +29,18 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
+  
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const signInResponse = await signIn("credentials", {
+        email,
+        password,
+        redirect: false, // Prevent NextAuth from redirecting automatically
       });
-
-      const data = await response.json() as LoginResponse;
-
-      if (!response.ok) {
-        setError(data.error ?? "An unexpected error occurred.");
+  
+      if (signInResponse?.error) {
+        setError(signInResponse.error);
       } else {
-        // Use router.replace instead of router.push for a full navigation
-        // This helps avoid some of the client-side navigation issues
-        router.replace("/patron-dashboard");
+        router.replace("/patron-dashboard"); // Redirect after successful login
       }
     } catch (err) {
       setError("An unexpected error occurred.");
@@ -53,7 +49,7 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="flex min-h-screen overflow-hidden relative">
       {/* Sidebar */}

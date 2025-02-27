@@ -1,8 +1,7 @@
 /* eslint-disable */
 import NextAuth from "next-auth";
-import { authConfig } from "@/server/auth/config"; // ✅ Correct import
+import { authOptions } from "@/lib/auth";
 
-const handler = NextAuth(authConfig); // ✅ Use the correct config
-
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

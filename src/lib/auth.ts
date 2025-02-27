@@ -1,10 +1,12 @@
-import NextAuth, { NextAuthOptions, Session } from "next-auth";
+/*eslint-disable */
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { JWT } from "next-auth/jwt";
 
 const prisma = new PrismaClient();
+
+// No type declarations here - we're using the ones from config.ts
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,7 +16,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials): Promise<{ id: string; email: string; firstName: string; lastName: string } | null> {
+      async authorize(credentials): Promise<any> {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email and password are required.");
         }
@@ -39,29 +41,34 @@ export const authOptions: NextAuthOptions = {
         return {
           id: patron.id,
           email: patron.email,
-          firstName: patron.firstName,
-          lastName: patron.lastName,
+          name: `${patron.firstName} ${patron.lastName}`,
         };
       },
     }),
   ],
   callbacks: {
-    async session({ session, token }: { session: Session; token: JWT }): Promise<Session> {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+      }
+      return token;
+    },
+    async session({ session, token }) {
       if (session.user) {
-        session.user = {
-          ...session.user, 
-          id: token.id as string, 
-          email: token.email ?? session.user.email, 
-        };
+        session.user.id = token.id as string;
       }
       return session;
     },
   },
-  
-  
-  
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
+  debug: process.env.NODE_ENV === "development",
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

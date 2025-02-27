@@ -16,6 +16,7 @@ type Patron = {
 type Review = {
   content: string;
   rating: number;
+  imageUrl?: string;  // Add this line
   patron?: Patron;
 };
 
@@ -161,36 +162,55 @@ export default function RestaurantPage() {
       <h1 className="text-4xl font-bold text-center mt-6 text-[#D29501]">{restaurant.name}</h1>
       <p className="text-center text-sm text-[#A90D3C]">{restaurant.address}</p>
 
-      {/* Reviews Section */}
-      <section className="mt-8">
-        <h2 className="text-2xl font-semibold">Reviews</h2>
-        {restaurant.reviews && restaurant.reviews.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            {restaurant.reviews.map((review, index) => (
-              <div key={index} className="p-4 bg-white shadow-md rounded-md">
-                <div className="flex items-center mb-2">
-                  <div className="flex">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <span key={i} className={i < review.rating ? "text-yellow-500" : "text-gray-300"}>★</span>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-sm italic">"{review.content}"</p>
-                <p className="text-right mt-2 text-[#A90D3C]">
-                  - {review.patron?.firstName ? `${review.patron.firstName}` : "Anonymous"}
-                </p>
+{/* Reviews Section */}
+<section className="mt-8">
+  <h2 className="text-2xl font-semibold">Reviews</h2>
+  {restaurant.reviews && restaurant.reviews.length > 0 ? (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      {restaurant.reviews.map((review, index) => (
+        <div key={index} className="p-4 bg-white shadow-md rounded-md flex">
+          {/* Display Image if available */}
+          {review.imageUrl && (
+            <div className="w-24 h-24 flex-shrink-0 relative mr-4">
+              <Image
+                src={review.imageUrl}
+                alt="Review Image"
+                layout="fill"
+                objectFit="cover"
+                className="rounded-md"
+              />
+            </div>
+          )}
+          
+          {/* Review Content */}
+          <div>
+            <div className="flex items-center mb-2">
+              <div className="flex">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <span key={i} className={i < review.rating ? "text-yellow-500" : "text-gray-300"}>
+                    ★
+                  </span>
+                ))}
               </div>
-            ))}
+            </div>
+            <p className="text-sm italic">"{review.content}"</p>
+            <p className="text-right mt-2 text-[#A90D3C]">
+              - {review.patron?.firstName ? `${review.patron.firstName}` : "Anonymous"}
+            </p>
           </div>
-        ) : (
-          <p className="mt-4 text-lg">
-            No reviews for this restaurant yet!{" "}
-            <Link href="/write-review" className="text-[#A90D3C] font-semibold">
-              Would you like to write one?
-            </Link>
-          </p>
-        )}
-      </section>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p className="mt-4 text-lg">
+      No reviews for this restaurant yet!{" "}
+      <Link href="/write-review" className="text-[#A90D3C] font-semibold">
+        Would you like to write one?
+      </Link>
+    </p>
+  )}
+</section>
+
 
       {/* Menu Section */}
       <section className="mt-8 pb-10">

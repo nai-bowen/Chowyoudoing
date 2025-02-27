@@ -3,12 +3,10 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Using the structure that properly handles Promise params
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ restaurantId: string }> }
 ): Promise<NextResponse> {
-  // Await the params before accessing its properties
   const { restaurantId } = await context.params;
   
   try {
@@ -19,6 +17,7 @@ export async function GET(
           select: { 
             content: true, 
             rating: true, 
+            imageUrl: true,  // ✅ Add this to fetch image URLs
             patron: { select: { firstName: true, lastName: true } } 
           } 
         },
