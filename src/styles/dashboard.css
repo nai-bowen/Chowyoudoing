@@ -1,373 +1,663 @@
 /* Dashboard Styles */
 :root {
-    --primary-color: #ffb700;
-    --secondary-color: #f5a700;
-    --background-color: #ffecbd;
-    --text-color: #333333;
-    --light-text-color: #666666;
-    --card-background: #ffffff;
-    --border-radius: 8px;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    --button-primary: #ffb700;
-    --button-secondary: #f08080;
-    --star-color: #ffb700;
+  --primary-color: #FFD879;  /* Updated from #ffb700 */
+  --secondary-color: #FFCE5A; /* Slightly darker shade */
+  --background-color: #FFF9E8; /* Updated from #ffecbd */
+  --text-color: #333333;
+  --light-text-color: #666666;
+  --card-background: #ffffff;
+  --review-container-color: #FFD879; /* New color for reviews container */
+  --action-button-color: #FFC1B5; /* New color for action buttons */
+  --border-radius: 8px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --star-color: #ffb700;
+}
+
+/* General Layout */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+/* Navbar integration with dashboard */
+.dashboard-container {
+  display: flex;
+}
+
+.with-navbar {
+  display: flex;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 20px 30px;
+  transition: margin-left 0.3s ease, width 0.3s ease, max-width 0.3s ease;
+  width: 100%;
+}
+
+/* Responsive adjustments for dashboard content with navbar */
+.with-navbar .dashboard-content,
+.with-navbar .page-content {
+  margin-left: 0;
+  width: calc(100% - var(--navbar-width));
+  max-width: calc(100vw - var(--navbar-width));
+  transition: width 0.3s ease, margin-left 0.3s ease, max-width 0.3s ease;
+}
+
+.with-navbar.nav-collapsed .dashboard-content,
+.with-navbar.nav-collapsed .page-content {
+  width: calc(100% - var(--navbar-width-min));
+  max-width: calc(100vw - var(--navbar-width-min));
+}
+
+/* Header */
+.welcome-message {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: var(--text-color);
+}
+
+/* Section Styling */
+section {
+  margin-bottom: 30px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  background-color: var(--card-background);
+}
+
+/* Hot Reviews section with transparent background */
+.hot-reviews {
+  margin-bottom: 2rem;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  color: var(--text-color);
+  gap: 10px;
+}
+
+.section-title svg {
+  margin-right: 8px;
+  color: var(--primary-color);
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: var(--light-text-color);
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+/* Icons */
+.icon-flame {
+  color: #F66F3D; /* Orange-red like in wireframe */
+}
+
+.icon-star {
+  color: #FFD700; /* Bright gold star */
+}
+
+.icon-book {
+  color: #6c5ce7;
+}
+
+.icon-map {
+  color: #00b894;
+}
+
+/* Rating stars styling to match wireframe */
+.review-card .star-rating {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.review-card .star-rating div {
+  display: flex;
+  gap: 3px;
+}
+
+/* Hot Reviews Section */
+.reviews-container {
+  position: relative;
+  background-color: rgba(255, 216, 121, 0.2); /* 20% opacity as requested */
+  border-radius: var(--border-radius);
+  padding: 20px;
+}
+
+.review-cards {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.review-card {
+  flex: 0 0 300px;
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  padding: 15px 20px;
+  position: relative;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-card-rate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.star-icon {
+  color: #FFD700; /* Bright gold star */
+  margin-right: 5px;
+  font-size: 18px;
+}
+
+.review-text {
+  font-size: 14px;
+  margin: 20px 0;
+  color: var(--text-color);
+  line-height: 1.5;
+  text-align: center;
+  flex-grow: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+}
+
+/* Add quotation marks to review text - similar to wireframe */
+.review-text::before,
+.review-text::after {
+  content: '"';
+  font-size: 48px;
+  color: #FFC1B5;
+  opacity: 0.4;
+  position: absolute;
+  line-height: 1;
+  font-family: serif;
+}
+
+.review-text::before {
+  top: -10px;
+  left: -15px;
+}
+
+.review-text::after {
+  bottom: -20px;
+  right: -15px;
+}
+
+.review-card-footer {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  color: var(--light-text-color);
+  font-size: 12px;
+  margin-top: auto;
+  text-align: center;
+}
+
+.review-card-footer span:last-child {
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+.restaurant-tag {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #FFC1B5;
+  color: black;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Top Menus Section */
+.top-menus {
+  margin-bottom: 2rem;
+}
+
+.sort-container {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.sort-container span {
+  margin-right: 8px;
+  font-size: 14px;
+  color: var(--light-text-color);
+}
+
+.sort-dropdown {
+  padding: 6px 12px;
+  border-radius: var(--border-radius);
+  border: 1px solid #ddd;
+  background: white;
+  font-size: 14px;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.restaurant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.restaurant-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  border: 1px solid #eee;
+  box-shadow: var(--shadow);
+}
+
+.restaurant-info {
+  display: flex;
+  padding: 15px;
+  gap: 15px;
+}
+
+.restaurant-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.restaurant-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.restaurant-details {
+  flex: 1;
+}
+
+.restaurant-details h3 {
+  margin-top: 0;
+  margin-bottom: 5px;
+  font-size: 16px;
+  color: var(--text-color);
+}
+
+.restaurant-category {
+  color: var(--primary-color);
+  font-size: 13px;
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.restaurant-description {
+  font-size: 13px;
+  color: var(--light-text-color);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.restaurant-actions {
+  display: flex;
+  gap: 10px;
+  padding: 0 15px 15px;
+}
+
+.check-out-btn, .write-review-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.check-out-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.write-review-btn {
+  background-color: var(--action-button-color); /* Updated to FFC1B5 */
+  color: white;
+}
+
+.check-out-btn:hover, .write-review-btn:hover {
+  opacity: 0.9;
+}
+
+/* Bottom Section */
+.bottom-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Your Reviews Section */
+.your-reviews {
+  flex: 1;
+  background-color: rgba(255, 216, 121, 0.2); /* 20% opacity as requested */
+}
+
+.your-reviews .icon-book {
+  color: var(--primary-color);
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.review-list-item {
+  display: flex;
+  align-items: center;
+  background: var(--card-background);
+  padding: 10px 15px;
+  border-radius: var(--border-radius);
+  border: 1px solid #eee;
+  position: relative;
+}
+
+.review-number {
+  font-weight: 600;
+  margin-right: 10px;
+  min-width: 25px;
+  color: var(--primary-color);
+}
+
+.review-title {
+  flex: 1;
+  font-weight: 500;
+  margin-right: 15px;
+}
+
+.review-date {
+  font-size: 12px;
+  color: var(--light-text-color);
+  margin-right: 15px;
+}
+
+.review-upvotes {
+  display: flex;
+  align-items: center;
+  margin-right: 15px;
+  background: var(--action-button-color); /* Updated to FFC1B5 */
+  padding: 4px 8px;
+  border-radius: 15px;
+  font-size: 12px;
+  color: #333;
+  font-weight: bold;
+  gap: 5px;
+}
+
+.upvote-icon {
+  margin-right: 4px;
+}
+
+.edit-icon {
+  background: var(--action-button-color); /* Updated to FFC1B5 */
+  border: none;
+  color: #333;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.edit-icon:hover {
+  opacity: 0.9;
+}
+
+/* Map Section */
+.your-area {
+  flex: 1;
+}
+
+.your-area .icon-map {
+  color: #00b894;
+}
+
+.map-container {
+  height: 280px;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* No content states */
+.no-reviews {
+  text-align: center;
+  padding: 2rem;
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  color: var(--light-text-color);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .bottom-section {
+    grid-template-columns: 1fr;
   }
-  
-  /* General Layout */
-  body {
-    margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: transparent;
-    color: var(--text-color);
-  }
-  
-  .dashboard-container {
-    display: flex;
-  }
-  
+}
+
+@media (max-width: 768px) {
   .dashboard-content {
-    flex: 1;
-    padding: 20px 30px;
-    margin-left: var(--navbar-width);
-    overflow-y: auto;
-    max-width: calc(100vw - var(--navbar-width));
-  }
-  
-  #nav-toggle:checked ~ .dashboard-content {
-    margin-left: var(--navbar-width-min);
-    max-width: calc(100vw - var(--navbar-width-min));
-  }
-  
-  /* Header */
-  .welcome-message {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 24px;
-    color: var(--text-color);
-  }
-  
-  /* Section Styling */
-  section {
-    margin-bottom: 30px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    padding: 20px;
-  }
-  
-  .section-title {
-    font-size: 20px;
-    font-weight: 600;
-    margin-top: 0;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    color: var(--text-color);
-  }
-  
-  .section-title svg {
-    margin-right: 8px;
-    color: var(--primary-color);
-  }
-  
-  .section-subtitle {
-    font-size: 14px;
-    color: var(--light-text-color);
-    margin-top: 0;
-    margin-bottom: 20px;
-  }
-  
-  /* Hot Reviews Section */
-  .hot-reviews .icon-flame {
-    color: #ff6b6b;
-  }
-  
-  .reviews-container {
-    position: relative;
+    padding: 15px;
   }
   
   .review-cards {
-    display: flex;
-    gap: 20px;
-    overflow-x: auto;
-    padding-bottom: 10px;
+    flex-wrap: wrap;
   }
   
   .review-card {
-    flex: 0 0 300px;
-    background: var(--card-background);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    position: relative;
-    border: 1px solid #eee;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    min-height: 180px;
-  }
-  
-  .review-card-rate {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-  
-  .star-icon {
-    color: var(--star-color);
-    margin-right: 5px;
-    font-size: 18px;
-  }
-  
-  .review-text {
-    font-size: 14px;
-    margin-bottom: 20px;
-    line-height: 1.5;
-  }
-  
-  .review-card-footer {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: var(--light-text-color);
-    margin-top: 10px;
-  }
-  
-  .restaurant-tag {
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--primary-color);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-  
-  /* Top Menus Section */
-  .top-menus .icon-star {
-    color: var(--star-color);
-  }
-  
-  .sort-container {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-bottom: 15px;
-  }
-  
-  .sort-container span {
-    margin-right: 8px;
-    font-size: 14px;
-    color: var(--light-text-color);
-  }
-  
-  .sort-dropdown {
-    padding: 6px 12px;
-    border-radius: var(--border-radius);
-    border: 1px solid #ddd;
-    background: white;
-    font-size: 14px;
-    color: var(--text-color);
-    cursor: pointer;
-  }
-  
-  .restaurant-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .restaurant-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--card-background);
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    border: 1px solid #eee;
-  }
-  
-  .restaurant-info {
-    display: flex;
-    padding: 15px;
-  }
-  
-  .restaurant-logo {
-    width: 80px;
-    height: 80px;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    margin-right: 15px;
-    flex-shrink: 0;
-  }
-  
-  .restaurant-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .restaurant-details {
-    flex: 1;
-  }
-  
-  .restaurant-details h3 {
-    margin-top: 0;
-    margin-bottom: 5px;
-    font-size: 16px;
-  }
-  
-  .restaurant-category {
-    color: var(--secondary-color);
-    font-size: 13px;
-    margin-top: 0;
-    margin-bottom: 8px;
-    font-weight: 600;
-  }
-  
-  .restaurant-description {
-    font-size: 13px;
-    color: var(--light-text-color);
-    margin: 0;
-    line-height: 1.4;
-  }
-  
-  .restaurant-actions {
-    display: flex;
-    gap: 10px;
-    padding: 0 15px 15px;
-  }
-  
-  .check-out-btn, .write-review-btn {
-    flex: 1;
-    padding: 8px 12px;
-    border: none;
-    border-radius: var(--border-radius);
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .check-out-btn {
-    background-color: var(--button-primary);
-    color: white;
-  }
-  
-  .write-review-btn {
-    background-color: var(--button-secondary);
-    color: white;
-  }
-  
-  .check-out-btn:hover, .write-review-btn:hover {
-    opacity: 0.9;
-  }
-  
-  /* Bottom Section */
-  .bottom-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-  
-  /* Your Reviews Section */
-  .your-reviews {
-    flex: 1;
-  }
-  
-  .your-reviews .icon-book {
-    color: var(--primary-color);
-  }
-  
-  .review-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    flex: 0 0 100%;
   }
   
   .review-list-item {
-    display: flex;
-    align-items: center;
-    background: var(--card-background);
-    padding: 10px 15px;
-    border-radius: var(--border-radius);
-    border: 1px solid #eee;
-  }
-  
-  .review-number {
-    font-weight: 600;
-    margin-right: 10px;
-    min-width: 25px;
-  }
-  
-  .review-title {
-    flex: 1;
-    font-weight: 500;
-    margin-right: 15px;
-  }
-  
-  .review-date {
-    font-size: 12px;
-    color: var(--light-text-color);
-    margin-right: 15px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
   
   .review-upvotes {
-    display: flex;
-    align-items: center;
-    margin-right: 15px;
-    background: #f8f8f8;
-    padding: 4px 8px;
-    border-radius: 15px;
-    font-size: 12px;
-  }
-  
-  .upvote-icon {
-    margin-right: 4px;
+    margin-left: auto;
   }
   
   .edit-icon {
-    background: none;
-    border: none;
-    color: var(--light-text-color);
-    cursor: pointer;
-    padding: 4px;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
   }
-  
-  .edit-icon:hover {
-    color: var(--primary-color);
-  }
-  
-  /* Map Section */
-  .your-area {
-    flex: 1;
-  }
-  
-  .your-area .icon-map {
-    color: #4caf50;
-  }
-  
-  .map-container {
-    height: 280px;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-  }
-  
-  /* Responsive Design */
-  @media (max-width: 1200px) {
-    .bottom-section {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .dashboard-content {
-      padding: 15px;
-    }
-    
-    .review-cards {
-      flex-wrap: wrap;
-    }
-    
-    .review-card {
-      flex: 0 0 100%;
-    }
-  }
+}
+
+/* Additional CSS for Reviews - Add this to your dashboard.css file */
+
+/* Style the review cards to better match the wireframe */
+.hot-reviews .section-title {
+  display: flex;
+  align-items: center;
+}
+
+.hot-reviews .section-title .icon-flame {
+  font-size: 24px;
+  margin-right: 10px;
+}
+
+.hot-reviews .section-subtitle {
+  color: #777;
+  margin-bottom: 25px;
+}
+
+/* Add food icons above the reviews */
+.review-cards {
+  position: relative;
+}
+
+.review-cards::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFD879'%3E%3Cpath d='M12 3L4 9v12h16V9l-8-6zm0 2.25L16.81 9H7.19L12 5.25zM18 19H6v-8h12v8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* Style the reviews container to match wireframe */
+.reviews-container {
+  border-radius: 16px;
+  overflow: hidden;
+  margin-top: 15px;
+  position: relative;
+}
+
+.reviews-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: rgba(255, 216, 121, 0.5);
+  z-index: 1;
+}
+
+/* Style the review cards to match wireframe */
+.review-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+  padding-top: 30px;
+}
+
+/* Star rating display similar to wireframe */
+.star-rating {
+  display: flex;
+  justify-content: center;
+  margin-top: 5px;
+  margin-bottom: 15px;
+}
+
+.review-card .star-icon {
+  color: #FFD700;
+  font-size: 20px;
+}
+
+/* Quote styling */
+.review-text {
+  position: relative;
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 0 20px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+/* Quote decoration like in wireframe */
+.hot-reviews .quote-decoration-left,
+.hot-reviews .quote-decoration-right {
+  position: absolute;
+  font-size: 4rem;
+  color: #FFC1B5;
+  opacity: 0.4;
+  font-family: serif;
+  line-height: 1;
+}
+
+.hot-reviews .quote-decoration-left {
+  top: -20px;
+  left: 10px;
+}
+
+.hot-reviews .quote-decoration-right {
+  bottom: -10px;
+  right: 10px;
+}
+
+/* Add small decoration icons under the stars */
+.star-rating::after {
+  content: "";
+  position: absolute;
+  height: 2px;
+  width: 40px;
+  background-color: #FFC1B5;
+  opacity: 0.5;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Restaurant tag placement */
+.restaurant-tag {
+  border-radius: 30px;
+  font-size: 0.75rem;
+  padding: 4px 15px;
+  background-color: #FFC1B5;
+  color: #333;
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Add author styling to match wireframe */
+.review-card-footer span:last-child {
+  font-weight: 600;
+  color: #666;
+  display: block;
+  margin-top: 5px;
+}
+
+/* Make the upvotes less prominent as per wireframe */
+.review-card-footer span:first-child {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}

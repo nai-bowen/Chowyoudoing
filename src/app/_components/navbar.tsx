@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHome, faStar, faPencilAlt, faMapMarkerAlt, faCog, faSignOutAlt, faCaretUp } from "@fortawesome/free-solid-svg-icons";
+import { faHome, faStar, faPencilAlt, faMapMarkerAlt, faCog, faSignOutAlt, faCaretUp, faSearch } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,8 +13,8 @@ interface NavButtonProps {
   href?: string;
 }
 
-export default function Navbar() {
-  const [navOpen, setNavOpen] = useState<boolean>(false);
+export default function Navbar(): JSX.Element {
+  const [navOpen, setNavOpen] = useState<boolean>(true);
   const [footerOpen, setFooterOpen] = useState<boolean>(false);
   const [highlightPosition, setHighlightPosition] = useState<number>(-70); // Start position of hover effect
 
@@ -22,10 +22,25 @@ export default function Navbar() {
     setHighlightPosition(index * 54 + 16); // Moves the highlight effect
   };
 
+  // Set a class on the specified container when nav collapses
+  useEffect(() => {
+    // Find the closest container with class 'with-navbar'
+    const navbarContainer = document.querySelector('.with-navbar');
+    if (navbarContainer) {
+      navbarContainer.classList.toggle('nav-collapsed', !navOpen);
+    }
+    
+    // Also toggle the collapsed class on the navbar itself
+    const navbar = document.getElementById('nav-bar');
+    if (navbar) {
+      navbar.classList.toggle('collapsed', !navOpen);
+    }
+  }, [navOpen]);
+
   const router = useRouter();
 
-  const NavButton = ({ icon, label, index, onMouseEnter, href }: NavButtonProps) => {
-    const handleClick = () => {
+  const NavButton = ({ icon, label, index, onMouseEnter, href }: NavButtonProps): JSX.Element => {
+    const handleClick = (): void => {
       if (href) {
         router.push(href);
       }
@@ -46,12 +61,15 @@ export default function Navbar() {
   };
 
   return (
-    <div id="nav-bar" className={`${navOpen ? "expanded" : "collapsed"} ${footerOpen ? "footer-expanded" : "footer-collapsed"}`}>
+    <div 
+      id="nav-bar" 
+      className={`${navOpen ? "expanded" : "collapsed"} ${footerOpen ? "footer-expanded" : "footer-collapsed"}`}
+    >
       {/* Sidebar Toggle */}
       <input
         id="nav-toggle"
         type="checkbox"
-        checked={navOpen}
+        checked={!navOpen}
         onChange={() => setNavOpen(!navOpen)}
         aria-label="Toggle navigation"
       />
@@ -59,7 +77,7 @@ export default function Navbar() {
       {/* Navbar Header */}
       <div id="nav-header">
         <Link id="nav-title" href="/" rel="noopener noreferrer">
-          FoodFinder
+          Chow You Doing?
         </Link>
         <label htmlFor="nav-toggle">
           <span id="nav-toggle-burger" onClick={() => setNavOpen(!navOpen)}></span>
@@ -69,8 +87,8 @@ export default function Navbar() {
 
       {/* Navigation Menu */}
       <div id="nav-content" className={navOpen ? "expanded" : "collapsed"}>
-        <NavButton icon={faHome} label="Dashboard" index={0} onMouseEnter={handleHover} href="/dashboard" />
-        <NavButton icon={faStar} label="Top Menus" index={1} onMouseEnter={handleHover} href="/reviews" />
+        <NavButton icon={faHome} label="Dashboard" index={0} onMouseEnter={handleHover} href="/patron-dashboard" />
+        <NavButton icon={faSearch} label="Search" index={1} onMouseEnter={handleHover} href="/patron-search" />
         <NavButton icon={faPencilAlt} label="My Reviews" index={2} onMouseEnter={handleHover} href="/review" />
         <hr />
         <NavButton icon={faMapMarkerAlt} label="Explore" index={3} onMouseEnter={handleHover} href="/explore" />

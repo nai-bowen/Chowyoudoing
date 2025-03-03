@@ -4,7 +4,146 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/server/db";
 
-export async function POST(req: NextRequest) {
+// GET handler - handles both general reviews and user-specific reviews
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  try {
+    console.log("Reviews API: Beginning GET request processing");
+    
+    // Get the query parameters
+    const url = new URL(req.url);
+    const limit = Number(url.searchParams.get("limit")) || 10;
+    const page = Number(url.searchParams.get("page")) || 1;
+    const skip = (page - 1) * limit;
+    const userId = url.searchParams.get("userId");
+    
+    // Check if this is a request for user-specific reviews
+    if (userId) {
+      console.log(`Reviews API: Fetching reviews for specific user ID: ${userId}`);
+      return await getUserReviews(userId);
+    }
+    
+    // Otherwise, get server session in case we need the current user's reviews
+    const session = await getServerSession(authOptions);
+    const userFilter = url.searchParams.get("userReviews") === "true";
+    
+    // If userReviews=true in query and we have a session, get the current user's reviews
+    if (userFilter && session?.user?.id) {
+      console.log(`Reviews API: Fetching reviews for current user: ${session.user.id}`);
+      return await getUserReviews(session.user.id);
+    }
+    
+    // Otherwise, fetch general reviews
+    console.log(`Reviews API: Fetching general reviews with pagination: limit=${limit}, page=${page}, skip=${skip}`);
+    
+    // Fetch reviews WITH the related restaurant data
+    const reviews = await db.review.findMany({
+      select: {
+        id: true,
+        content: true,
+        rating: true,
+        createdAt: true,
+        upvotes: true,
+        patron: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        },
+        restaurant: {  // Include the related restaurant
+          select: {
+            title: true,
+            location: true
+          }
+        }
+      },
+      orderBy: {
+        upvotes: 'desc'
+      },
+      take: limit,
+      skip: skip
+    });
+    
+    console.log(`Reviews API: Found ${reviews.length} general reviews`);
+    
+    // Transform to the expected format
+    const formattedReviews = reviews.map(review => ({
+      id: review.id,
+      title: `Review of ${review.restaurant?.title || 'Restaurant'}`,
+      date: review.createdAt.toISOString().split('T')[0],
+      upvotes: review.upvotes || 0,
+      text: review.content,
+      restaurant: `${review.restaurant?.title || 'Restaurant'}${review.restaurant?.location ? ` - ${review.restaurant.location}` : ''}`,
+      author: review.patron ? `${review.patron.firstName} ${review.patron.lastName.charAt(0)}.` : 'Anonymous'
+    }));
+    
+    console.log("Reviews API: General reviews formatted for response", {
+      count: formattedReviews.length
+    });
+    
+    return NextResponse.json({ reviews: formattedReviews });
+  } catch (error) {
+    console.error("Reviews API: Error fetching reviews:", error);
+    return NextResponse.json({ 
+      error: "Failed to fetch reviews", 
+      details: error instanceof Error ? error.message : "Unknown error" 
+    }, { status: 500 });
+  }
+}
+
+// Helper function to get user-specific reviews
+async function getUserReviews(userId: string): Promise<NextResponse> {
+  try {
+    // Fetch reviews for the specified user WITH the related restaurant data
+    const reviews = await db.review.findMany({
+      where: {
+        patronId: userId
+      },
+      select: {
+        id: true,
+        content: true,
+        rating: true,
+        createdAt: true,
+        upvotes: true,
+        restaurant: {  // Make sure to include the related restaurant
+          select: {
+            title: true,
+            location: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    console.log(`Reviews API: Found ${reviews.length} reviews for user ${userId}`);
+    
+    // Transform the data to match the expected format in the frontend
+    const formattedReviews = reviews.map(review => ({
+      id: review.id,
+      title: `Review of ${review.restaurant?.title || 'Restaurant'}`,
+      date: review.createdAt.toISOString().split('T')[0],
+      upvotes: review.upvotes || 0,
+      text: review.content,
+      restaurant: review.restaurant?.title || 'Unknown Restaurant'
+    }));
+    
+    console.log("Reviews API: User reviews formatted for response", {
+      count: formattedReviews.length
+    });
+    
+    return NextResponse.json({ reviews: formattedReviews });
+  } catch (error) {
+    console.error("Reviews API: Error fetching user reviews:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch user reviews", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST handler for creating reviews
+export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     console.log("Review API: Beginning request processing");
     

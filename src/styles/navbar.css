@@ -1,9 +1,9 @@
 :root {
-  --background: #ffecbd;
+  --background: #FFF9E8;
   --navbar-width: 256px;
   --navbar-width-min: 80px;
-  --navbar-dark-primary: #ffb700;
-  --navbar-dark-secondary: #f5a700;
+  --navbar-dark-primary: #FFD879;  /* Updated from #FFB700 */
+  --navbar-dark-secondary: #FFCE5A; /* Slightly darker shade of the new primary */
   --navbar-light-primary: #ffffff;
   --navbar-light-secondary: #a37400;
 }
@@ -341,4 +341,33 @@ label[for=nav-footer-toggle] {
 #nav-footer-content::-webkit-scrollbar-thumb {
   border-radius: 99px;
   background-color: var(--navbar-light-secondary);
+}
+/* Additional CSS for the navbar collapse functionality */
+
+/* Add a specific class for pages with the navbar */
+.with-navbar {
+  padding-left: var(--navbar-width);
+  transition: padding-left 0.3s ease;
+}
+
+.with-navbar.nav-collapsed {
+  padding-left: var(--navbar-width-min);
+}
+
+/* Main content adjustments when navbar is present */
+.with-navbar .page-content {
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+.with-navbar.nav-collapsed .page-content {
+  margin-left: var(--navbar-width-min);
+}
+
+/* Additional navbar collapse styles */
+#nav-bar {
+  transition: width 0.2s ease;
+}
+
+#nav-bar.collapsed {
+  width: var(--navbar-width-min);
 }

@@ -34,23 +34,26 @@
 
 :root {
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
-  /* Dashboard Variables */
-  --primary-color: #ffb700;
-  --secondary-color: #f5a700;
-  --background-color: #ffecbd;
+  /* Dashboard Variables - Updated to match wireframe */
+  --primary-color: #FFD879;
+  --secondary-color: #FFCE5A;
+  --background-color: #FFF9E8;
   --text-color: #333333;
   --light-text-color: #666666;
   --card-background: #ffffff;
+  --review-container-color: rgba(255, 216, 121, 0.2); /* 20% opacity */
+  --restaurant-actions-color: #FFC1B5;
   --border-radius: 8px;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --button-primary: #ffb700;
-  --button-secondary: #f08080;
-  --star-color: #ffb700;
-  /* Navbar Variables */
+  --button-primary: #FFD879;
+  --button-secondary: #FFC1B5;
+  --star-color: #FFD700;
+  --quote-color: #FFC1B5;
+  /* Navbar Variables - Updated to match wireframe */
   --navbar-width: 256px;
   --navbar-width-min: 80px;
-  --navbar-dark-primary: #ffb700;
-  --navbar-dark-secondary: #f5a700;
+  --navbar-dark-primary: #FFD879;
+  --navbar-dark-secondary: #FFCE5A;
   --navbar-light-primary: #ffffff;
   --navbar-light-secondary: #a37400;
 }
@@ -65,8 +68,8 @@ html, body {
   max-width: 100vw;
   overflow-x: hidden;
   font-family: var(--font-sans);
-  /* This is the key change - remove the white background */
-  background-color: transparent;
+  /* Updated background color to match wireframe */
+  background-color: var(--background-color);
 }
 
 a {

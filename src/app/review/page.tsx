@@ -2,10 +2,11 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import Link from "next/link";
+import Navbar from "../_components/navbar";
 
 // Define types for search results
 type SearchResult = {
@@ -25,11 +26,54 @@ interface MenuItem {
   description: string | null;
 }
 
-export default function ReviewPage() {
+// Define ConfirmationModalProps type
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+// Confirmation Modal Component
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <h3 className="text-xl font-semibold text-amber-600 mb-4">Add an Image?</h3>
+        <p className="mb-6">We love reviews which have images, would you like to add one before you submit your review?</p>
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={() => {
+              onCancel();
+              onClose();
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
+          >
+            No, Submit Now
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600"
+          >
+            Yes, Add Image
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function ReviewPage(): JSX.Element {
   const router = useRouter();
   const { data: session, status } = useSession();
   const isLoading = status === "loading";
   const isAuthenticated = status === "authenticated";
+  const imageUploadRef = useRef<HTMLInputElement>(null);
 
   const [restaurantId, setRestaurantId] = useState<string>("");
   const [restaurantName, setRestaurantName] = useState<string>("");
@@ -41,6 +85,7 @@ export default function ReviewPage() {
     valueForMoney: 0
   });
   const [reviewText, setReviewText] = useState<string>("");
+  const [reviewTextError, setReviewTextError] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [video, setVideo] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -57,6 +102,9 @@ export default function ReviewPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoadingMenuItems, setIsLoadingMenuItems] = useState<boolean>(false);
 
+  // Confirmation modal state
+  const [showImageConfirmation, setShowImageConfirmation] = useState<boolean>(false);
+
   // Clear any error messages when session status changes
   useEffect(() => {
     console.log("Session status:", status);
@@ -66,6 +114,15 @@ export default function ReviewPage() {
       console.log("User is authenticated:", session?.user);
     }
   }, [status, session]);
+
+  // Handle review text validation
+  useEffect(() => {
+    if (reviewText.length > 0 && reviewText.length < 10) {
+      setReviewTextError("Review must be at least 10 characters long");
+    } else {
+      setReviewTextError(null);
+    }
+  }, [reviewText]);
 
   // Handle restaurant search
   useEffect(() => {
@@ -198,9 +255,7 @@ export default function ReviewPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const submitReview = async () => {
     // Clear previous error messages
     setErrorMessage(null);
     
@@ -216,7 +271,7 @@ export default function ReviewPage() {
     }
     
     if (reviewText.length < 10) {
-      alert("Review must be at least 10 characters long.");
+      setReviewTextError("Review must be at least 10 characters long.");
       return;
     }
     
@@ -283,6 +338,33 @@ export default function ReviewPage() {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate review text
+    if (reviewText.length < 10) {
+      setReviewTextError("Review must be at least 10 characters long.");
+      return;
+    }
+    
+    // Check if image is uploaded
+    if (!image) {
+      // Show confirmation modal if no image
+      setShowImageConfirmation(true);
+    } else {
+      // If image exists, submit directly
+      await submitReview();
+    }
+  };
+
+  // Handle image add confirmation
+  const handleAddImage = () => {
+    // Focus the image upload input
+    if (imageUploadRef.current) {
+      imageUploadRef.current.click();
+    }
+  };
+
   // Render rating selector
   const RatingSelector = ({ 
     name, 
@@ -317,17 +399,24 @@ export default function ReviewPage() {
   // Show a login prompt if user is not authenticated
   if (status === "unauthenticated") {
     return (
-      <div className="container mx-auto p-4 bg-amber-50 min-h-screen">
-        <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-amber-600 mb-6">Write Your Review</h2>
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 p-4 rounded-lg mb-4">
-            <p className="font-semibold">You need to be logged in to submit a review.</p>
-            <button
-              onClick={() => signIn()}
-              className="mt-4 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-md font-medium"
-            >
-              Log in now
-            </button>
+      <div className="with-navbar">
+        {/* Add Navbar component */}
+        <Navbar />
+        
+        <div className="page-content">
+          <div className="container mx-auto p-4 bg-amber-50 min-h-screen">
+            <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+              <h2 className="text-2xl font-bold text-amber-600 mb-6">Write Your Review</h2>
+              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 p-4 rounded-lg mb-4">
+                <p className="font-semibold">You need to be logged in to submit a review.</p>
+                <button
+                  onClick={() => signIn()}
+                  className="mt-4 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-md font-medium"
+                >
+                  Log in now
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -337,240 +426,271 @@ export default function ReviewPage() {
   // Show loading state while checking authentication
   if (status === "loading") {
     return (
-      <div className="container mx-auto p-4 bg-amber-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500 mx-auto"></div>
-          <p className="mt-4 text-lg font-medium text-amber-800">Loading...</p>
+      <div className="with-navbar">
+        {/* Add Navbar component */}
+        <Navbar />
+        
+        <div className="page-content">
+          <div className="container mx-auto p-4 bg-amber-50 min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500 mx-auto"></div>
+              <p className="mt-4 text-lg font-medium text-amber-800">Loading...</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4 bg-amber-50 min-h-screen">
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-amber-600 mb-6">Write Your Review</h2>
-        
-        {errorMessage && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <p>{errorMessage}</p>
-          </div>
-        )}
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Restaurant Search */}
-          <div className="relative">
-            <label className="flex items-center gap-2 mb-2">
-              <div className="bg-amber-500 text-white p-1 rounded-full flex items-center justify-center w-6 h-6">
-                ✓
-              </div>
-              Restaurant
-            </label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchQuery.length >= 2 && setShowResults(true)}
-              placeholder="Search for restaurants..."
-              className="block w-full border border-gray-300 rounded-md p-2"
-              required
-            />
+    <div className="with-navbar">
+      {/* Add Navbar component */}
+      <Navbar />
+      
+      <div className="page-content">
+        <div className="container mx-auto p-4 bg-amber-50 min-h-screen">
+          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-amber-600 mb-6">Write Your Review</h2>
             
-            {isSearching && (
-              <div className="absolute right-3 top-10">
-                <div className="animate-spin h-5 w-5 border-2 border-amber-500 rounded-full border-t-transparent"></div>
+            {errorMessage && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                <p>{errorMessage}</p>
               </div>
             )}
             
-            {showResults && searchResults.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                {searchResults
-                  .filter(result => result.type === "Restaurant")
-                  .map(result => (
-                    <div
-                      key={result.id}
-                      className="px-4 py-2 hover:bg-amber-50 cursor-pointer"
-                      onClick={() => handleRestaurantSelect(result)}
-                    >
-                      {result.name}
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Restaurant Search */}
+              <div className="relative">
+                <label className="flex items-center gap-2 mb-2">
+                  <div className="bg-amber-500 text-white p-1 rounded-full flex items-center justify-center w-6 h-6">
+                    ✓
+                  </div>
+                  Restaurant
+                </label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery.length >= 2 && setShowResults(true)}
+                  placeholder="Search for restaurants..."
+                  className="block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+                
+                {isSearching && (
+                  <div className="absolute right-3 top-10">
+                    <div className="animate-spin h-5 w-5 border-2 border-amber-500 rounded-full border-t-transparent"></div>
+                  </div>
+                )}
+                
+                {showResults && searchResults.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {searchResults
+                      .filter(result => result.type === "Restaurant")
+                      .map(result => (
+                        <div
+                          key={result.id}
+                          className="px-4 py-2 hover:bg-amber-50 cursor-pointer"
+                          onClick={() => handleRestaurantSelect(result)}
+                        >
+                          {result.name}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Menu Item Dropdown */}
+              <div>
+                <label className="flex items-center gap-2 mb-2">
+                  <div className="bg-amber-500 text-white p-1 rounded-full flex items-center justify-center w-6 h-6">
+                    🍔
+                  </div>
+                  Menu Item
+                </label>
+                <select
+                  value={menuItemId}
+                  onChange={handleMenuItemSelect}
+                  className="block w-full border border-gray-300 rounded-md p-2"
+                  disabled={!restaurantId || isLoadingMenuItems}
+                >
+                  <option value="">Select a menu item (optional)</option>
+                  {menuItems.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} {item.category ? `(${item.category})` : ''}
+                    </option>
                   ))}
-              </div>
-            )}
-          </div>
-          
-          {/* Menu Item Dropdown */}
-          <div>
-            <label className="flex items-center gap-2 mb-2">
-              <div className="bg-amber-500 text-white p-1 rounded-full flex items-center justify-center w-6 h-6">
-                🍔
-              </div>
-              Menu Item
-            </label>
-            <select
-              value={menuItemId}
-              onChange={handleMenuItemSelect}
-              className="block w-full border border-gray-300 rounded-md p-2"
-              disabled={!restaurantId || isLoadingMenuItems}
-            >
-              <option value="">Select a menu item (optional)</option>
-              {menuItems.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.name} {item.category ? `(${item.category})` : ''}
-                </option>
-              ))}
-            </select>
-            {isLoadingMenuItems && <p className="text-sm text-gray-500 mt-1">Loading menu items...</p>}
-          </div>
-        </div>
-        
-        <div className="mb-6">
-          <h3 className="font-medium mb-4">Ratings</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <RatingSelector 
-              name="asExpected" 
-              value={standards.asExpected}
-              onChange={handleRatingChange}
-            />
-            <RatingSelector 
-              name="wouldRecommend" 
-              value={standards.wouldRecommend}
-              onChange={handleRatingChange}
-            />
-            <RatingSelector 
-              name="valueForMoney" 
-              value={standards.valueForMoney}
-              onChange={handleRatingChange}
-            />
-          </div>
-        </div>
-        
-        <div className="mb-6">
-          <h3 className="font-medium mb-2">Upload Content</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Image Upload */}
-            <div>
-              <p className="text-gray-600 mb-2">Upload Image</p>
-              <div className="border-2 border-dashed border-amber-300 rounded-md p-4 text-center">
-                {!image ? (
-                  <>
-                    <div className="flex justify-center mb-2">
-                      <div className="w-16 h-16 bg-amber-300 rounded-full flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-500">Upload From device</p>
-                    <p className="text-xs text-gray-400">Max 7MB</p>
-                    <input 
-                      type="file"
-                      id="image-upload"
-                      accept="image/*"
-                      onChange={(e) => handleUpload(e, "image")}
-                      className="hidden"
-                      disabled={isUploading}
-                    />
-                    <label 
-                      htmlFor="image-upload"
-                      className="mt-2 inline-block bg-amber-500 text-white px-3 py-1 rounded-md text-sm cursor-pointer"
-                    >
-                      {isUploading ? "Uploading..." : "Select Image"}
-                    </label>
-                  </>
-                ) : (
-                  <div className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={image} 
-                      alt="Uploaded image" 
-                      className="max-h-32 mx-auto object-contain"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setImage(null)}
-                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
+                </select>
+                {isLoadingMenuItems && <p className="text-sm text-gray-500 mt-1">Loading menu items...</p>}
               </div>
             </div>
             
-            {/* Video Upload */}
-            <div>
-              <p className="text-gray-600 mb-2">Upload Video</p>
-              <div className="border-2 border-dashed border-amber-300 rounded-md p-4 text-center">
-                {!video ? (
-                  <>
-                    <div className="flex justify-center mb-2">
-                      <div className="w-16 h-16 bg-amber-300 rounded-full flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-500">Upload From device</p>
-                    <p className="text-xs text-gray-400">Max 7MB</p>
-                    <input 
-                      type="file"
-                      id="video-upload"
-                      accept="video/*"
-                      onChange={(e) => handleUpload(e, "video")}
-                      className="hidden"
-                      disabled={isUploading}
-                    />
-                    <label 
-                      htmlFor="video-upload"
-                      className="mt-2 inline-block bg-amber-500 text-white px-3 py-1 rounded-md text-sm cursor-pointer"
-                    >
-                      {isUploading ? "Uploading..." : "Select Video"}
-                    </label>
-                  </>
-                ) : (
-                  <div className="relative">
-                    <video 
-                      src={video} 
-                      controls 
-                      className="max-h-32 mx-auto"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setVideo(null)}
-                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
+            <div className="mb-6">
+              <h3 className="font-medium mb-4">Ratings</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <RatingSelector 
+                  name="asExpected" 
+                  value={standards.asExpected}
+                  onChange={handleRatingChange}
+                />
+                <RatingSelector 
+                  name="wouldRecommend" 
+                  value={standards.wouldRecommend}
+                  onChange={handleRatingChange}
+                />
+                <RatingSelector 
+                  name="valueForMoney" 
+                  value={standards.valueForMoney}
+                  onChange={handleRatingChange}
+                />
               </div>
             </div>
-          </div>
-        </div>
-        
-        <div className="mb-6">
-          <label htmlFor="review-text" className="block mb-2">Tell us about your meal...</label>
-          <textarea
-            id="review-text"
-            value={reviewText}
-            onChange={(e) => setReviewText(e.target.value)}
-            className="w-full border border-gray-300 rounded-md p-2 h-32"
-            minLength={10}
-            required
+            
+            <div className="mb-6">
+              <h3 className="font-medium mb-2">Upload Content</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Image Upload */}
+                <div>
+                  <p className="text-gray-600 mb-2">Upload Image</p>
+                  <div className="border-2 border-dashed border-amber-300 rounded-md p-4 text-center">
+                    {!image ? (
+                      <>
+                        <div className="flex justify-center mb-2">
+                          <div className="w-16 h-16 bg-amber-300 rounded-full flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500">Upload From device</p>
+                        <p className="text-xs text-gray-400">Max 7MB</p>
+                        <input 
+                          type="file"
+                          id="image-upload"
+                          ref={imageUploadRef}
+                          accept="image/*"
+                          onChange={(e) => handleUpload(e, "image")}
+                          className="hidden"
+                          disabled={isUploading}
+                        />
+                        <label 
+                          htmlFor="image-upload"
+                          className="mt-2 inline-block bg-amber-500 text-white px-3 py-1 rounded-md text-sm cursor-pointer"
+                        >
+                          {isUploading ? "Uploading..." : "Select Image"}
+                        </label>
+                      </>
+                    ) : (
+                      <div className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img 
+                          src={image} 
+                          alt="Uploaded image" 
+                          className="max-h-32 mx-auto object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setImage(null)}
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Video Upload */}
+                <div>
+                  <p className="text-gray-600 mb-2">Upload Video</p>
+                  <div className="border-2 border-dashed border-amber-300 rounded-md p-4 text-center">
+                    {!video ? (
+                      <>
+                        <div className="flex justify-center mb-2">
+                          <div className="w-16 h-16 bg-amber-300 rounded-full flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500">Upload From device</p>
+                        <p className="text-xs text-gray-400">Max 7MB</p>
+                        <input 
+                          type="file"
+                          id="video-upload"
+                          accept="video/*"
+                          onChange={(e) => handleUpload(e, "video")}
+                          className="hidden"
+                          disabled={isUploading}
+                        />
+                        <label 
+                          htmlFor="video-upload"
+                          className="mt-2 inline-block bg-amber-500 text-white px-3 py-1 rounded-md text-sm cursor-pointer"
+                        >
+                          {isUploading ? "Uploading..." : "Select Video"}
+                        </label>
+                      </>
+                    ) : (
+                      <div className="relative">
+                        <video 
+                          src={video} 
+                          controls 
+                          className="max-h-32 mx-auto"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setVideo(null)}
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <label htmlFor="review-text" className="block mb-2">Tell us about your meal...</label>
+              <textarea
+                id="review-text"
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                className={`w-full border ${reviewTextError ? 'border-red-500' : 'border-gray-300'} rounded-md p-2 h-32`}
+                minLength={10}
+                required
+              />
+              {reviewTextError && (
+                <p className="text-red-500 text-sm mt-1">{reviewTextError}</p>
+              )}
+              <div className="text-sm text-gray-500 mt-1">
+                <span className={`${reviewText.length < 10 ? 'text-red-500' : 'text-green-500'}`}>
+                  {reviewText.length}
+                </span>/10 characters minimum
+              </div>
+            </div>
+            
+            <div className="text-center">
+              <button
+                type="submit"
+                className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-md font-medium"
+                disabled={isSubmitting || isUploading || reviewText.length < 10}
+              >
+                {isSubmitting ? "Submitting..." : "Submit Review"}
+              </button>
+            </div>
+          </form>
+
+          {/* Image Confirmation Modal */}
+          <ConfirmationModal
+            isOpen={showImageConfirmation}
+            onClose={() => setShowImageConfirmation(false)}
+            onConfirm={handleAddImage}
+            onCancel={submitReview}
           />
         </div>
-        
-        <div className="text-center">
-          <button
-            type="submit"
-            className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-md font-medium"
-            disabled={isSubmitting || isUploading}
-          >
-            {isSubmitting ? "Submitting..." : "Submit Review"}
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

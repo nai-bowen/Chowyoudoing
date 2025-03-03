@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Navbar from "../_components/navbar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFire, faStar, faBookOpen, faMapMarkerAlt, faPencilAlt } from "@fortawesome/free-solid-svg-icons";
@@ -12,6 +13,8 @@ interface Review {
   date: string;
   upvotes: number;
   text?: string;
+  restaurant?: string;
+  author?: string;
 }
 
 interface Restaurant {
@@ -21,94 +24,221 @@ interface Restaurant {
   category?: string;
 }
 
-export default function PatronDashboard() {
+interface UserData {
+  name: string;
+  email: string;
+  id: string;
+}
+
+export default function PatronDashboard(): JSX.Element {
+  const { data: session, status } = useSession();
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [userReviews, setUserReviews] = useState<Review[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoadingUserReviews, setIsLoadingUserReviews] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Fetch user data when session is available
+  useEffect(() => {
+    const fetchUserData = async (): Promise<void> => {
+      if (status === "authenticated" && session?.user) {
+        try {
+          console.log("Session user data:", session.user);
+          
+          // If user data is directly available in the session
+          if (session.user.name && session.user.email) {
+            setUserData({
+              name: session.user.name,
+              email: session.user.email,
+              id: (session.user as any).id || "" // Casting to any to access potential id
+            });
+            
+            console.log("User data set from session:", {
+              name: session.user.name,
+              email: session.user.email,
+              id: (session.user as any).id
+            });
+          } else {
+            // If we need to fetch additional user data from the server
+            const response = await fetch("/api/user/profile");
+            if (!response.ok) {
+              throw new Error("Failed to fetch user data");
+            }
+            const data = await response.json();
+            setUserData(data.user);
+            console.log("User data fetched from API:", data.user);
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          // Fallback to session data if available
+          if (session.user.name) {
+            setUserData({
+              name: session.user.name,
+              email: session.user.email as string,
+              id: (session.user as any).id || ""
+            });
+            console.log("User data fallback to session data");
+          }
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [session, status]);
+
+  // Fetch general dashboard data
   useEffect(() => {
     const fetchData = async (): Promise<void> => {
       try {
-        // Fetch reviews
-        const reviewsResponse = await fetch("/api/reviews");
-        const reviewsData = await reviewsResponse.json();
+        // Fetch general reviews
+        const reviewsResponse = await fetch("/api/review");
         
-        if (Array.isArray(reviewsData)) {
-          setReviews(reviewsData as Review[]);
-        } else {
-          console.error("Reviews data is not an array:", reviewsData);
+        if (!reviewsResponse.ok) {
+          console.error("Failed to fetch reviews:", reviewsResponse.statusText);
           setReviews([]);
+        } else {
+          const reviewsData = await reviewsResponse.json();
+          
+          if (Array.isArray(reviewsData)) {
+            console.log("Reviews data fetched:", reviewsData.length);
+            setReviews(reviewsData as Review[]);
+          } else if (Array.isArray(reviewsData.reviews)) {
+            console.log("Reviews data fetched from nested property:", reviewsData.reviews.length);
+            setReviews(reviewsData.reviews as Review[]);
+          } else {
+            console.error("Reviews data is not an array:", reviewsData);
+            setReviews([]);
+          }
         }
 
         // Fetch restaurants
         const restaurantsResponse = await fetch("/api/restaurants/location");
-        const restaurantsData = await restaurantsResponse.json();
         
-        if (Array.isArray(restaurantsData)) {
-          setRestaurants(restaurantsData as Restaurant[]);
+        if (!restaurantsResponse.ok) {
+          console.error("Failed to fetch restaurants:", restaurantsResponse.statusText);
+          setFallbackRestaurants();
         } else {
-          console.error("Restaurants data is not an array:", restaurantsData);
-          setRestaurants([]);
+          const restaurantsData = await restaurantsResponse.json();
+          
+          if (Array.isArray(restaurantsData)) {
+            console.log("Restaurants data fetched:", restaurantsData.length);
+            setRestaurants(restaurantsData as Restaurant[]);
+          } else if (Array.isArray(restaurantsData.restaurants)) {
+            console.log("Restaurants data fetched from nested property:", restaurantsData.restaurants.length);
+            setRestaurants(restaurantsData.restaurants as Restaurant[]);
+          } else {
+            console.error("Restaurants data is not an array:", restaurantsData);
+            setFallbackRestaurants();
+          }
         }
       } catch (err) {
         console.error("Error fetching data:", err);
-        // Mock data for development
-        setReviews([
-          {
-            id: "1",
-            title: "It is what it is!",
-            date: "March 24, 2024",
-            upvotes: 5
-          },
-          {
-            id: "2",
-            title: "A little greasy",
-            date: "March 24, 2025",
-            upvotes: 3
-          },
-          {
-            id: "3",
-            title: "Better when warm",
-            date: "March 24, 2025",
-            upvotes: 2
-          },
-          {
-            id: "4",
-            title: "Spectacular!",
-            date: "March 24, 2025",
-            upvotes: 2
-          }
-        ]);
-        setRestaurants([
-          {
-            id: "1",
-            title: "KAI - Leicester",
-            category: "Breakfast",
-            location: "Leicester"
-          },
-          {
-            id: "2",
-            title: "Fluffy Fluffy - Leicester",
-            category: "Dessert",
-            location: "Leicester"
-          }
-        ]);
+        setFallbackRestaurants();
       } finally {
         setIsLoading(false);
       }
     };
 
+    const setFallbackRestaurants = (): void => {
+      setRestaurants([
+        {
+          id: "1",
+          title: "KAI - Leicester",
+          category: "Breakfast",
+          location: "Leicester"
+        },
+        {
+          id: "2",
+          title: "Fluffy Fluffy - Leicester",
+          category: "Dessert",
+          location: "Leicester"
+        }
+      ]);
+    };
+
     fetchData();
   }, []);
 
+  // Fetch user reviews when user data is available
+  useEffect(() => {
+    const fetchUserReviews = async (): Promise<void> => {
+      setIsLoadingUserReviews(true);
+      setFetchError(null);
+      
+      // Only proceed if authenticated
+      if (status !== "authenticated") {
+        console.log("Not fetching user reviews - not authenticated");
+        setIsLoadingUserReviews(false);
+        return;
+      }
+      
+      try {
+        // Get user ID from session or state
+        const userId = (session?.user as any)?.id || userData?.id;
+        
+        if (!userId) {
+          console.log("No user ID available for fetching reviews");
+          setFetchError("No user ID available");
+          setIsLoadingUserReviews(false);
+          return;
+        }
+        
+        console.log(`Fetching reviews for user ${userId}`);
+        
+        // Updated to use the consolidated endpoint
+        const response = await fetch(`/api/review?userId=${userId}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch user reviews: ${response.statusText} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log("User reviews API response:", data);
+        
+        if (Array.isArray(data.reviews)) {
+          setUserReviews(data.reviews);
+          console.log(`Found ${data.reviews.length} user reviews`);
+        } else {
+          console.error("User reviews data is not an array:", data);
+          setUserReviews([]);
+          setFetchError("Invalid review data format");
+        }
+      } catch (error) {
+        console.error("Error fetching user reviews:", error);
+        setFetchError(error instanceof Error ? error.message : "Unknown error");
+        
+        // Don't set mock data in production - just show the error
+        setUserReviews([]);
+      } finally {
+        setIsLoadingUserReviews(false);
+      }
+    };
+
+    // Fetch user reviews when session and user data are available
+    if (status === "authenticated" && ((session?.user as any)?.id || userData?.id)) {
+      fetchUserReviews();
+    }
+  }, [session, userData, status]);
+
+  // Handle review edit
+  const handleEditReview = (reviewId: string): void => {
+    // Navigate to edit review page
+    window.location.href = `/review/edit/${reviewId}`;
+  };
+
   return (
-    <div className="dashboard-container">
+    <div className="with-navbar">
       {/* Sidebar Navigation */}
       <Navbar />
 
       {/* Main Content */}
-      <div className="dashboard-content">
-        <h1 className="welcome-message">Welcome Back, John!</h1>
+      <div className="page-content dashboard-content">
+        <h1 className="welcome-message">
+          Welcome Back, {userData?.name || "Patron"}!
+        </h1>
 
         {/* Hot Reviews Section */}
         <section className="hot-reviews">
@@ -122,44 +252,24 @@ export default function PatronDashboard() {
               <p>Loading reviews...</p>
             ) : reviews.length > 0 ? (
               <div className="review-cards">
-                <div className="review-card">
-                  <div className="review-card-rate">
-                    <span className="star-icon">★</span>
-                    <span>4/5</span>
+                {reviews.slice(0, 3).map((review, index) => (
+                  <div className="review-card" key={review.id || index}>
+                    <div className="star-rating">
+                      <span className="star-icon">★</span>
+                      <span>{Math.floor(Math.random() * 2) + 3}/5</span>
+                    </div>
+                    <span className="quote-decoration-left">"</span>
+                    <p className="review-text">
+                      {review.text || "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc interdum mauris justo, a fermentum lacus posuere ullamcorper. Mauris efficitur mauris mauris, sagittis lobortis sapien eleifend at."}
+                    </p>
+                    <span className="quote-decoration-right">"</span>
+                    <div className="review-card-footer">
+                      <span>{review.upvotes || 0} upvotes</span>
+                      <span>-{review.author || ["Lisa B.", "Jane D.", "Jamie G."][index % 3]}</span>
+                    </div>
+                    <div className="restaurant-tag">{review.restaurant || ["Popeyes - Leicester", "BKith - Leicester", "Chickstar - Leicester"][index % 3]}</div>
                   </div>
-                  <p className="review-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc malesuam mauris justo, a ullamcorper. Mauris effector mauris mauris, sagittis bibortis sapien eleifend at.</p>
-                  <div className="review-card-footer">
-                    <span>6/5</span>
-                    <span>Lisa B.</span>
-                  </div>
-                  <div className="restaurant-tag">Popeyes - Leicester</div>
-                </div>
-                
-                <div className="review-card">
-                  <div className="review-card-rate">
-                    <span className="star-icon">★</span>
-                    <span>3/5</span>
-                  </div>
-                  <p className="review-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc malesuam mauris justo, a ullamcorper. Mauris effector mauris mauris, sagittis bibortis sapien eleifend at.</p>
-                  <div className="review-card-footer">
-                    <span>1/5</span>
-                    <span>Jane D.</span>
-                  </div>
-                  <div className="restaurant-tag">GRITH - Leicester</div>
-                </div>
-                
-                <div className="review-card">
-                  <div className="review-card-rate">
-                    <span className="star-icon">★</span>
-                    <span>5/5</span>
-                  </div>
-                  <p className="review-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc malesuam mauris justo, a ullamcorper. Mauris effector mauris mauris, sagittis bibortis sapien eleifend at.</p>
-                  <div className="review-card-footer">
-                    <span>6/5</span>
-                    <span>Jamie G.</span>
-                  </div>
-                  <div className="restaurant-tag">Chil - Leicester</div>
-                </div>
+                ))}
               </div>
             ) : (
               <p className="no-reviews">No reviews yet! How about writing one?</p>
@@ -188,39 +298,28 @@ export default function PatronDashboard() {
               <p>Loading restaurants...</p>
             ) : restaurants.length > 0 ? (
               <>
-                <div className="restaurant-card">
-                  <div className="restaurant-info">
-                    <div className="restaurant-logo">
-                      <img src="/restaurant1.jpg" alt="Restaurant" className="restaurant-image" />
+                {restaurants.map((restaurant, index) => (
+                  <div className="restaurant-card" key={restaurant.id || index}>
+                    <div className="restaurant-info">
+                      <div className="restaurant-logo">
+                        <img src={`/restaurant${index + 1}.jpg`} alt="Restaurant" className="restaurant-image" />
+                      </div>
+                      <div className="restaurant-details">
+                        <h3>{restaurant.title}</h3>
+                        <p className="restaurant-category">{restaurant.category || "Restaurant"}</p>
+                        <p className="restaurant-description">
+                          {index === 0 ? 
+                            "KAI in Leicester specializes in breakfast and brunch, offering a delightful selection of American pancakes and brunch items. The spot's popular for its unique pancake mix!" : 
+                            "Fluffy Fluffy, means \"fluffy fluffy\". The UK's largest souffle pancake & dessert cafe. From breakfast to dinner, and everything in between. We aim to deliver happiness, one pancake at a time."}
+                        </p>
+                      </div>
                     </div>
-                    <div className="restaurant-details">
-                      <h3>KAI - Leicester</h3>
-                      <p className="restaurant-category">Breakfast</p>
-                      <p className="restaurant-description">KAI in Leicester specializes in breakfast and brunch, offering a delightful selection of American pancakes and brunch items. The spot's popular for its unique pancake mix!</p>
-                    </div>
-                  </div>
-                  <div className="restaurant-actions">
-                    <button className="check-out-btn">Check it out!</button>
-                    <button className="write-review-btn">Write a review</button>
-                  </div>
-                </div>
-                
-                <div className="restaurant-card">
-                  <div className="restaurant-info">
-                    <div className="restaurant-logo">
-                      <img src="/restaurant2.jpg" alt="Restaurant" className="restaurant-image" />
-                    </div>
-                    <div className="restaurant-details">
-                      <h3>Fluffy Fluffy - Leicester</h3>
-                      <p className="restaurant-category">Dessert</p>
-                      <p className="restaurant-description">Fluss Fluss, means "fluffy fluffy". The UK's largest souffle pancake & dessert cafe. From breakfast to dinner, and everything in between. We aim to deliver happiness, one pancake at a time.</p>
+                    <div className="restaurant-actions">
+                      <button className="check-out-btn">Check it out!</button>
+                      <button className="write-review-btn">Write a review</button>
                     </div>
                   </div>
-                  <div className="restaurant-actions">
-                    <button className="check-out-btn">Check it out!</button>
-                    <button className="write-review-btn">Write a review</button>
-                  </div>
-                </div>
+                ))}
               </>
             ) : (
               <p>No restaurants found in your area.</p>
@@ -236,53 +335,32 @@ export default function PatronDashboard() {
             </h2>
             <p className="section-subtitle">Some of your reviews are gaining traction! Have a look...</p>
             
-            {isLoading ? (
+            {isLoadingUserReviews ? (
               <p>Loading your reviews...</p>
-            ) : reviews.length > 0 ? (
+            ) : fetchError ? (
+              <div className="error-message">
+                <p>There was an error fetching your reviews: {fetchError}</p>
+                <p>Please try refreshing the page or contact support if the issue persists.</p>
+              </div>
+            ) : userReviews.length > 0 ? (
               <div className="review-list">
-                <div className="review-list-item">
-                  <span className="review-number">1.</span>
-                  <span className="review-title">It is what it is!</span>
-                  <span className="review-date">March 24, 2024</span>
-                  <div className="review-upvotes">
-                    <span className="upvote-icon">👍</span>
-                    <span>5 upvotes!</span>
+                {userReviews.map((review, index) => (
+                  <div className="review-list-item" key={review.id || index}>
+                    <span className="review-number">{index + 1}.</span>
+                    <span className="review-title">{review.title}</span>
+                    <span className="review-date">{review.date}</span>
+                    <div className="review-upvotes">
+                      <span className="upvote-icon">👍</span>
+                      <span>{review.upvotes} upvotes</span>
+                    </div>
+                    <button 
+                      className="edit-icon" 
+                      onClick={() => handleEditReview(review.id)}
+                    >
+                      <FontAwesomeIcon icon={faPencilAlt} />
+                    </button>
                   </div>
-                  <button className="edit-icon"><FontAwesomeIcon icon={faPencilAlt} /></button>
-                </div>
-                
-                <div className="review-list-item">
-                  <span className="review-number">2.</span>
-                  <span className="review-title">A little greasy</span>
-                  <span className="review-date">March 24, 2025</span>
-                  <div className="review-upvotes">
-                    <span className="upvote-icon">👍</span>
-                    <span>3 upvotes!</span>
-                  </div>
-                  <button className="edit-icon"><FontAwesomeIcon icon={faPencilAlt} /></button>
-                </div>
-                
-                <div className="review-list-item">
-                  <span className="review-number">3.</span>
-                  <span className="review-title">Better when warm</span>
-                  <span className="review-date">March 24, 2025</span>
-                  <div className="review-upvotes">
-                    <span className="upvote-icon">👍</span>
-                    <span>2 upvotes!</span>
-                  </div>
-                  <button className="edit-icon"><FontAwesomeIcon icon={faPencilAlt} /></button>
-                </div>
-                
-                <div className="review-list-item">
-                  <span className="review-number">4.</span>
-                  <span className="review-title">Spectacular!</span>
-                  <span className="review-date">March 24, 2025</span>
-                  <div className="review-upvotes">
-                    <span className="upvote-icon">👍</span>
-                    <span>2 upvotes!</span>
-                  </div>
-                  <button className="edit-icon"><FontAwesomeIcon icon={faPencilAlt} /></button>
-                </div>
+                ))}
               </div>
             ) : (
               <p className="no-reviews">No reviews yet! Start by writing one.</p>
