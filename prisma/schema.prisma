@@ -40,6 +40,8 @@ model Patron {
     sessions      Session[]
     posts         Post[]
     reviews       Review[] 
+    userVotes     UserVotes[] // New relation for user votes
+
 }
 
 
@@ -139,29 +141,45 @@ model Interest {
     menuSections MenuSection[] @relation("MenuSectionInterest")
     menuItems    MenuItem[]    @relation("MenuItemInterest")
 }
-
-// Add these fields to your Review model in schema.prisma
 model Review {
-    id          String   @id @default(cuid())
-    content     String
-    rating      Int      // 1-5 star rating
-    upvotes     Int      @default(0)  // Number of upvotes
-    createdAt   DateTime @default(now())
+    id              String   @id @default(cuid())
+    content         String
+    rating          Int      // 1-5 star rating
+    upvotes         Int      @default(0)  // Number of upvotes
+    createdAt       DateTime @default(now())
     
-    // Add these fields
     imageUrl        String?
     videoUrl        String?
     asExpected      Int     @default(0)
     wouldRecommend  Int     @default(0)
     valueForMoney   Int     @default(0)
+    latitude        Float?  @default(0)// Added for location services
+    longitude       Float?  @default(0)// Added for location services
 
     // Optional relation to a specific menu item
     menuItem    MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
     menuItemId  String?
+    
     // Relations
     patron      Patron   @relation(fields: [patronId], references: [id], onDelete: Cascade)
     patronId    String
 
     restaurant  Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
     restaurantId String
+    votes           UserVotes[]
+
+}
+
+model UserVotes {
+    id          String   @id @default(cuid())
+    userId      String
+    reviewId    String
+    isUpvote    Boolean  // true for upvote, false for downvote
+    
+    // Relations
+    user        Patron   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    review      Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+    
+    // Each user can only vote once per review
+    @@unique([userId, reviewId])
 }

@@ -4,30 +4,55 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Navbar from "../_components/navbar";
+import GoogleMap from "../_components/GoogleMap";
+import GoogleMapsLoader from "../../lib/googleMapsLoader";
+import { useGeolocation, geocodeAddress } from "../../lib/locationService";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFire, faStar, faBookOpen, faMapMarkerAlt, faPencilAlt } from "@fortawesome/free-solid-svg-icons";
+import { faFire, faStar, faBookOpen, faMapMarkerAlt, faPencilAlt, faLocationArrow } from "@fortawesome/free-solid-svg-icons";
 
 interface Review {
   id: string;
-  title: string;
-  date: string;
-  upvotes: number;
+  title?: string;
+  content?: string;
+  date?: string;
+  upvotes?: number;
+  rating?: number;
   text?: string;
   restaurant?: string;
   author?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  patron?: {
+    firstName: string;
+    lastName: string;
+  };
 }
 
 interface Restaurant {
   id: string;
   title: string;
   location: string;
-  category?: string;
+  category?: string[] | string;
+  detail?: string;
+  rating?: string;
+  num_reviews?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  reviews?: Review[];
 }
 
 interface UserData {
   name: string;
   email: string;
   id: string;
+}
+
+interface MapMarker {
+  id: string;
+  latitude: number;
+  longitude: number;
+  title: string;
+  type: "restaurant" | "review";
 }
 
 export default function PatronDashboard(): JSX.Element {
@@ -39,6 +64,28 @@ export default function PatronDashboard(): JSX.Element {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLoadingUserReviews, setIsLoadingUserReviews] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+  const location = useGeolocation();
+  const [isUsingLocation, setIsUsingLocation] = useState<boolean>(false);
+  const [geocodingInProgress, setGeocodingInProgress] = useState<boolean>(false);
+
+  // Define fallback restaurants function
+  const setFallbackRestaurants = (): void => {
+    setRestaurants([
+      {
+        id: "1",
+        title: "KAI - Leicester",
+        category: "Breakfast",
+        location: "Leicester"
+      },
+      {
+        id: "2",
+        title: "Fluffy Fluffy - Leicester",
+        category: "Dessert",
+        location: "Leicester"
+      }
+    ]);
+  };
 
   // Fetch user data when session is available
   useEffect(() => {
@@ -88,9 +135,131 @@ export default function PatronDashboard(): JSX.Element {
     fetchUserData();
   }, [session, status]);
 
+  // Process restaurants and reviews to create map markers
+  const processRestaurantsForMap = async (restaurants: Restaurant[]): Promise<void> => {
+    setGeocodingInProgress(true);
+    console.log("Processing restaurants for map:", restaurants.length);
+    
+    const restaurantPromises = restaurants.map(async (restaurant) => {
+      let restaurantLat = restaurant.latitude;
+      let restaurantLng = restaurant.longitude;
+      
+      // If restaurant doesn't have coordinates, try to geocode the location
+      if ((!restaurantLat || !restaurantLng) && restaurant.location) {
+        console.log(`Geocoding restaurant address: ${restaurant.location}`);
+        try {
+          const coordinates = await geocodeAddress(restaurant.location);
+          if (coordinates) {
+            restaurantLat = coordinates.latitude;
+            restaurantLng = coordinates.longitude;
+            console.log(`Geocoded to: ${coordinates.latitude}, ${coordinates.longitude}`);
+          }
+        } catch (error) {
+          console.error(`Error geocoding address for restaurant ${restaurant.id}:`, error);
+        }
+      }
+      
+      // Return restaurant with possibly updated coordinates
+      return {
+        ...restaurant,
+        latitude: restaurantLat,
+        longitude: restaurantLng,
+        // Process reviews to ensure they have coordinates if possible
+        reviews: restaurant.reviews?.map(review => {
+          if (review.latitude && review.longitude) {
+            return review;
+          }
+          
+          // If review doesn't have coordinates, use restaurant's
+          if (restaurantLat && restaurantLng) {
+            return {
+              ...review,
+              latitude: restaurantLat,
+              longitude: restaurantLng
+            };
+          }
+          
+          return review;
+        })
+      };
+    });
+    
+    const processedRestaurants = await Promise.all(restaurantPromises);
+    
+    // Create map markers from processed restaurants
+    const restaurantMarkers = processedRestaurants
+      .filter(r => r.latitude && r.longitude)
+      .map(r => ({
+        id: r.id,
+        latitude: r.latitude as number,
+        longitude: r.longitude as number,
+        title: r.title,
+        type: "restaurant" as const
+      }));
+    
+    // Create review markers
+    const reviewMarkers = processedRestaurants
+      .flatMap(r => r.reviews || [])
+      .filter(review => review.latitude && review.longitude)
+      .map(review => ({
+        id: review.id,
+        latitude: review.latitude as number,
+        longitude: review.longitude as number,
+        title: `Review ${review.rating ? `(${review.rating}/5)` : ''}`,
+        type: "review" as const
+      }));
+    
+    console.log(`Created ${restaurantMarkers.length} restaurant markers and ${reviewMarkers.length} review markers`);
+    
+    // Update state with processed data
+    setRestaurants(processedRestaurants);
+    setMapMarkers([...restaurantMarkers, ...reviewMarkers]);
+    setGeocodingInProgress(false);
+  };
+
+  // Fetch restaurants based on user location
+  useEffect(() => {
+    const fetchRestaurantsByLocation = async (): Promise<void> => {
+      if (!location.coordinates || !isUsingLocation) return;
+
+      setIsLoading(true);
+      try {
+        const { latitude, longitude } = location.coordinates;
+        const response = await fetch(
+          `/api/restaurants/location?latitude=${latitude}&longitude=${longitude}&range=10`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch restaurants by location");
+        }
+
+        const data = await response.json();
+        
+        if (Array.isArray(data.restaurants)) {
+          console.log("Restaurants data fetched by location:", data.restaurants.length);
+          
+          // Process restaurants to ensure they have coordinates where possible
+          await processRestaurantsForMap(data.restaurants);
+        } else {
+          console.error("Restaurants data is not an array:", data);
+          setFallbackRestaurants();
+        }
+      } catch (err) {
+        console.error("Error fetching restaurants by location:", err);
+        setFallbackRestaurants();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRestaurantsByLocation();
+  }, [location.coordinates, isUsingLocation]);
+
   // Fetch general dashboard data
   useEffect(() => {
     const fetchData = async (): Promise<void> => {
+      if (isUsingLocation) return; // Skip if using location-based data
+      
       try {
         // Fetch general reviews
         const reviewsResponse = await fetch("/api/review");
@@ -124,10 +293,10 @@ export default function PatronDashboard(): JSX.Element {
           
           if (Array.isArray(restaurantsData)) {
             console.log("Restaurants data fetched:", restaurantsData.length);
-            setRestaurants(restaurantsData as Restaurant[]);
+            await processRestaurantsForMap(restaurantsData as Restaurant[]);
           } else if (Array.isArray(restaurantsData.restaurants)) {
             console.log("Restaurants data fetched from nested property:", restaurantsData.restaurants.length);
-            setRestaurants(restaurantsData.restaurants as Restaurant[]);
+            await processRestaurantsForMap(restaurantsData.restaurants as Restaurant[]);
           } else {
             console.error("Restaurants data is not an array:", restaurantsData);
             setFallbackRestaurants();
@@ -141,25 +310,8 @@ export default function PatronDashboard(): JSX.Element {
       }
     };
 
-    const setFallbackRestaurants = (): void => {
-      setRestaurants([
-        {
-          id: "1",
-          title: "KAI - Leicester",
-          category: "Breakfast",
-          location: "Leicester"
-        },
-        {
-          id: "2",
-          title: "Fluffy Fluffy - Leicester",
-          category: "Dessert",
-          location: "Leicester"
-        }
-      ]);
-    };
-
     fetchData();
-  }, []);
+  }, [isUsingLocation]);
 
   // Fetch user reviews when user data is available
   useEffect(() => {
@@ -229,6 +381,11 @@ export default function PatronDashboard(): JSX.Element {
     window.location.href = `/review/edit/${reviewId}`;
   };
 
+  // Toggle location-based results
+  const toggleLocationServices = (): void => {
+    setIsUsingLocation(!isUsingLocation);
+  };
+
   return (
     <div className="with-navbar">
       {/* Sidebar Navigation */}
@@ -240,12 +397,30 @@ export default function PatronDashboard(): JSX.Element {
           Welcome Back, {userData?.name || "Patron"}!
         </h1>
 
+        {/* Location services toggle */}
+        <div className="location-toggle">
+          <button 
+            className={`location-button ${isUsingLocation ? 'active' : ''}`}
+            onClick={toggleLocationServices}
+          >
+            <FontAwesomeIcon icon={faLocationArrow} className="location-icon" />
+            {isUsingLocation ? 'Using Your Location' : 'Use My Location'}
+          </button>
+          {isUsingLocation && location.address && (
+            <span className="location-name">Showing results near: {location.address}</span>
+          )}
+        </div>
+
         {/* Hot Reviews Section */}
         <section className="hot-reviews">
           <h2 className="section-title">
             <FontAwesomeIcon icon={faFire} className="icon-flame" /> Hot Reviews
           </h2>
-          <p className="section-subtitle">Here's some reviews in your area which have a lot of attention right now!</p>
+          <p className="section-subtitle">
+            {isUsingLocation && location.address 
+              ? `Here's some reviews from ${location.address} which have a lot of attention right now!`
+              : "Here's some reviews in your area which have a lot of attention right now!"}
+          </p>
           
           <div className="reviews-container">
             {isLoading ? (
@@ -256,16 +431,16 @@ export default function PatronDashboard(): JSX.Element {
                   <div className="review-card" key={review.id || index}>
                     <div className="star-rating">
                       <span className="star-icon">★</span>
-                      <span>{Math.floor(Math.random() * 2) + 3}/5</span>
+                      <span>{review.rating || Math.floor(Math.random() * 2) + 3}/5</span>
                     </div>
                     <span className="quote-decoration-left">"</span>
                     <p className="review-text">
-                      {review.text || "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc interdum mauris justo, a fermentum lacus posuere ullamcorper. Mauris efficitur mauris mauris, sagittis lobortis sapien eleifend at."}
+                      {review.content || review.text || "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc interdum mauris justo, a fermentum lacus posuere ullamcorper. Mauris efficitur mauris mauris, sagittis lobortis sapien eleifend at."}
                     </p>
                     <span className="quote-decoration-right">"</span>
                     <div className="review-card-footer">
                       <span>{review.upvotes || 0} upvotes</span>
-                      <span>-{review.author || ["Lisa B.", "Jane D.", "Jamie G."][index % 3]}</span>
+                      <span>-{review.patron?.firstName || review.author || ["Lisa B.", "Jane D.", "Jamie G."][index % 3]}</span>
                     </div>
                     <div className="restaurant-tag">{review.restaurant || ["Popeyes - Leicester", "BKith - Leicester", "Chickstar - Leicester"][index % 3]}</div>
                   </div>
@@ -282,7 +457,11 @@ export default function PatronDashboard(): JSX.Element {
           <h2 className="section-title">
             <FontAwesomeIcon icon={faStar} className="icon-star" /> Top Menus
           </h2>
-          <p className="section-subtitle">Menus which might catch your interest - based on what you've told us!</p>
+          <p className="section-subtitle">
+            {isUsingLocation && location.address 
+              ? `Menus near ${location.address} which might catch your interest!` 
+              : "Menus which might catch your interest - based on what you've told us!"}
+          </p>
           
           <div className="sort-container">
             <span>Sort By:</span>
@@ -306,11 +485,20 @@ export default function PatronDashboard(): JSX.Element {
                       </div>
                       <div className="restaurant-details">
                         <h3>{restaurant.title}</h3>
-                        <p className="restaurant-category">{restaurant.category || "Restaurant"}</p>
+                        <p className="restaurant-category">
+                          {Array.isArray(restaurant.category) 
+                            ? restaurant.category.join(', ') 
+                            : restaurant.category || "Restaurant"}
+                        </p>
+                        <p className="restaurant-location">
+                          <FontAwesomeIcon icon={faMapMarkerAlt} className="location-pin" />
+                          {restaurant.location || "Unknown location"}
+                        </p>
                         <p className="restaurant-description">
-                          {index === 0 ? 
-                            "KAI in Leicester specializes in breakfast and brunch, offering a delightful selection of American pancakes and brunch items. The spot's popular for its unique pancake mix!" : 
-                            "Fluffy Fluffy, means \"fluffy fluffy\". The UK's largest souffle pancake & dessert cafe. From breakfast to dinner, and everything in between. We aim to deliver happiness, one pancake at a time."}
+                          {restaurant.detail || 
+                            (index === 0 ? 
+                              "KAI in Leicester specializes in breakfast and brunch, offering a delightful selection of American pancakes and brunch items. The spot's popular for its unique pancake mix!" : 
+                              "Fluffy Fluffy, means \"fluffy fluffy\". The UK's largest souffle pancake & dessert cafe. From breakfast to dinner, and everything in between. We aim to deliver happiness, one pancake at a time.")}
                         </p>
                       </div>
                     </div>
@@ -347,11 +535,11 @@ export default function PatronDashboard(): JSX.Element {
                 {userReviews.map((review, index) => (
                   <div className="review-list-item" key={review.id || index}>
                     <span className="review-number">{index + 1}.</span>
-                    <span className="review-title">{review.title}</span>
-                    <span className="review-date">{review.date}</span>
+                    <span className="review-title">{review.title || `Review ${index + 1}`}</span>
+                    <span className="review-date">{review.date || new Date().toLocaleDateString()}</span>
                     <div className="review-upvotes">
                       <span className="upvote-icon">👍</span>
-                      <span>{review.upvotes} upvotes</span>
+                      <span>{review.upvotes || 0} upvotes</span>
                     </div>
                     <button 
                       className="edit-icon" 
@@ -372,18 +560,32 @@ export default function PatronDashboard(): JSX.Element {
             <h2 className="section-title">
               <FontAwesomeIcon icon={faMapMarkerAlt} className="icon-map" /> Your Area
             </h2>
-            <p className="section-subtitle">Put it on a map! Look at the reviews near you.</p>
+            <p className="section-subtitle">
+              {isUsingLocation ? "Check out restaurants and reviews near you!" : "Put it on a map! Look at the reviews near you."}
+            </p>
             
             <div className="map-container">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d19318.71436395326!2d-1.1453416228027344!3d52.6369879!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x487742ab49b76c73%3A0x9a151d2a6fb49cb8!2sLeicester!5e0!3m2!1sen!2suk!4v1708603784760!5m2!1sen!2suk"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen={true}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              ></iframe>
+              {geocodingInProgress && (
+                <div className="geocoding-overlay">
+                  <p>Processing location data...</p>
+                </div>
+              )}
+              <GoogleMapsLoader>
+                <GoogleMap 
+                  markers={mapMarkers}
+                  height="400px"
+                  defaultCenter={
+                    location.coordinates 
+                      ? { lat: location.coordinates.latitude, lng: location.coordinates.longitude } 
+                      : { lat: 51.6217, lng: -0.7478 } // Default to High Wycombe
+                  }
+                />
+              </GoogleMapsLoader>
+              {mapMarkers.length > 0 && (
+                <div className="map-stats">
+                  <p>Showing {mapMarkers.filter(m => m.type === "restaurant").length} restaurants and {mapMarkers.filter(m => m.type === "review").length} reviews</p>
+                </div>
+              )}
             </div>
           </section>
         </div>
