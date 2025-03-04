@@ -9,7 +9,6 @@ import { Kufam, Pacifico } from "next/font/google";
 import Link from "next/link";
 import ResponsiveNavbar from "@/app/_components/ResponsiveNavbar";
 
-
 // Import Google Fonts Correctly
 const kufam = Kufam({
   weight: "700",
@@ -70,7 +69,7 @@ type ReviewsResponse = {
   hasLocalReviews: boolean;
 };
 
-export default function Home() {
+export default function Home(): JSX.Element {
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [placeholder, setPlaceholder] = useState<string>("Search for an interesting meal or restaurant!");
@@ -98,7 +97,7 @@ export default function Home() {
   const fadeOutFirstHero = useTransform(scrollY, [300, 500], [1, 0]);
   const fadeInSecondHero = useTransform(scrollY, [300, 500], [0, 1]);
   const fadeOutSecondHero = useTransform(scrollY, [500, 700], [1, 0]);
-  const [isScrolledPastHero, setIsScrolledPastHero] = useState(false);
+  const [isScrolledPastHero, setIsScrolledPastHero] = useState<boolean>(false);
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [activeReview, setActiveReview] = useState<number>(0);
@@ -108,7 +107,7 @@ export default function Home() {
     
   // Close filter dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent): void {
       if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
         setShowFilters(false);
       }
@@ -121,8 +120,9 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Adjust height for first dropdown
   useEffect(() => {
-    function adjustDropdownHeight() {
+    function adjustDropdownHeight(): void {
       if (dropdownRef.current) {
         const bounding = dropdownRef.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - bounding.top;
@@ -139,7 +139,7 @@ export default function Home() {
 
   // Adjust height for second dropdown
   useEffect(() => {
-    function adjustSecondDropdownHeight() {
+    function adjustSecondDropdownHeight(): void {
       if (secondDropdownRef.current) {
         const bounding = secondDropdownRef.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - bounding.top;
@@ -154,15 +154,17 @@ export default function Home() {
     return () => window.removeEventListener("resize", adjustSecondDropdownHeight);
   }, [results]);
 
+  // Track scroll position for search bars and hero sections
   useEffect(() => {
-    const handleScroll = () => {
+    const handleScroll = (): void => {
+      // First threshold - transition between hero sections
       if (window.scrollY > 350) {
         setIsScrolled(true);
       } else {
         setIsScrolled(false);
       }
       
-      // This condition already exists, which is good
+      // Second threshold - for disabling/enabling hero sections entirely
       if (window.scrollY > 700) {
         setIsScrolledPastHero(true);
       } else {
@@ -174,13 +176,14 @@ export default function Home() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Fetch search results
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
       return;
     }
     
-    const fetchResults = async () => {
+    const fetchResults = async (): Promise<void> => {
       try {
         // Build query string with filters
         let queryString = `q=${encodeURIComponent(query)}`;
@@ -202,7 +205,7 @@ export default function Home() {
     };
   
     const timeoutId = setTimeout(() => {
-      void fetchResults(); // ✅ Ensure fetchResults is called without returning a Promise
+      void fetchResults(); // Ensure fetchResults is called without returning a Promise
     }, 300);
   
     return () => clearTimeout(timeoutId);
@@ -303,12 +306,12 @@ export default function Home() {
   }
 
   // Handler for updating the query state
-  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setQuery(e.target.value);
   };
 
   // Toggle a filter
-  const toggleFilter = (filter: keyof Filters) => {
+  const toggleFilter = (filter: keyof Filters): void => {
     setFilters(prev => ({
       ...prev,
       [filter]: !prev[filter]
@@ -316,12 +319,12 @@ export default function Home() {
   };
 
   // Get active filter count
-  const getActiveFilterCount = () => {
+  const getActiveFilterCount = (): number => {
     return Object.values(filters).filter(Boolean).length;
   };
 
   // Render search result items with proper typing and error handling
-  const renderSearchResultItem = (result: SearchResult) => {
+  const renderSearchResultItem = (result: SearchResult): JSX.Element => {
     // Determine if URL is external or internal
     const isExternal = result.url && result.url.startsWith("http");
     
@@ -361,8 +364,8 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen overflow-hidden">
-{/* Replace your existing nav element with this line */}
-<ResponsiveNavbar currentPage="search" location={userLocation} />
+      {/* Responsive Navigation Bar */}
+      <ResponsiveNavbar currentPage="search" location={userLocation} />
 
       {/* First Background (home_layer1.svg) */}
       <motion.div
@@ -387,24 +390,29 @@ export default function Home() {
         />
       </motion.div>
 
-    {/* Layer 2 (SVG Overlay) - FADES IN WITH SECOND PAGE */}
-    <motion.div
-      className="fixed inset-0 layer2 transition-all duration-1000 ease-in-out"
-      style={{ 
-        opacity: isScrolledPastHero ? 0 : fadeInSecondHero, 
-        pointerEvents: isScrolledPastHero ? "none" : "auto"
-      }}
-    />
+      {/* Layer 2 (SVG Overlay) - FADES IN WITH SECOND PAGE */}
+      <motion.div
+        className="fixed inset-0 layer2 transition-all duration-1000 ease-in-out"
+        style={{ 
+          opacity: isScrolledPastHero ? 0 : fadeInSecondHero, 
+          pointerEvents: isScrolledPastHero ? "none" : "auto"
+        }}
+      />
+
       {/* First Section (Before Scroll) */}
       <motion.section
-        className="fixed flex flex-col md:flex-row items-center justify-between w-full min-h-screen px-4 md:px-16"
-        style={{ opacity: fadeOutFirstHero, pointerEvents: isScrolled ? "none" : "auto" }}
+        className="fixed flex flex-col md:flex-row items-center justify-between w-full min-h-screen px-4 md:px-16 pt-20"
+        style={{ 
+          opacity: fadeOutFirstHero, 
+          pointerEvents: isScrolled ? "none" : "auto",
+          zIndex: isScrolled ? 0 : 10
+        }}
       >
         {/* Left Content: Heading & Search Bar */}
         <div className="flex flex-col w-full md:w-1/2 items-center text-center">
-                    <h1
-              className={`relative z-10 text-5xl md:text-[96px] font-bold text-[#FFB400] drop-shadow-[5px_5px_10px_rgba(0,0,0,0.5)] leading-tight ${kufam.className}`}
-            >
+          <h1
+            className={`relative z-10 text-5xl md:text-[96px] font-bold text-[#FFB400] drop-shadow-[5px_5px_10px_rgba(0,0,0,0.5)] leading-tight ${kufam.className}`}
+          >
             Where{" "}
             <span className="relative inline-block">
               {/* Emblem with Scaling & Rotation Effect */}
@@ -540,10 +548,14 @@ export default function Home() {
       {/* Second Section (After Scroll) */}
       <motion.section
         className="fixed flex flex-col items-center justify-center w-full min-h-screen px-4 md:px-16 text-center"
-        style={{ opacity: fadeInSecondHero }}
+        style={{ 
+          opacity: fadeInSecondHero,
+          pointerEvents: isScrolled && !isScrolledPastHero ? "auto" : "none",
+          zIndex: isScrolled && !isScrolledPastHero ? 10 : 0
+        }}
       >
         <h1
-          className={`text-[128px] font-bold text-white drop-shadow-lg leading-tight ${kufam.className}`}
+          className={`text-6xl md:text-[128px] font-bold text-white drop-shadow-lg leading-tight ${kufam.className}`}
         >
           Where{" "}
           <span className="relative inline-block">
@@ -667,7 +679,7 @@ export default function Home() {
           </div>
           
           {/* Search Results Dropdown for Second Search Bar */}
-          {isScrolled && results.length > 0 && (
+          {isScrolled && !isScrolledPastHero && results.length > 0 && (
             <div
               ref={secondDropdownRef}
               className="absolute left-0 w-full bg-white shadow-lg rounded-lg border border-gray-300 z-40 overflow-y-auto"
@@ -683,271 +695,272 @@ export default function Home() {
         </p>
       </motion.section>
 
-<div className="h-[200vh]"></div>
-{/* Reviews Section - Updated with SVG background */}
-<section className="relative pt-20 pb-20" style={{ 
-  backgroundImage: "url('/assets/background_ssr.svg')", 
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat" 
-}}>
-  {/* Add a negative margin to account for the fixed height spacer */}
-  <div className="container mx-auto px-4 md:px-8 max-w-6xl mt-8">
-    {/* Short & Sweet Reviews Title - Improved spacing */}
-    <div className="flex flex-col md:flex-row items-start justify-between mb-16">
-      <h2 className={`text-5xl font-bold text-[#D29501] ${kufam.className} mb-6 md:mb-0`}>
-        Short <span className="text-[#F8A5A5]">&</span> Sweet<br /> 
-        <span className={`${kufam.className}`}>Reviews</span>
-      </h2>
-      <div className="md:w-1/2">
-        <p className="text-[#5A5A5A] leading-relaxed">
-          At Chow You Doing?, we take food reviews seriously—well, as seriously as you can when drooling over crispy fries and gooey desserts! Whether you're hunting for the best bites in town or warning others about a "never again" meal, our reviews have got you covered. Plus, we've handpicked some top-notch recommendations just for you—because we know a good meal when we see one! So go ahead, explore, rate, and let your taste buds lead the way.
-        </p>
-      </div>
-    </div>
-    
-    {/* Reviews Carousel */}
-    <div className="relative">
-      {isLoadingReviews ? (
-        <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D29501]"></div>
-        </div>
-      ) : reviews.length > 0 ? (
-        <>
-          {/* Location Notice */}
-          {hasLocalReviews && (
-            <div className="mb-8 text-center">
-              <span className="bg-[#A90D3C] text-white px-4 py-1 rounded-full text-sm">
-                Reviews from {userLocation}
-              </span>
+      {/* Spacer to allow scrolling - critical for triggering animations */}
+      <div className="h-[200vh]"></div>
+
+      {/* Reviews Section - Updated with SVG background */}
+      <section className="relative pt-20 pb-20" style={{ 
+        backgroundImage: "url('/assets/background_ssr.svg')", 
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat" 
+      }}>
+        {/* Add a negative margin to account for the fixed height spacer */}
+        <div className="container mx-auto px-4 md:px-8 max-w-6xl mt-8">
+          {/* Short & Sweet Reviews Title - Improved spacing */}
+          <div className="flex flex-col md:flex-row items-start justify-between mb-16">
+            <h2 className={`text-5xl font-bold text-[#D29501] ${kufam.className} mb-6 md:mb-0`}>
+              Short <span className="text-[#F8A5A5]">&</span> Sweet<br /> 
+              <span className={`${kufam.className}`}>Reviews</span>
+            </h2>
+            <div className="md:w-1/2">
+              <p className="text-[#5A5A5A] leading-relaxed">
+                At Chow You Doing?, we take food reviews seriously—well, as seriously as you can when drooling over crispy fries and gooey desserts! Whether you're hunting for the best bites in town or warning others about a "never again" meal, our reviews have got you covered. Plus, we've handpicked some top-notch recommendations just for you—because we know a good meal when we see one! So go ahead, explore, rate, and let your taste buds lead the way.
+              </p>
             </div>
-          )}
+          </div>
           
-          {/* Navigation Arrows */}
-          <button 
-            className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 rounded-full p-2 shadow-md hover:bg-white transition-colors"
-            onClick={() => navigateReviews('prev')}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#D29501]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          
-          <button 
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 rounded-full p-2 shadow-md hover:bg-white transition-colors"
-            onClick={() => navigateReviews('next')}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#D29501]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-          
-          {/* Reviews Slider */}
-          <div className="flex overflow-hidden">
-            {reviews.map((review, index) => (
-              <div 
-                key={review.id} 
-                className={`transition-all duration-500 flex-shrink-0 w-full flex justify-center ${
-                  index === activeReview ? 'opacity-100 transform-none' : 'opacity-0 absolute'
-                }`}
-                style={{ display: index === activeReview ? 'flex' : 'none' }}
-              >
-                <div className="w-full max-w-4xl">
-                  <div className="relative flex flex-col items-center">
-                    {/* Star Icon */}
-                    <div className="text-[#FFB400] text-5xl mb-2">★</div>
-                    
-                    {/* Review Content - Improved padding */}
-                    <div className="relative z-10 bg-white rounded-lg shadow-lg p-6 md:p-8 min-h-[12rem] flex flex-col md:flex-row mb-8">
-                      {/* Review Image */}
-                      <div className="md:w-1/3 flex justify-center mb-6 md:mb-0">
-                        <div className="w-56 h-56 md:w-64 md:h-64 relative rounded-lg overflow-hidden">
-                          <Image 
-                            src={review.imageUrl || '/assets/placeholder-food.jpg'} 
-                            alt={`Food at ${review.restaurantName}`} 
-                            layout="fill"
-                            objectFit="cover"
-                            className="rounded-lg"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Review Text */}
-                      <div className="md:w-2/3 md:pl-6 flex flex-col justify-between">
-                        <p className="text-[#5A5A5A] text-lg italic mb-4">{review.content}</p>
-                        <div>
-                          <div className="flex justify-end mb-4">
-                            <p className="text-[#A90D3C] font-medium">-{review.reviewer.name}</p>
+          {/* Reviews Carousel */}
+          <div className="relative">
+            {isLoadingReviews ? (
+              <div className="flex justify-center items-center h-96">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D29501]"></div>
+              </div>
+            ) : reviews.length > 0 ? (
+              <>
+                {/* Location Notice */}
+                {hasLocalReviews && (
+                  <div className="mb-8 text-center">
+                    <span className="bg-[#A90D3C] text-white px-4 py-1 rounded-full text-sm">
+                      Reviews from {userLocation}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Navigation Arrows */}
+                <button 
+                  className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 rounded-full p-2 shadow-md hover:bg-white transition-colors"
+                  onClick={() => navigateReviews('prev')}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#D29501]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                
+                <button 
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 rounded-full p-2 shadow-md hover:bg-white transition-colors"
+                  onClick={() => navigateReviews('next')}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#D29501]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                
+                {/* Reviews Slider */}
+                <div className="flex overflow-hidden">
+                  {reviews.map((review, index) => (
+                    <div 
+                      key={review.id} 
+                      className={`transition-all duration-500 flex-shrink-0 w-full flex justify-center ${
+                        index === activeReview ? 'opacity-100 transform-none' : 'opacity-0 absolute'
+                      }`}
+                      style={{ display: index === activeReview ? 'flex' : 'none' }}
+                    >
+                      <div className="w-full max-w-4xl">
+                        <div className="relative flex flex-col items-center">
+                          {/* Star Icon */}
+                          <div className="text-[#FFB400] text-5xl mb-2">★</div>
+                          
+                          {/* Review Content - Improved padding */}
+                          <div className="relative z-10 bg-white rounded-lg shadow-lg p-6 md:p-8 min-h-[12rem] flex flex-col md:flex-row mb-8">
+                            {/* Review Image */}
+                            <div className="md:w-1/3 flex justify-center mb-6 md:mb-0">
+                              <div className="w-56 h-56 md:w-64 md:h-64 relative rounded-lg overflow-hidden">
+                                <Image 
+                                  src={review.imageUrl || '/assets/placeholder-food.jpg'} 
+                                  alt={`Food at ${review.restaurantName}`} 
+                                  layout="fill"
+                                  objectFit="cover"
+                                  className="rounded-lg"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Review Text */}
+                            <div className="md:w-2/3 md:pl-6 flex flex-col justify-between">
+                              <p className="text-[#5A5A5A] text-lg italic mb-4">{review.content}</p>
+                              <div>
+                                <div className="flex justify-end mb-4">
+                                  <p className="text-[#A90D3C] font-medium">-{review.reviewer.name}</p>
+                                </div>
+                                
+                                {/* Ratings - Better spacing */}
+                                <div className="flex flex-wrap justify-center mt-2 gap-6">
+                                  <div className="flex items-center">
+                                    <span className="text-[#FFB400] mr-2">
+                                      {Array.from({ length: 5 }).map((_, i) => (
+                                        <span key={i} className={i < review.ratings.taste ? 'text-[#FFB400]' : 'text-gray-300'}>★</span>
+                                      ))}
+                                    </span>
+                                    <span className="text-xs text-[#5A5A5A]">Taste</span>
+                                  </div>
+                                  
+                                  <div className="flex items-center">
+                                    <span className="text-[#FFB400] mr-2">
+                                      {Array.from({ length: 5 }).map((_, i) => (
+                                        <span key={i} className={i < review.ratings.value ? 'text-[#FFB400]' : 'text-gray-300'}>★</span>
+                                      ))}
+                                    </span>
+                                    <span className="text-xs text-[#5A5A5A]">Value</span>
+                                  </div>
+                                  
+                                  <div className="flex items-center">
+                                    <span className="text-[#FFB400] mr-2">
+                                      {Array.from({ length: 5 }).map((_, i) => (
+                                        <span key={i} className={i < review.ratings.service ? 'text-[#FFB400]' : 'text-gray-300'}>★</span>
+                                      ))}
+                                    </span>
+                                    <span className="text-xs text-[#5A5A5A]">Service</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           
-                          {/* Ratings - Better spacing */}
-                          <div className="flex flex-wrap justify-center mt-2 gap-6">
-                            <div className="flex items-center">
-                              <span className="text-[#FFB400] mr-2">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                  <span key={i} className={i < review.ratings.taste ? 'text-[#FFB400]' : 'text-gray-300'}>★</span>
-                                ))}
-                              </span>
-                              <span className="text-xs text-[#5A5A5A]">Taste</span>
-                            </div>
-                            
-                            <div className="flex items-center">
-                              <span className="text-[#FFB400] mr-2">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                  <span key={i} className={i < review.ratings.value ? 'text-[#FFB400]' : 'text-gray-300'}>★</span>
-                                ))}
-                              </span>
-                              <span className="text-xs text-[#5A5A5A]">Value</span>
-                            </div>
-                            
-                            <div className="flex items-center">
-                              <span className="text-[#FFB400] mr-2">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                  <span key={i} className={i < review.ratings.service ? 'text-[#FFB400]' : 'text-gray-300'}>★</span>
-                                ))}
-                              </span>
-                              <span className="text-xs text-[#5A5A5A]">Service</span>
-                            </div>
-                          </div>
+                          {/* Restaurant Name */}
+                          <Link 
+                            href={`/restaurants/${review.restaurantId}`} 
+                            className="bg-[#F8A5A5] text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-[#A90D3C] transition-colors"
+                          >
+                            {review.restaurantName}
+                          </Link>
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Restaurant Name */}
-                    <Link 
-                      href={`/restaurants/${review.restaurantId}`} 
-                      className="bg-[#F8A5A5] text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-[#A90D3C] transition-colors"
-                    >
-                      {review.restaurantName}
-                    </Link>
-                  </div>
+                  ))}
                 </div>
+                
+                {/* Pagination Dots - Added more margin */}
+                <div className="flex justify-center mt-10">
+                  {reviews.map((_, index) => (
+                    <button
+                      key={index}
+                      className={`w-3 h-3 rounded-full mx-1.5 ${
+                        index === activeReview ? 'bg-[#A90D3C]' : 'bg-[#F8A5A5]'
+                      }`}
+                      onClick={() => setActiveReview(index)}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-center items-center h-96">
+                <p className="text-[#5A5A5A] text-xl">No reviews available yet. Be the first to write one!</p>
               </div>
-            ))}
+            )}
           </div>
-          
-          {/* Pagination Dots - Added more margin */}
-          <div className="flex justify-center mt-10">
-            {reviews.map((_, index) => (
-              <button
-                key={index}
-                className={`w-3 h-3 rounded-full mx-1.5 ${
-                  index === activeReview ? 'bg-[#A90D3C]' : 'bg-[#F8A5A5]'
-                }`}
-                onClick={() => setActiveReview(index)}
-              />
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="flex justify-center items-center h-96">
-          <p className="text-[#5A5A5A] text-xl">No reviews available yet. Be the first to write one!</p>
         </div>
-      )}
-    </div>
-  </div>
-{/* Call to Action Section */}
-<div 
-  className="relative py-16 md:py-20"
-  style={{ 
-    backgroundImage: "url('/assets/background_cta.svg')", 
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat" 
-  }}
->
-  <div className="container mx-auto px-4 md:px-8 max-w-6xl">
-    <h2 className={`text-4xl md:text-5xl font-bold text-[#D29501] text-center mb-12 ${kufam.className}`}>
-      First time here?
-    </h2>
-    
-    {/* Instructions Grid */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-      {/* Step 1 */}
-      <div className="relative bg-white/90 rounded-lg shadow-md p-6 text-center flex flex-col items-center border-t-4 border-[#F8A5A5]">
-        <div className="absolute -top-5 left-4 bg-[#F8A5A5] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
-          1
-        </div>
-        <div className="w-24 h-24 bg-[#F8A5A5] rounded-full flex items-center justify-center mb-4">
-          <Image 
-            src="/assets/fast-food.png" 
-            alt="Find food icon" 
-            width={60} 
-            height={60}
-          />
-        </div>
-        <h3 className={`text-lg font-semibold mb-3 text-[#5A5A5A] ${kufam.className}`}>
-          Find delicious meals and restaurants near you.
-        </h3>
-      </div>
-      
-      {/* Step 2 */}
-      <div className="relative bg-white/90 rounded-lg shadow-md p-6 text-center flex flex-col items-center border-t-4 border-[#F8A5A5]">
-        <div className="absolute -top-5 left-4 bg-[#F8A5A5] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
-          2
-        </div>
-        <div className="w-24 h-24 bg-[#F8A5A5] rounded-full flex items-center justify-center mb-4">
-          <Image 
-            src="/assets/good-review.png" 
-            alt="Review icon" 
-            width={60} 
-            height={60}
-          />
-        </div>
-        <h3 className={`text-lg font-semibold mb-3 text-[#5A5A5A] ${kufam.className}`}>
-          Rate portions, leave reviews, and share your recommendations.
-        </h3>
-      </div>
-      
-      {/* Step 3 */}
-      <div className="relative bg-white/90 rounded-lg shadow-md p-6 text-center flex flex-col items-center border-t-4 border-[#F8A5A5]">
-        <div className="absolute -top-5 left-4 bg-[#F8A5A5] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
-          3
-        </div>
-        <div className="w-24 h-24 bg-[#F8A5A5] rounded-full flex items-center justify-center mb-4">
-          <Image 
-            src="/assets/rating.png" 
-            alt="Discover icon" 
-            width={60} 
-            height={60}
-          />
-        </div>
-        <h3 className={`text-lg font-semibold mb-3 text-[#5A5A5A] ${kufam.className}`}>
-          Follow food lovers and discover new favourites!
-        </h3>
-      </div>
-    </div>
-    
-    {/* CTA Text */}
-    <div className="text-center mb-8">
-      <h3 className={`text-2xl font-semibold text-[#A90D3C] ${kufam.className}`}>
-        Join now to start reviewing!
-      </h3>
-    </div>
-    
-    {/* CTA Buttons */}
-    <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-      <Link href="/register">
-        <button
-          className="w-44 py-3 px-6 bg-[#F8A5A5] text-white rounded-full font-medium text-lg hover:bg-[#A90D3C] transition-colors shadow-md"
-        >
-          Sign Up
-        </button>
-      </Link>
-      
-      <Link href="/login">
-        <button
-          className="w-44 py-3 px-6 bg-white text-[#A90D3C] border border-[#A90D3C] rounded-full font-medium text-lg hover:bg-[#FFF5E1] transition-colors shadow-md"
-        >
-          Login
-        </button>
-      </Link>
-    </div>
-  </div>
-  </div>
-</section>
-  
 
+        {/* Call to Action Section */}
+        <div 
+          className="relative py-16 md:py-20"
+          style={{ 
+            backgroundImage: "url('/assets/background_cta.svg')", 
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat" 
+          }}
+        >
+          <div className="container mx-auto px-4 md:px-8 max-w-6xl">
+            <h2 className={`text-4xl md:text-5xl font-bold text-[#D29501] text-center mb-12 ${kufam.className}`}>
+              First time here?
+            </h2>
+            
+            {/* Instructions Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+              {/* Step 1 */}
+              <div className="relative bg-white/90 rounded-lg shadow-md p-6 text-center flex flex-col items-center border-t-4 border-[#F8A5A5]">
+                <div className="absolute -top-5 left-4 bg-[#F8A5A5] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
+                  1
+                </div>
+                <div className="w-24 h-24 bg-[#F8A5A5] rounded-full flex items-center justify-center mb-4">
+                  <Image 
+                    src="/assets/fast-food.png" 
+                    alt="Find food icon" 
+                    width={60} 
+                    height={60}
+                  />
+                </div>
+                <h3 className={`text-lg font-semibold mb-3 text-[#5A5A5A] ${kufam.className}`}>
+                  Find delicious meals and restaurants near you.
+                </h3>
+              </div>
+              
+              {/* Step 2 */}
+              <div className="relative bg-white/90 rounded-lg shadow-md p-6 text-center flex flex-col items-center border-t-4 border-[#F8A5A5]">
+                <div className="absolute -top-5 left-4 bg-[#F8A5A5] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
+                  2
+                </div>
+                <div className="w-24 h-24 bg-[#F8A5A5] rounded-full flex items-center justify-center mb-4">
+                  <Image 
+                    src="/assets/good-review.png" 
+                    alt="Review icon" 
+                    width={60} 
+                    height={60}
+                  />
+                </div>
+                <h3 className={`text-lg font-semibold mb-3 text-[#5A5A5A] ${kufam.className}`}>
+                  Rate portions, leave reviews, and share your recommendations.
+                </h3>
+              </div>
+              
+              {/* Step 3 */}
+              <div className="relative bg-white/90 rounded-lg shadow-md p-6 text-center flex flex-col items-center border-t-4 border-[#F8A5A5]">
+                <div className="absolute -top-5 left-4 bg-[#F8A5A5] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
+                  3
+                </div>
+                <div className="w-24 h-24 bg-[#F8A5A5] rounded-full flex items-center justify-center mb-4">
+                  <Image 
+                    src="/assets/rating.png" 
+                    alt="Discover icon" 
+                    width={60} 
+                    height={60}
+                  />
+                </div>
+                <h3 className={`text-lg font-semibold mb-3 text-[#5A5A5A] ${kufam.className}`}>
+                  Follow food lovers and discover new favourites!
+                </h3>
+              </div>
+            </div>
+            
+            {/* CTA Text */}
+            <div className="text-center mb-8">
+              <h3 className={`text-2xl font-semibold text-[#A90D3C] ${kufam.className}`}>
+                Join now to start reviewing!
+              </h3>
+            </div>
+            
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+              <Link href="/register">
+                <button
+                  className="w-44 py-3 px-6 bg-[#F8A5A5] text-white rounded-full font-medium text-lg hover:bg-[#A90D3C] transition-colors shadow-md"
+                >
+                  Sign Up
+                </button>
+              </Link>
+              
+              <Link href="/login">
+                <button
+                  className="w-44 py-3 px-6 bg-white text-[#A90D3C] border border-[#A90D3C] rounded-full font-medium text-lg hover:bg-[#FFF5E1] transition-colors shadow-md"
+                >
+                  Login
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
