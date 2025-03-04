@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Navbar from "../_components/navbar";
 import ReviewModal from '@/app/_components/ReviewModal';
+import RequestMenuModal from "@/app/_components/RequestMenuModal";
 
 // Define types
 interface SearchResult {
@@ -65,6 +66,7 @@ function SearchContent(): JSX.Element {
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [reviewUpdated, setReviewUpdated] = useState<boolean>(false);
+  const [isRequestMenuModalOpen, setIsRequestMenuModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!query || query.length < 2) {
@@ -138,9 +140,9 @@ function SearchContent(): JSX.Element {
     // Set the selected review with the latest vote count
     setSelectedReview({ ...review });
     setIsModalOpen(true);
-};
+  };
 
-const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boolean | null): void => {
+  const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boolean | null): void => {
     console.log("Vote update received:", { reviewId, newUpvotes, isUpvoted });
 
     // Update selected restaurant's review list
@@ -167,9 +169,7 @@ const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boole
     });
 
     console.log(`Updated vote count in UI for review ${reviewId}:`, newUpvotes);
-};
-
-  
+  };
 
   const closeModal = (): void => {
     setIsModalOpen(false);
@@ -177,6 +177,14 @@ const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boole
     // Mark that a review was updated, which will trigger a refresh
     setReviewUpdated(true);
     setSelectedReview(null);
+  };
+
+  const openRequestMenuModal = (): void => {
+    setIsRequestMenuModalOpen(true);
+  };
+
+  const closeRequestMenuModal = (): void => {
+    setIsRequestMenuModalOpen(false);
   };
 
   const renderStars = (rating: number): JSX.Element => {
@@ -246,6 +254,17 @@ const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boole
           ) : (
             <p className="mt-4 text-lg">No results found.</p>
           )}
+          
+          {/* Request a Menu Call to Action */}
+          <div className="mt-8 text-center">
+            <p className="text-lg mb-2">Can't find what you're looking for?</p>
+            <button
+              onClick={openRequestMenuModal}
+              className="py-2 px-6 bg-[#D29501] text-white rounded-lg hover:bg-[#B27C01] transition-colors"
+            >
+              Request a Menu Here
+            </button>
+          </div>
         </section>
 
         {/* Selected Restaurant Details */}
@@ -322,13 +341,18 @@ const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boole
         {/* Review Modal */}
         {selectedReview && (
           <ReviewModal 
-              review={selectedReview} 
-              isOpen={isModalOpen} 
-              onClose={closeModal} 
-              onVoteUpdate={handleVoteUpdate} 
+            review={selectedReview} 
+            isOpen={isModalOpen} 
+            onClose={closeModal} 
+            onVoteUpdate={handleVoteUpdate} 
           />
-      )}
+        )}
 
+        {/* Request Menu Modal */}
+        <RequestMenuModal 
+          isOpen={isRequestMenuModalOpen}
+          onClose={closeRequestMenuModal}
+        />
       </main>
     </div>
   );
