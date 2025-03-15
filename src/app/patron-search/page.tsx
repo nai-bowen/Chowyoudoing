@@ -106,13 +106,28 @@ function SearchContent(): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      // Add a cache-busting parameter to ensure we get fresh data
+      // Add cache-busting to ensure fresh data
       const timestamp = Date.now();
-      const res = await fetch(`/api/restaurants/${restaurantId}?t=${timestamp}`);
+      const res = await fetch(`/api/restaurants/${restaurantId}?t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
       if (!res.ok) throw new Error("Failed to fetch restaurant data");
       const data = await res.json();
       
       console.log("Restaurant data loaded:", data);
+      
+      // Print every review's upvote value for debugging
+      if (Array.isArray(data.reviews)) {
+        data.reviews.forEach((review: any, index: number) => {
+          console.log(`DEBUG: Review ${index} upvotes:`, review.upvotes, "type:", typeof review.upvotes);
+        });
+      }
       
       // Create the restaurant object with the data
       const restaurant: Restaurant = {
@@ -122,8 +137,6 @@ function SearchContent(): JSX.Element {
         reviews: Array.isArray(data.reviews) ? data.reviews : [],
         menuItems: Array.isArray(data.menuItems) ? data.menuItems : [],
       };
-      
-      console.log("Restaurant reviews:", restaurant.reviews);
       
       setSelectedRestaurant(restaurant);
     } catch (err) {
@@ -135,48 +148,56 @@ function SearchContent(): JSX.Element {
   }
 
   const handleReviewClick = (review: Review): void => {
-    console.log("Opening review:", review);
+    console.log("Opening review with upvotes:", review.upvotes, "type:", typeof review.upvotes);
     
-    // Set the selected review with the latest vote count
-    setSelectedReview({ ...review });
+    // Set the selected review
+    setSelectedReview(review);
     setIsModalOpen(true);
   };
 
+  // Optimistic UI update approach
   const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boolean | null): void => {
     console.log("Vote update received:", { reviewId, newUpvotes, isUpvoted });
 
-    // Update selected restaurant's review list
-    setSelectedRestaurant((prev) => {
-        if (!prev) return prev; // If no restaurant is selected, do nothing
-
-        const updatedReviews = prev.reviews.map(review => 
-            review.id === reviewId 
-                ? { 
-                    ...review, 
-                    upvotes: newUpvotes, 
-                    userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined 
-                } 
-                : review
-        );
-
-        return { ...prev, reviews: updatedReviews };
+    // Immediately update the UI state with the new vote count
+    setSelectedRestaurant(prevState => {
+      if (!prevState) return null;
+      
+      // Update the upvotes in the reviews array
+      const updatedReviews = prevState.reviews.map(review => {
+        if (review.id === reviewId) {
+          console.log(`Updating review ${reviewId} upvotes from ${review.upvotes} to ${newUpvotes}`);
+          return {
+            ...review,
+            upvotes: newUpvotes,
+            userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined
+          };
+        }
+        return review;
+      });
+      
+      return {
+        ...prevState,
+        reviews: updatedReviews
+      };
     });
-
-    // Ensure selected review is also updated in modal
-    setSelectedReview((prev) => {
-        if (!prev || prev.id !== reviewId) return prev;
-        return { ...prev, upvotes: newUpvotes, userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined };
-    });
-
-    console.log(`Updated vote count in UI for review ${reviewId}:`, newUpvotes);
+    
+    // Also update the selected review if it's open in the modal
+    if (selectedReview && selectedReview.id === reviewId) {
+      console.log(`Updating modal review ${reviewId} upvotes to ${newUpvotes}`);
+      setSelectedReview({
+        ...selectedReview,
+        upvotes: newUpvotes,
+        userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined
+      });
+    }
   };
 
   const closeModal = (): void => {
     setIsModalOpen(false);
-    
-    // Mark that a review was updated, which will trigger a refresh
-    setReviewUpdated(true);
     setSelectedReview(null);
+    // Flag that we need to refresh the data when modal closes
+    setReviewUpdated(true);
   };
 
   const openRequestMenuModal = (): void => {
@@ -197,12 +218,6 @@ function SearchContent(): JSX.Element {
       );
     }
     return <div className="flex">{stars}</div>;
-  };
-
-  // Debug function to help inspect a review's vote status
-  const getVoteStatusText = (review: Review): string => {
-    if (!review.userVote) return "No vote";
-    return review.userVote.isUpvote ? "Upvoted" : "Downvoted";
   };
 
   return (
@@ -286,7 +301,6 @@ function SearchContent(): JSX.Element {
                     <div className="flex justify-between items-start">
                       <div>{renderStars(review.rating)}</div>
                       <div className="flex items-center">
-                        {/* The arrow color changes based on whether the user has upvoted */}
                         <svg 
                           xmlns="http://www.w3.org/2000/svg" 
                           className={`h-5 w-5 mr-1 ${review.userVote?.isUpvote ? 'text-green-500' : 'text-gray-500'}`} 
@@ -296,13 +310,17 @@ function SearchContent(): JSX.Element {
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                         </svg>
-                        <span className="font-semibold">{review.upvotes || 0}</span>
+                        {/* DEBUG: Render upvotes value and type */}
+                        <span className="font-semibold">
+                          {/* Use the simple approach that works on dashboard */}
+                          {review.upvotes || 0}
+                        </span>
+                        {/* For debugging */}
+                        {/* <span className="text-xs ml-1">({typeof review.upvotes})</span> */}
                       </div>
                     </div>
                     <p className="text-sm italic my-2 line-clamp-3">"{review.content}"</p>
                     <p className="text-right mt-2 text-[#A90D3C]">- {review.patron?.firstName || "Anonymous"}</p>
-                    {/* Debug text to show vote status - remove in production */}
-                    {/* <p className="text-xs text-gray-400">{getVoteStatusText(review)}</p> */}
                     {review.imageUrl && (
                       <div className="mt-2 h-16 w-16 relative float-right">
                         <Image
@@ -338,7 +356,7 @@ function SearchContent(): JSX.Element {
           </section>
         )}
 
-        {/* Review Modal */}
+        {/* Review Modal - Use optimistic UI update approach */}
         {selectedReview && (
           <ReviewModal 
             review={selectedReview} 

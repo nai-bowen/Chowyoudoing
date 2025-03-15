@@ -176,16 +176,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     
     console.log(`Reviews API: Found ${reviews.length} reviews`);
 
-
     const formattedReviews = reviews.map((review) => {
       // Ensure `createdAt` is always treated as a Date
       const createdAt: Date = review.createdAt ?? new Date(); // Default to current date
+      
+      // Ensure upvotes is a number, default to 0 if null/undefined
+      const upvotesValue: number = typeof review.upvotes === 'number' ? review.upvotes : 0;
     
       const formattedReview: FormattedReview = {
         id: review.id,
         title: review.menuItem?.name ?? review.restaurant?.title ?? "Review",
         date: createdAt.toISOString().split("T")[0], // ✅ Directly convert Date to string
-        upvotes: review.upvotes ?? 0,
+        upvotes: upvotesValue,
         content: review.content,
         text: review.content,
         rating: review.rating,
@@ -219,8 +221,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         formattedReview.userVote = {
           isUpvote: review.votes[0]?.isUpvote ?? false, // Ensure a default boolean value
         };
+      } else {
+        formattedReview.userVote = null;
       }
-
     
       return formattedReview;
     });
@@ -239,7 +242,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// POST handler for creating reviews
+// POST handler for creating reviews or handling votes
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     console.log("Review API: Beginning request processing");
@@ -491,7 +494,8 @@ async function handleVote(body: VoteRequestBody, userId: string): Promise<NextRe
     });
     
     // Calculate new upvote count and update user vote
-    let newUpvoteCount = review.upvotes || 0;
+    // Ensure upvotes is a number, default to 0 if undefined
+    let newUpvoteCount = typeof review.upvotes === 'number' ? review.upvotes : 0;
     
     switch (action) {
       case 'upvote':

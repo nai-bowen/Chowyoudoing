@@ -80,11 +80,22 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   useEffect(() => {
     if (isReadMode) { 
       const readProps = props as ReadReviewModalProps;
-  
-      console.log("Review modal opened with review:", readProps.review);
-  
-      // Ensure vote count stays in sync with selectedReview
-      setVoteCount(readProps.review.upvotes || 0);
+      
+      // Log the exact review data we're receiving
+      console.log("DEBUGGING - Review modal opened with review:", JSON.stringify(readProps.review, null, 2));
+      console.log("DEBUGGING - Upvotes value:", readProps.review.upvotes);
+      console.log("DEBUGGING - Upvotes type:", typeof readProps.review.upvotes);
+      
+      // Force upvotes to be a number (cover all bases)
+      let upvotesValue = 0;
+      if (typeof readProps.review.upvotes === 'number') {
+        upvotesValue = readProps.review.upvotes;
+      } else if (readProps.review.upvotes) {
+        upvotesValue = Number(readProps.review.upvotes);
+      }
+      
+      console.log("DEBUGGING - Computed upvotes value:", upvotesValue);
+      setVoteCount(upvotesValue);
   
       if (readProps.review.userVote) {
         setVoteState({
@@ -97,7 +108,6 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
     }
   }, [props]); 
   
-
   useEffect(() => {
     // Handle click outside to close modal
     function handleClickOutside(event: MouseEvent): void {
@@ -214,7 +224,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
     }
   };
 
-  // Handle voting for a review
+  // Handle voting for a review - IMMEDIATE UI UPDATE APPROACH
   const handleVote = async (isUpvote: boolean): Promise<void> => {
     if (!isReadMode) return;
     
@@ -235,11 +245,74 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
     
     console.log(`Sending vote action: ${voteAction}`);
     
+    // IMMEDIATELY update the UI before waiting for the API response
+    let newVoteCount = voteCount;
+    let newVoteState = { ...voteState };
+    let newIsUpvoted: boolean | null = null;
+
+    // Calculate the new vote count and state based on action
+    switch(voteAction) {
+      case 'upvote':
+        if (!voteState.upvoted) {
+          if (voteState.downvoted) {
+            // Switching from downvote to upvote (+2)
+            newVoteCount += 2;
+          } else {
+            // New upvote (+1)
+            newVoteCount += 1;
+          }
+          newVoteState = { upvoted: true, downvoted: false };
+          newIsUpvoted = true;
+        }
+        break;
+      case 'downvote':
+        if (!voteState.downvoted) {
+          if (voteState.upvoted) {
+            // Switching from upvote to downvote (-2)
+            newVoteCount = Math.max(0, newVoteCount - 2);
+          } else {
+            // New downvote (-1)
+            newVoteCount = Math.max(0, newVoteCount - 1);
+          }
+          newVoteState = { upvoted: false, downvoted: true };
+          newIsUpvoted = false;
+        }
+        break;
+      case 'cancel-upvote':
+        if (voteState.upvoted) {
+          // Remove upvote (-1)
+          newVoteCount = Math.max(0, newVoteCount - 1);
+          newVoteState = { upvoted: false, downvoted: false };
+          newIsUpvoted = null;
+        }
+        break;
+      case 'cancel-downvote':
+        if (voteState.downvoted) {
+          // Remove downvote (+1)
+          newVoteCount += 1;
+          newVoteState = { upvoted: false, downvoted: false };
+          newIsUpvoted = null;
+        }
+        break;
+    }
+
+    // Update UI immediately
+    setVoteCount(newVoteCount);
+    setVoteState(newVoteState);
+    
+    // Call the onVoteUpdate callback if provided to update the parent component
+    if (readProps.onVoteUpdate && readProps.review.id) {
+      readProps.onVoteUpdate(readProps.review.id, newVoteCount, newIsUpvoted);
+    }
+
+    // Now make the API call in the background
     try {
       const response = await fetch(`/api/review`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
         },
         body: JSON.stringify({
           reviewId: readProps.review.id,
@@ -253,37 +326,28 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
       }
       
       const data = await response.json();
-      console.log("Vote response:", data);
-      
-      // Update the vote count
-      setVoteCount(data.upvotes);
-      
-      // Determine new vote state
-      let newIsUpvoted: boolean | null = null;
-      
-      // Update vote state based on action
-      if (voteAction === 'upvote') {
-        setVoteState({ upvoted: true, downvoted: false });
-        newIsUpvoted = true;
-      } else if (voteAction === 'downvote') {
-        setVoteState({ upvoted: false, downvoted: true });
-        newIsUpvoted = false;
-      } else if (voteAction === 'cancel-upvote') {
-        setVoteState({ upvoted: false, downvoted: false });
-        newIsUpvoted = null;
-      } else if (voteAction === 'cancel-downvote') {
-        setVoteState({ upvoted: false, downvoted: false });
-        newIsUpvoted = null;
-      }
-      
-      // Call the onVoteUpdate callback if provided
-      if (readProps.onVoteUpdate && readProps.review.id) {
-        readProps.onVoteUpdate(readProps.review.id, data.upvotes, newIsUpvoted);
+      console.log("Vote response from server:", data);
+
+      // In case the server response has a different count than what we calculated,
+      // update with the server value (but only if there's a discrepancy)
+      const serverUpvotes = data.upvotes || 0;
+      if (serverUpvotes !== newVoteCount) {
+        console.log(`Correcting vote count from ${newVoteCount} to server value ${serverUpvotes}`);
+        setVoteCount(serverUpvotes);
+        
+        // Also update parent component if there's a discrepancy
+        if (readProps.onVoteUpdate && readProps.review.id) {
+          readProps.onVoteUpdate(readProps.review.id, serverUpvotes, newIsUpvoted);
+        }
       }
       
     } catch (error) {
       console.error("Error voting for review:", error);
       setVoteError(error instanceof Error ? error.message : "An unexpected error occurred");
+      
+      // Revert to original state on error
+      setVoteCount(voteCount);
+      setVoteState(voteState);
     } finally {
       setIsVoting(false);
     }
@@ -313,6 +377,9 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   if (isReadMode) {
     const readProps = props as ReadReviewModalProps;
     const { review } = readProps;
+    
+    // Add debugging for display value
+    console.log("DEBUGGING - About to render upvotes with value:", voteCount);
     
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 review-modal-overlay">
@@ -347,7 +414,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
               </p>
             </div>
 
-            {/* Vote buttons */}
+            {/* Vote buttons - using the local state value directly */}
             <div className="vote-buttons flex items-center gap-4 mb-6">
               <button
                 onClick={() => handleVote(true)}
@@ -359,6 +426,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
               </button>
+              {/* Display the vote count directly from local state */}
               <span className="vote-count font-semibold">{voteCount}</span>
               <button
                 onClick={() => handleVote(false)}
@@ -373,12 +441,6 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
               {isVoting && <span className="text-sm text-gray-500 ml-2">Processing...</span>}
             </div>
             {voteError && <div className="vote-error p-3 bg-red-100 text-red-700 rounded-lg mb-4">{voteError}</div>}
-
-            {/* Display the current vote state for debugging */}
-            {/* <div className="text-xs text-gray-500 mb-4">
-              Current state: {voteState.upvoted ? "Upvoted" : voteState.downvoted ? "Downvoted" : "No vote"}
-              {review.userVote ? ` | API state: ${review.userVote.isUpvote ? "Upvoted" : "Downvoted"}` : " | API state: No vote"}
-            </div> */}
 
             {review.imageUrl && (
               <div className="mb-6">
