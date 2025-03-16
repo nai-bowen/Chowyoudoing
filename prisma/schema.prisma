@@ -32,6 +32,9 @@ model Patron {
     lastName      String
     email         String    @unique
     password      String
+    username      String?   @unique
+    profileImage  String?   @default("default-profile.jpg")
+    bio           String?   @default("")
     interests     String[]  @default([])  // Array of food interests
     emailVerified DateTime?
 
@@ -40,9 +43,35 @@ model Patron {
     sessions      Session[]
     posts         Post[]
     reviews       Review[] 
-    userVotes     UserVotes[] // New relation for user votes
-
+    userVotes     UserVotes[]
+    
+    // New relations
+    favorites     Favorite[]
+    followers     Follow[]    @relation("follower")
+    following     Follow[]    @relation("following")
 }
+
+// New model for bookmarks/favorites
+model Favorite {
+    id            String    @id @default(cuid())
+    createdAt     DateTime  @default(now())
+    
+    // Relations
+    patron        Patron    @relation(fields: [patronId], references: [id], onDelete: Cascade)
+    patronId      String
+    
+    // Polymorphic relation - can favorite restaurants or reviews
+    restaurantId  String?
+    restaurant    Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+    
+    reviewId      String?
+    review        Review?   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+    
+    // Ensure a patron can only favorite each item once
+    @@unique([patronId, restaurantId])
+    @@unique([patronId, reviewId])
+}
+
 
 
 model Account {
@@ -79,7 +108,9 @@ model Restaurant {
 
     // Relations
     menuSections MenuSection[]
-    reviews      Review[] // Add this line
+    reviews      Review[] 
+    favorites     Favorite[]
+
 }
 
 
@@ -167,7 +198,24 @@ model Review {
     restaurant  Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
     restaurantId String
     votes           UserVotes[]
+    favorites     Favorite[]
 
+
+}
+
+model Follow {
+    id            String    @id @default(cuid())
+    createdAt     DateTime  @default(now())
+    
+    // Relations
+    follower      Patron    @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+    followerId    String
+    
+    following     Patron    @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+    followingId   String
+    
+    // Ensure unique follows
+    @@unique([followerId, followingId])
 }
 
 model UserVotes {
