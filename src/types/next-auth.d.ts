@@ -7,6 +7,7 @@ declare module "next-auth" {
       email: string;
       firstName: string;
       lastName: string;
+      interests?: string[];
     };
   }
 
@@ -15,5 +16,6 @@ declare module "next-auth" {
     email: string;
     firstName: string;
     lastName: string;
+    interests?: string[];
   }
 }
