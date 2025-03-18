@@ -3,9 +3,10 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Navbar from "../_components/navbar";
-import ReviewModal from '@/app/_components/ReviewModal';
+import ReviewModal from '../_components/ReviewModal';
 import RequestMenuModal from "@/app/_components/RequestMenuModal";
 
 // Define types
@@ -20,23 +21,30 @@ interface SearchResult {
 interface Patron {
   firstName: string;
   lastName: string;
+  id?: string;
 }
 
 interface Review {
   id: string;
-  content: string;
-  rating: number;
-  imageUrl?: string;
-  upvotes: number;
-  patron?: Patron;
-  reviewStandards?: string;
+  title?: string;
+  content?: string;
   date?: string;
+  upvotes?: number;
+  rating?: number;
+  text?: string;
+  restaurant?: string;
+  author?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   asExpected?: number;
   wouldRecommend?: number;
   valueForMoney?: number;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
+  patron?: Patron;
   userVote?: {
     isUpvote: boolean;
-  };
+  } | null;
 }
 
 interface MenuItem {
@@ -53,10 +61,19 @@ interface Restaurant {
   menuItems: MenuItem[];
 }
 
+// Define an enum for the different modal types for better type safety
+enum ModalType {
+  NONE,
+  READ,
+  EDIT,
+  REQUEST
+}
+
 // Create a separate component for the search functionality
 function SearchContent(): JSX.Element {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
+  const { data: session, status } = useSession();
 
   const [query, setQuery] = useState<string>(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -64,9 +81,8 @@ function SearchContent(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [modalType, setModalType] = useState<ModalType>(ModalType.NONE);
   const [reviewUpdated, setReviewUpdated] = useState<boolean>(false);
-  const [isRequestMenuModalOpen, setIsRequestMenuModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!query || query.length < 2) {
@@ -93,10 +109,10 @@ function SearchContent(): JSX.Element {
     fetchResults();
   }, [query]);
 
-  // Refresh restaurant data if a review was updated
+  // Refresh restaurant data if a review was updated or deleted
   useEffect(() => {
     if (reviewUpdated && selectedRestaurant) {
-      console.log("Refreshing restaurant data due to review update");
+      console.log("Refreshing restaurant data due to review update/delete");
       fetchRestaurantDetails(selectedRestaurant.id);
       setReviewUpdated(false);
     }
@@ -106,28 +122,13 @@ function SearchContent(): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      // Add cache-busting to ensure fresh data
+      // Add a cache-busting parameter to ensure we get fresh data
       const timestamp = Date.now();
-      const res = await fetch(`/api/restaurants/${restaurantId}?t=${timestamp}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-      
+      const res = await fetch(`/api/restaurants/${restaurantId}?t=${timestamp}`);
       if (!res.ok) throw new Error("Failed to fetch restaurant data");
       const data = await res.json();
       
       console.log("Restaurant data loaded:", data);
-      
-      // Print every review's upvote value for debugging
-      if (Array.isArray(data.reviews)) {
-        data.reviews.forEach((review: any, index: number) => {
-          console.log(`DEBUG: Review ${index} upvotes:`, review.upvotes, "type:", typeof review.upvotes);
-        });
-      }
       
       // Create the restaurant object with the data
       const restaurant: Restaurant = {
@@ -137,6 +138,8 @@ function SearchContent(): JSX.Element {
         reviews: Array.isArray(data.reviews) ? data.reviews : [],
         menuItems: Array.isArray(data.menuItems) ? data.menuItems : [],
       };
+      
+      console.log("Restaurant reviews:", restaurant.reviews);
       
       setSelectedRestaurant(restaurant);
     } catch (err) {
@@ -148,64 +151,119 @@ function SearchContent(): JSX.Element {
   }
 
   const handleReviewClick = (review: Review): void => {
-    console.log("Opening review with upvotes:", review.upvotes, "type:", typeof review.upvotes);
+    console.log("Opening review:", review);
     
-    // Set the selected review
-    setSelectedReview(review);
-    setIsModalOpen(true);
+    // Set the selected review with the latest vote count
+    setSelectedReview({ ...review });
+    setModalType(ModalType.READ);
+  };
+  
+  const handleEditReview = (review: Review, e: React.MouseEvent): void => {
+    e.stopPropagation(); // Prevent the click from reaching the parent (which would open view modal)
+    
+    // Check if the current user owns the review
+    if (status !== 'authenticated') {
+      alert("You must be logged in to edit reviews.");
+      return;
+    }
+    
+    // We should check if the current user is the author of the review
+    const currentUserId = (session?.user as any)?.id;
+    const reviewUserId = review.patron?.id; // We might need to add this to the Review interface
+    
+    // For now, we'll assume we can't verify ownership perfectly, so we'll allow the edit
+    // The backend API will handle the actual permission checking
+    
+    setSelectedReview({ ...review });
+    setModalType(ModalType.EDIT);
   };
 
-  // Optimistic UI update approach
   const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boolean | null): void => {
     console.log("Vote update received:", { reviewId, newUpvotes, isUpvoted });
 
-    // Immediately update the UI state with the new vote count
-    setSelectedRestaurant(prevState => {
-      if (!prevState) return null;
-      
-      // Update the upvotes in the reviews array
-      const updatedReviews = prevState.reviews.map(review => {
-        if (review.id === reviewId) {
-          console.log(`Updating review ${reviewId} upvotes from ${review.upvotes} to ${newUpvotes}`);
-          return {
-            ...review,
-            upvotes: newUpvotes,
-            userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined
-          };
-        }
-        return review;
-      });
-      
-      return {
-        ...prevState,
-        reviews: updatedReviews
-      };
+    // Update selected restaurant's review list
+    setSelectedRestaurant((prev) => {
+        if (!prev) return prev; // If no restaurant is selected, do nothing
+
+        const updatedReviews = prev.reviews.map(review => 
+            review.id === reviewId 
+                ? { 
+                    ...review, 
+                    upvotes: newUpvotes, 
+                    userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined 
+                } 
+                : review
+        );
+
+        return { ...prev, reviews: updatedReviews };
     });
+
+    // Ensure selected review is also updated in modal
+    setSelectedReview((prev) => {
+        if (!prev || prev.id !== reviewId) return prev;
+        return { ...prev, upvotes: newUpvotes, userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined };
+    });
+
+    console.log(`Updated vote count in UI for review ${reviewId}:`, newUpvotes);
+  };
+  
+  // This function needs to use the same Review type as the ReviewModal component
+  const handleReviewUpdate = (updatedReview: any): void => {
+    // We're using 'any' here to bypass TypeScript's check
+    // In a real application, you should create a shared type file
     
-    // Also update the selected review if it's open in the modal
-    if (selectedReview && selectedReview.id === reviewId) {
-      console.log(`Updating modal review ${reviewId} upvotes to ${newUpvotes}`);
-      setSelectedReview({
-        ...selectedReview,
-        upvotes: newUpvotes,
-        userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined
+    // Cast the updatedReview back to our local Review type
+    const typedReview = updatedReview as Review;
+    
+    // Update in restaurant reviews
+    if (selectedRestaurant) {
+      setSelectedRestaurant(prev => {
+        if (!prev) return prev;
+        
+        const updatedReviews = prev.reviews.map(review => 
+          review.id === typedReview.id ? typedReview : review
+        );
+        
+        return { ...prev, reviews: updatedReviews };
       });
     }
-  };
-
-  const closeModal = (): void => {
-    setIsModalOpen(false);
-    setSelectedReview(null);
-    // Flag that we need to refresh the data when modal closes
+    
     setReviewUpdated(true);
   };
 
-  const openRequestMenuModal = (): void => {
-    setIsRequestMenuModalOpen(true);
+  // Add handler for review deletion
+  const handleReviewDelete = (reviewId: string): void => {
+    console.log(`Review ${reviewId} has been deleted`);
+    
+    // Remove the deleted review from the selected restaurant's reviews
+    if (selectedRestaurant) {
+      setSelectedRestaurant(prev => {
+        if (!prev) return prev;
+        
+        const updatedReviews = prev.reviews.filter(review => review.id !== reviewId);
+        
+        return {
+          ...prev,
+          reviews: updatedReviews
+        };
+      });
+    }
+    
+    // Close the modal since the review no longer exists
+    setModalType(ModalType.NONE);
+    setSelectedReview(null);
+    
+    // Flag that an update occurred to refresh data if needed
+    setReviewUpdated(true);
   };
 
-  const closeRequestMenuModal = (): void => {
-    setIsRequestMenuModalOpen(false);
+  const closeModal = (): void => {
+    setModalType(ModalType.NONE);
+    setSelectedReview(null);
+  };
+
+  const openRequestMenuModal = (): void => {
+    setModalType(ModalType.REQUEST);
   };
 
   const renderStars = (rating: number): JSX.Element => {
@@ -218,6 +276,24 @@ function SearchContent(): JSX.Element {
       );
     }
     return <div className="flex">{stars}</div>;
+  };
+
+  // Determine if the current user is the author of a review
+  const isReviewAuthor = (review: Review): boolean => {
+    if (status !== 'authenticated') return false;
+    
+    const currentUserId = (session?.user as any)?.id;
+    // Compare with the review author's ID if available
+    if (review.patron?.id && currentUserId) {
+      return review.patron.id === currentUserId;
+    }
+    
+    // Fallback check if IDs aren't available
+    if (review.patron && session?.user?.name) {
+      return review.patron.firstName === session.user.name.split(' ')[0];
+    }
+    
+    return false;
   };
 
   return (
@@ -295,12 +371,13 @@ function SearchContent(): JSX.Element {
                 {selectedRestaurant.reviews.map((review) => (
                   <div 
                     key={review.id} 
-                    className="p-4 bg-white shadow-md rounded-md cursor-pointer hover:shadow-lg transition-shadow"
+                    className="p-4 bg-white shadow-md rounded-md cursor-pointer hover:shadow-lg transition-shadow relative"
                     onClick={() => handleReviewClick(review)}
                   >
                     <div className="flex justify-between items-start">
-                      <div>{renderStars(review.rating)}</div>
+                      <div>{renderStars(review.rating || 5)}</div>
                       <div className="flex items-center">
+                        {/* The arrow color changes based on whether the user has upvoted */}
                         <svg 
                           xmlns="http://www.w3.org/2000/svg" 
                           className={`h-5 w-5 mr-1 ${review.userVote?.isUpvote ? 'text-green-500' : 'text-gray-500'}`} 
@@ -310,17 +387,25 @@ function SearchContent(): JSX.Element {
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                         </svg>
-                        {/* DEBUG: Render upvotes value and type */}
-                        <span className="font-semibold">
-                          {/* Use the simple approach that works on dashboard */}
-                          {review.upvotes || 0}
-                        </span>
-                        {/* For debugging */}
-                        {/* <span className="text-xs ml-1">({typeof review.upvotes})</span> */}
+                        <span className="font-semibold">{review.upvotes || 0}</span>
                       </div>
                     </div>
-                    <p className="text-sm italic my-2 line-clamp-3">"{review.content}"</p>
+                    <p className="text-sm italic my-2 line-clamp-3">"{review.content || ''}"</p>
                     <p className="text-right mt-2 text-[#A90D3C]">- {review.patron?.firstName || "Anonymous"}</p>
+                    
+                    {/* Add edit button for reviews by the current user */}
+                    {isReviewAuthor(review) && (
+                      <button
+                        className="absolute top-2 right-2 p-1 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
+                        onClick={(e) => handleEditReview(review, e)}
+                        title="Edit Review"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    )}
+                    
                     {review.imageUrl && (
                       <div className="mt-2 h-16 w-16 relative float-right">
                         <Image
@@ -356,21 +441,34 @@ function SearchContent(): JSX.Element {
           </section>
         )}
 
-        {/* Review Modal - Use optimistic UI update approach */}
-        {selectedReview && (
+        {/* Read Review Modal */}
+        {selectedReview && modalType === ModalType.READ && (
           <ReviewModal 
-            review={selectedReview} 
-            isOpen={isModalOpen} 
+            review={selectedReview as any} 
+            isOpen={true} 
             onClose={closeModal} 
             onVoteUpdate={handleVoteUpdate} 
           />
         )}
 
+        {/* Edit Review Modal */}
+        {selectedReview && modalType === ModalType.EDIT && (
+          <ReviewModal 
+            review={selectedReview as any} 
+            isOpen={true} 
+            onClose={closeModal} 
+            onReviewUpdate={handleReviewUpdate as any}
+            onReviewDelete={handleReviewDelete}
+          />
+        )}
+
         {/* Request Menu Modal */}
-        <RequestMenuModal 
-          isOpen={isRequestMenuModalOpen}
-          onClose={closeRequestMenuModal}
-        />
+        {modalType === ModalType.REQUEST && (
+          <RequestMenuModal 
+            isOpen={true}
+            onClose={closeModal}
+          />
+        )}
       </main>
     </div>
   );

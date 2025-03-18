@@ -1,4 +1,4 @@
-/*eslint-disable */
+/*eslint-disable*/
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -44,21 +44,76 @@ interface ReadReviewModalProps {
   onVoteUpdate?: (reviewId: string, newUpvotes: number, isUpvoted: boolean | null) => void;
 }
 
+interface EditReviewModalProps {
+  review: Review;
+  isOpen: boolean;
+  onClose: () => void;
+  onReviewUpdate?: (updatedReview: Review) => void;
+  onReviewDelete?: (reviewId: string) => void; // Add callback for deletion
+}
+
 // New interface for vote states
 interface VoteState {
   upvoted: boolean;
   downvoted: boolean;
 }
 
-type ReviewModalProps = WriteReviewModalProps | ReadReviewModalProps;
+// Interface for confirmation dialog
+interface ConfirmationDialogProps {
+  isOpen: boolean;
+  message: string;
+  confirmText: string;
+  cancelText: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+type ReviewModalProps = WriteReviewModalProps | ReadReviewModalProps | EditReviewModalProps;
+
+// Confirmation Dialog Component
+const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
+  isOpen,
+  message,
+  confirmText,
+  cancelText,
+  onConfirm,
+  onCancel
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <h3 className="text-xl font-bold text-[#D29501] mb-4">Confirmation</h3>
+        <p className="mb-6 text-gray-700">{message}</p>
+        <div className="flex justify-end gap-4">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   const modalRef = useRef<HTMLDivElement>(null);
   
-  // Determine if this is a read or write modal
-  const isReadMode = 'review' in props;
+  // Determine if this is a read, write, or edit modal
+  const isReadMode = 'review' in props && !('onReviewUpdate' in props);
+  const isEditMode = 'review' in props && 'onReviewUpdate' in props;
+  // If not read or edit, then it's write mode
   
-  // States for write mode
+  // States for write/edit mode
   const [rating, setRating] = useState<number>(5);
   const [content, setContent] = useState<string>("");
   const [asExpected, setAsExpected] = useState<number>(5);
@@ -69,6 +124,9 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   const [successMessage, setSuccessMessage] = useState<string>("");
   const [includeLocation, setIncludeLocation] = useState<boolean>(false);
   
+  // Confirmation dialog state
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<boolean>(false);
+  
   // New states for votes
   const [voteState, setVoteState] = useState<VoteState>({ upvoted: false, downvoted: false });
   const [voteCount, setVoteCount] = useState<number>(0);
@@ -77,14 +135,27 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   
   const location = useGeolocation();
 
+  // Initialize values when in edit mode
+  useEffect(() => {
+    if (isEditMode) { 
+      const editProps = props as EditReviewModalProps;
+      const review = editProps.review;
+      
+      setContent(review.content || "");
+      setRating(review.rating || 5);
+      setAsExpected(review.asExpected || 5);
+      setWouldRecommend(review.wouldRecommend || 5);
+      setValueForMoney(review.valueForMoney || 5);
+    }
+  }, [isEditMode, props]);
+
+  // Handle vote state and count initialization for read mode
   useEffect(() => {
     if (isReadMode) { 
       const readProps = props as ReadReviewModalProps;
       
       // Log the exact review data we're receiving
-      console.log("DEBUGGING - Review modal opened with review:", JSON.stringify(readProps.review, null, 2));
-      console.log("DEBUGGING - Upvotes value:", readProps.review.upvotes);
-      console.log("DEBUGGING - Upvotes type:", typeof readProps.review.upvotes);
+      console.log("Review modal opened with review:", readProps.review);
       
       // Force upvotes to be a number (cover all bases)
       let upvotesValue = 0;
@@ -94,7 +165,6 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
         upvotesValue = Number(readProps.review.upvotes);
       }
       
-      console.log("DEBUGGING - Computed upvotes value:", upvotesValue);
       setVoteCount(upvotesValue);
   
       if (readProps.review.userVote) {
@@ -106,8 +176,9 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
         setVoteState({ upvoted: false, downvoted: false });
       }
     }
-  }, [props]); 
+  }, [isReadMode, props]); 
   
+
   useEffect(() => {
     // Handle click outside to close modal
     function handleClickOutside(event: MouseEvent): void {
@@ -129,8 +200,8 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
       // Prevent body scroll when modal is open
       document.body.style.overflow = "hidden";
       
-      // Reset form when modal is opened in write mode
-      if (!isReadMode) {
+      // Reset form when modal is opened in write mode (not edit)
+      if (!isReadMode && !isEditMode) {
         setRating(5);
         setContent("");
         setAsExpected(5);
@@ -147,13 +218,24 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
       document.removeEventListener("keydown", handleEscKey);
       document.body.style.overflow = "unset";
     };
-  }, [props.isOpen, props.onClose, isReadMode]);
+  }, [props.isOpen, props.onClose, isReadMode, isEditMode]);
 
+  // Handle for creating a new review
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     if (isReadMode) return;
     
     e.preventDefault();
     
+    // Handle differently based on mode (write vs edit)
+    if (isEditMode) {
+      await handleEditSubmit();
+    } else {
+      await handleCreateSubmit();
+    }
+  };
+  
+  // Handle creating a new review
+  const handleCreateSubmit = async (): Promise<void> => {
     const writeProps = props as WriteReviewModalProps;
     
     if (!content.trim()) {
@@ -222,6 +304,168 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  // Handle editing an existing review
+  const handleEditSubmit = async (): Promise<void> => {
+    const editProps = props as EditReviewModalProps;
+    const reviewId = editProps.review.id;
+    
+    if (!reviewId) {
+      setErrorMessage("Review ID is missing");
+      return;
+    }
+    
+    if (!content.trim()) {
+      setErrorMessage("Please provide a review description");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setErrorMessage("");
+    
+    try {
+      const reviewData = {
+        reviewId,
+        content,
+        rating,
+        asExpected,
+        wouldRecommend,
+        valueForMoney
+      };
+      
+      // Use the correct API route with the ID
+      const response = await fetch(`/api/review/${reviewId}/edit`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reviewData),
+      });
+      
+      // Improved handling of the response
+      if (!response.ok) {
+        // Check if there's no content in the response
+        const text = await response.text();
+        if (!text) {
+          throw new Error(`Server returned ${response.status} with no content`);
+        }
+        
+        // Try to parse the response as JSON
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || errorData.error || "Failed to update review");
+        } catch (parseError) {
+          // If parsing fails, use the status text
+          throw new Error(`Server error: ${response.statusText || response.status}`);
+        }
+      }
+      
+      // Try to parse the response, or assume success if empty
+      let responseData: any = { success: true };
+      try {
+        const text = await response.text();
+        if (text) {
+          responseData = JSON.parse(text);
+        }
+      } catch (parseError) {
+        console.warn("Could not parse response, assuming success", parseError);
+      }
+      
+      setSuccessMessage("Review updated successfully!");
+      
+      // Create an updated review object to pass back
+      const updatedReview: Review = {
+        ...editProps.review,
+        content,
+        rating,
+        asExpected,
+        wouldRecommend,
+        valueForMoney
+      };
+      
+      // Callback to parent component
+      if (editProps.onReviewUpdate) {
+        editProps.onReviewUpdate(updatedReview);
+      }
+      
+      // Close modal after successful update
+      setTimeout(() => {
+        editProps.onClose();
+      }, 2000);
+    } catch (error) {
+      console.error("Error updating review:", error);
+      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle deleting a review
+  const handleDeleteReview = async (): Promise<void> => {
+    const editProps = props as EditReviewModalProps;
+    const reviewId = editProps.review.id;
+    
+    if (!reviewId) {
+      setErrorMessage("Review ID is missing");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setShowDeleteConfirmation(false); // Close the confirmation dialog
+    
+    try {
+      // Send delete request to the API
+      const response = await fetch(`/api/review/${reviewId}`, {
+        method: "DELETE",
+      });
+      
+      // Improved handling of the response
+      if (!response.ok) {
+        // Check if there's no content in the response
+        const text = await response.text();
+        if (!text) {
+          throw new Error(`Server returned ${response.status} with no content`);
+        }
+        
+        // Try to parse the response as JSON
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || errorData.error || "Failed to delete review");
+        } catch (parseError) {
+          // If parsing fails, use the status text
+          throw new Error(`Server error: ${response.statusText || response.status}`);
+        }
+      }
+      
+      setSuccessMessage("Review deleted successfully!");
+      
+      // Callback to parent component if provided
+      if (editProps.onReviewDelete) {
+        editProps.onReviewDelete(reviewId);
+      }
+      
+      // Close modal after successful deletion
+      setTimeout(() => {
+        editProps.onClose();
+      }, 2000);
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Handle showing delete confirmation
+  const showDeleteConfirmationDialog = () => {
+    setShowDeleteConfirmation(true);
+  };
+  
+  // Handle canceling delete confirmation
+  const cancelDeleteConfirmation = () => {
+    setShowDeleteConfirmation(false);
   };
 
   // Handle voting for a review - IMMEDIATE UI UPDATE APPROACH
@@ -378,9 +622,6 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
     const readProps = props as ReadReviewModalProps;
     const { review } = readProps;
     
-    // Add debugging for display value
-    console.log("DEBUGGING - About to render upvotes with value:", voteCount);
-    
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 review-modal-overlay">
         <div
@@ -493,6 +734,111 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Render edit review modal
+  if (isEditMode) {
+    const editProps = props as EditReviewModalProps;
+    
+    return (
+      <>
+        <div className="review-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div ref={modalRef} className="review-modal bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="review-modal-header p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-[#D29501]">Edit Review</h2>
+                <button className="text-gray-500 hover:text-gray-700 close-button" onClick={editProps.onClose}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="review-modal-body p-6">
+              <form onSubmit={handleSubmit}>
+                <div className="rating-section mb-6">
+                  <label className="block text-gray-700 mb-2">Overall Rating</label>
+                  {renderStars(rating, false, setRating)}
+                </div>
+                
+                <div className="review-textarea mb-6">
+                  <label htmlFor="review-content" className="block text-gray-700 mb-2">Your Review</label>
+                  <textarea
+                    id="review-content"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    rows={5}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D29501]"
+                    placeholder="Share your experience with this restaurant..."
+                    required
+                  />
+                </div>
+                
+                <div className="rating-section mb-6">
+                  <label className="block text-gray-700 mb-2">Was it as expected?</label>
+                  {renderStars(asExpected, false, setAsExpected)}
+                </div>
+                
+                <div className="rating-section mb-6">
+                  <label className="block text-gray-700 mb-2">Would you recommend it?</label>
+                  {renderStars(wouldRecommend, false, setWouldRecommend)}
+                </div>
+                
+                <div className="rating-section mb-6">
+                  <label className="block text-gray-700 mb-2">Value for money</label>
+                  {renderStars(valueForMoney, false, setValueForMoney)}
+                </div>
+                
+                {errorMessage && <div className="error-message p-3 bg-red-100 text-red-700 rounded-lg mb-4">{errorMessage}</div>}
+                {successMessage && <div className="success-message p-3 bg-green-100 text-green-700 rounded-lg mb-4">{successMessage}</div>}
+                
+                <div className="modal-buttons flex flex-wrap justify-end gap-4 items-center">
+                  {/* Delete Button */}
+                  <button 
+                    type="button"
+                    onClick={showDeleteConfirmationDialog}
+                    className="delete-button px-4 py-2 flex items-center text-red-500 border border-red-300 rounded-lg hover:bg-red-50 mr-auto"
+                    disabled={isSubmitting}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Delete Review
+                  </button>
+                  
+                  <button 
+                    type="button" 
+                    className="cancel-button px-5 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+                    onClick={editProps.onClose}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="submit-button px-5 py-2 bg-[#D29501] text-white rounded-lg hover:bg-[#b37e01] disabled:opacity-50"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Updating..." : "Update Review"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={showDeleteConfirmation}
+          message="Are you certain you want to delete your review? Deleted reviews cannot be retrieved."
+          confirmText="Delete Review"
+          cancelText="Cancel"
+          onConfirm={handleDeleteReview}
+          onCancel={cancelDeleteConfirmation}
+        />
+      </>
     );
   }
 
