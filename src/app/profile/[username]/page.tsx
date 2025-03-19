@@ -37,7 +37,7 @@ interface Review {
 }
 
 export default function PublicProfilePage(): JSX.Element {
-  const { username } = useParams();
+  const { username } = useParams<{ username: string }>();
   const { data: session, status } = useSession();
   const [profile, setProfile] = useState<Patron | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -48,7 +48,7 @@ export default function PublicProfilePage(): JSX.Element {
 
   // Fetch profile data
   useEffect(() => {
-    const fetchProfileData = async () => {
+    const fetchProfileData = async (): Promise<void> => {
       setIsLoading(true);
       setError(null);
 
@@ -93,7 +93,7 @@ export default function PublicProfilePage(): JSX.Element {
   }, [username, session, status]);
 
   // Handle follow/unfollow action
-  const handleFollowToggle = async () => {
+  const handleFollowToggle = async (): Promise<void> => {
     if (!profile?.id || status !== "authenticated" || !session?.user?.id) {
       return;
     }
