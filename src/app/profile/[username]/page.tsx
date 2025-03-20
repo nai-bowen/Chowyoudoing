@@ -1,13 +1,14 @@
-/*eslint-disable*/
+// src/app/profile/[username]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Navbar from "../../_components/navbar";
+import CertificationButton from "../../_components/CertificationButton";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar, faUserPlus, faUserMinus } from "@fortawesome/free-solid-svg-icons";
+import { faStar, faUserPlus, faUserMinus, faAward, faEdit } from "@fortawesome/free-solid-svg-icons";
 
 // Define types for our profile data
 interface Patron {
@@ -18,6 +19,8 @@ interface Patron {
   profileImage: string | null;
   bio: string | null;
   interests: string[];
+  isCertifiedFoodie: boolean;
+  certificationDate?: string;
   _count?: {
     followers: number;
     following: number;
@@ -38,6 +41,7 @@ interface Review {
 
 export default function PublicProfilePage(): JSX.Element {
   const { username } = useParams<{ username: string }>();
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [profile, setProfile] = useState<Patron | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -162,6 +166,24 @@ export default function PublicProfilePage(): JSX.Element {
     });
   };
 
+  // Handle profile certification change
+  const handleCertificationChange = (): void => {
+    // Refetch profile data to get updated certification status
+    const fetchUpdatedProfile = async (): Promise<void> => {
+      try {
+        const profileResponse = await fetch(`/api/profile/patron?username=${username}`);
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          setProfile(profileData.patron);
+        }
+      } catch (err) {
+        console.error("Error fetching updated profile:", err);
+      }
+    };
+    
+    fetchUpdatedProfile();
+  };
+
   // Render star rating
   const renderStars = (rating: number): JSX.Element => {
     return (
@@ -209,6 +231,8 @@ export default function PublicProfilePage(): JSX.Element {
     );
   }
 
+  const isOwnProfile = status === "authenticated" && session?.user?.id === profile.id;
+
   return (
     <div className="with-navbar">
       <Navbar />
@@ -224,36 +248,73 @@ export default function PublicProfilePage(): JSX.Element {
                   fill
                   className="rounded-full object-cover"
                 />
+                {profile.isCertifiedFoodie && (
+                  <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-white p-1.5 rounded-full">
+                    <FontAwesomeIcon icon={faAward} className="h-4 w-4" />
+                  </div>
+                )}
               </div>
               <div className="md:ml-8 mt-4 md:mt-0 flex-grow">
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex items-center">
                     <h1 className="text-2xl font-bold text-[#D29501]">
                       {profile.firstName} {profile.lastName}
                     </h1>
-                    <p className="text-gray-500">@{profile.username || "username"}</p>
+                    {profile.isCertifiedFoodie && (
+                      <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full flex items-center">
+                        <FontAwesomeIcon icon={faAward} className="mr-1" />
+                        Certified Foodie
+                      </span>
+                    )}
                   </div>
-                  {status === "authenticated" && session?.user?.id !== profile.id && (
-                    <button
-                      onClick={handleFollowToggle}
-                      disabled={followLoading}
-                      className={`px-4 py-2 ${
-                        isFollowing ? "bg-gray-200 text-gray-800" : "bg-[#A90D3C] text-white"
-                      } rounded-lg flex items-center ${followLoading ? "opacity-70" : ""}`}
-                    >
-                      <FontAwesomeIcon 
-                        icon={isFollowing ? faUserMinus : faUserPlus} 
-                        className="mr-2" 
-                      />
-                      {followLoading 
-                        ? "Processing..." 
-                        : isFollowing 
-                          ? "Unfollow" 
-                          : "Follow"}
-                    </button>
-                  )}
+                  
+                  <div className="flex gap-2">
+                    {isOwnProfile && (
+                      <button
+                        onClick={() => router.push('/profile/edit')}
+                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg flex items-center"
+                      >
+                        <FontAwesomeIcon icon={faEdit} className="mr-2" />
+                        Edit
+                      </button>
+                    )}
+                    
+                    {status === "authenticated" && !isOwnProfile && (
+                      <button
+                        onClick={handleFollowToggle}
+                        disabled={followLoading}
+                        className={`px-4 py-2 ${
+                          isFollowing ? "bg-gray-200 text-gray-800" : "bg-[#A90D3C] text-white"
+                        } rounded-lg flex items-center ${followLoading ? "opacity-70" : ""}`}
+                      >
+                        <FontAwesomeIcon 
+                          icon={isFollowing ? faUserMinus : faUserPlus} 
+                          className="mr-2" 
+                        />
+                        {followLoading 
+                          ? "Processing..." 
+                          : isFollowing 
+                            ? "Unfollow" 
+                            : "Follow"}
+                      </button>
+                    )}
+                  </div>
                 </div>
+                
+                <p className="text-gray-500">@{profile.username || "username"}</p>
                 <p className="mt-2 text-gray-700">{profile.bio || "No bio available"}</p>
+                
+                {/* Certification button for own profile */}
+                {isOwnProfile && (
+                  <div className="mt-4">
+                    <CertificationButton 
+                      patronId={profile.id}
+                      isCertifiedFoodie={profile.isCertifiedFoodie}
+                      onCertificationChange={handleCertificationChange}
+                    />
+                  </div>
+                )}
+                
                 <div className="mt-4">
                   <h3 className="font-semibold">Interests:</h3>
                   <div className="flex flex-wrap gap-2 mt-1">

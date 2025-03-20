@@ -27,16 +27,19 @@ model Post {
 }
 
 model Patron {
-    id            String    @id @default(cuid())
-    firstName     String
-    lastName      String
-    email         String    @unique
-    password      String
-    username      String?   @unique
-    profileImage  String?   @default("default-profile.jpg")
-    bio           String?   @default("")
-    interests     String[]  @default([])  // Array of food interests
-    emailVerified DateTime?
+    id             String    @id @default(cuid())
+    firstName      String
+    lastName       String
+    email          String    @unique
+    password       String
+    username       String?   @unique
+    profileImage   String?   @default("default-profile.jpg")
+    bio            String?   @default("")
+    interests      String[]  @default([])  // Array of food interests
+    emailVerified  DateTime?
+    isCertifiedFoodie Boolean @default(false)  // New field for certified foodie status
+    certificationDate DateTime? // When they became a certified foodie
+    certificationRequest CertificationRequest? // Relation to certification request
 
     // Relations
     accounts      Account[]
@@ -49,6 +52,21 @@ model Patron {
     favorites     Favorite[]
     followers     Follow[]    @relation("follower")
     following     Follow[]    @relation("following")
+}
+
+// New model for foodie certification requests
+model CertificationRequest {
+    id              String    @id @default(cuid())
+    createdAt       DateTime  @default(now())
+    status          String    @default("pending") // pending, approved, rejected
+    justification   String?   // Why they think they should be certified
+    socialMediaLink String?   // Optional link to social media profile
+    reviewedAt      DateTime?
+    reviewedBy      String?   // Admin who reviewed the request
+    
+    // Relation to patron
+    patron        Patron    @relation(fields: [patronId], references: [id], onDelete: Cascade)
+    patronId      String    @unique // One request per patron
 }
 
 // New model for bookmarks/favorites
@@ -71,8 +89,6 @@ model Favorite {
     @@unique([patronId, restaurantId])
     @@unique([patronId, reviewId])
 }
-
-
 
 model Account {
     id                       String  @id @default(cuid())
@@ -110,9 +126,7 @@ model Restaurant {
     menuSections MenuSection[]
     reviews      Review[] 
     favorites     Favorite[]
-
 }
-
 
 model MenuSection {
     id           String      @id @default(cuid())
@@ -146,8 +160,6 @@ model MenuItem {
      reviews     Review[]
 }
 
-
-
 model Session {
     id           String   @id @default(cuid())
     sessionToken String   @unique
@@ -172,6 +184,7 @@ model Interest {
     menuSections MenuSection[] @relation("MenuSectionInterest")
     menuItems    MenuItem[]    @relation("MenuItemInterest")
 }
+
 model Review {
     id              String   @id @default(cuid())
     content         String
@@ -199,8 +212,6 @@ model Review {
     restaurantId String
     votes           UserVotes[]
     favorites     Favorite[]
-
-
 }
 
 model Follow {
