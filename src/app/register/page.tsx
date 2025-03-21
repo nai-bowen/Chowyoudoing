@@ -7,6 +7,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF, FaApple } from "react-icons/fa";
 import { Kufam, Londrina_Solid } from "next/font/google";  // Correct import
 import Image from "next/image";
+import Link from "next/link";
 
 // Importing fonts
 const kufam = Kufam({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -379,6 +380,21 @@ export default function RegisterPage() {
             Log in Here
           </a>
         </p>
+        
+        {/* Restaurant Registration Link */}
+        <div className="mt-8 pt-6 border-t border-gray-200 w-full max-w-md">
+          <p className="text-center">
+            <span className={`${kufam.className} text-[15px] text-gray-600`}>
+              Registering a restaurant?{" "}
+            </span>
+            <Link
+              href="/register/restaurateur"
+              className={`${kufam.className} text-[15px] text-[#A90D3C] font-bold hover:underline`}
+            >
+              Register as a Restaurant Owner
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

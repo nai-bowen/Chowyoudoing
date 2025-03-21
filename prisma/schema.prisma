@@ -108,6 +108,67 @@ model Account {
     patron                   Patron  @relation(fields: [patronId], references: [id], onDelete: Cascade)
     @@unique([provider, providerAccountId])
 }
+model Restaurateur {
+  id                      String    @id @default(cuid())
+  email                   String    @unique
+  password                String
+  restaurantName          String
+  businessRegNumber       String?
+  vatNumber               String?
+  addressLine1            String
+  addressLine2            String?
+  city                    String
+  postalCode              String
+  country                 String
+  contactPersonName       String
+  contactPersonPhone      String
+  contactPersonEmail      String
+  verificationStatus      String    @default("pending") // pending, approved, rejected
+  submittedAt             DateTime  @default(now())
+  approvedAt              DateTime?
+  
+  // Proof documents (stored as URLs)
+  utilityBillUrl          String?
+  businessLicenseUrl      String?
+  foodHygieneCertUrl      String?
+  storefrontPhotoUrl      String?
+  receiptPhotoUrl         String?
+  
+  // Relations
+  restaurant              Restaurant? @relation(fields: [restaurantId], references: [id])
+  restaurantId            String?
+  
+  // Authentication
+  accounts                RestaurateurAccount[]
+  sessions                RestaurateurSession[]
+}
+
+model RestaurateurAccount {
+  id                       String  @id @default(cuid())
+  restaurateurId           String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  refresh_token_expires_in Int?
+  
+  restaurateur             Restaurateur  @relation(fields: [restaurateurId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model RestaurateurSession {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  restaurateurId String
+  expires      DateTime
+  restaurateur Restaurateur @relation(fields: [restaurateurId], references: [id], onDelete: Cascade)
+}
 
 model Restaurant {
     id          String    @id @default(cuid())
@@ -126,6 +187,8 @@ model Restaurant {
     menuSections MenuSection[]
     reviews      Review[] 
     favorites     Favorite[]
+    // New relation to Restaurateur
+    restaurateurs Restaurateur[]
 }
 
 model MenuSection {
