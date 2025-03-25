@@ -99,7 +99,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       className={`px-4 py-2 ${
         isFollowing
           ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
-          : "bg-[#A90D3C] text-white hover:bg-[#8A0B31]"
+          : "bg-[#F1C84B] text-white hover:bg-[#8A0B31]"
       } rounded-lg flex items-center justify-center transition ${
         isLoading ? "opacity-70 cursor-not-allowed" : ""
       } ${className}`}

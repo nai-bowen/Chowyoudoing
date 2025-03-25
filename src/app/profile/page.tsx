@@ -9,6 +9,9 @@ import Navbar from "../_components/navbar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faBookmark, faStar, faUsers, faUserPlus, faCamera, faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
+import HomeNavbar from "../_components/Home-Navbar";
+import AnimatedBackground from "../_components/AnimatedBackground";
+
 
 // Define types for our profile data
 interface Patron {
@@ -96,12 +99,47 @@ export default function ProfilePage(): JSX.Element {
         // Fetch profile data
         const profileResponse = await fetch("/api/profile");
         if (!profileResponse.ok) {
-          throw new Error("Failed to fetch profile data");
+          throw new Error(`Failed to fetch profile data: ${profileResponse.status} ${profileResponse.statusText}`);
         }
-        const profileData = await profileResponse.json();
-        setProfile(profileData.patron);
-        setTempUsername(profileData.patron.username || "");
-        setTempBio(profileData.patron.bio || "");
+        
+        // Log the raw response for debugging
+        const responseText = await profileResponse.text();
+        console.log("Raw profile API response:", responseText);
+        
+        // Try to parse the response as JSON
+        let profileData;
+        try {
+          profileData = JSON.parse(responseText);
+          console.log("Parsed profile data:", profileData);
+        } catch (parseError) {
+          console.error("Error parsing profile data:", parseError);
+          throw new Error("Invalid JSON response from server");
+        }
+        
+        // Create a default patron object if data is missing or incomplete
+        const patron: Patron = {
+          id: profileData?.patron?.id || profileData?.id || "unknown",
+          firstName: profileData?.patron?.firstName || profileData?.firstName || "User",
+          lastName: profileData?.patron?.lastName || profileData?.lastName || "",
+          username: profileData?.patron?.username || profileData?.username || null,
+          email: profileData?.patron?.email || profileData?.email || "unknown@example.com",
+          profileImage: profileData?.patron?.profileImage || profileData?.profileImage || null,
+          bio: profileData?.patron?.bio || profileData?.bio || null,
+          interests: profileData?.patron?.interests || profileData?.interests || [],
+          _count: profileData?.patron?._count || profileData?._count || {
+            followers: 0,
+            following: 0,
+            reviews: 0,
+            favorites: 0
+          }
+        };
+        
+        console.log("Constructed patron object:", patron);
+        setProfile(patron);
+        
+        // Only set form states with safe defaults
+        setTempUsername(patron.username ?? "");
+        setTempBio(patron.bio ?? "");
 
         // Fetch user reviews
         const reviewsResponse = await fetch(`/api/review?userId=${session.user.id}`);
@@ -171,9 +209,10 @@ export default function ProfilePage(): JSX.Element {
     }
   };
 
+  // Modified to work with any API response structure
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !profile) return;
 
     setIsUploadingImage(true);
     setError(null);
@@ -191,14 +230,37 @@ export default function ProfilePage(): JSX.Element {
       });
       
       if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.error || "Failed to upload image");
+        const errorText = await uploadResponse.text();
+        console.error("Error response:", errorText);
+        
+        let errorMessage = "Failed to upload image";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If parsing fails, use the raw text
+          if (errorText) errorMessage = errorText;
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      const uploadData = await uploadResponse.json();
+      // Log the raw response for debugging
+      const uploadResponseText = await uploadResponse.text();
+      console.log("Raw upload response:", uploadResponseText);
+      
+      // Try to parse the response as JSON
+      let uploadData;
+      try {
+        uploadData = JSON.parse(uploadResponseText);
+        console.log("Parsed upload data:", uploadData);
+      } catch (parseError) {
+        console.error("Error parsing upload response:", parseError);
+        throw new Error("Invalid JSON response from server");
+      }
       
       // Update profile with new image URL
-      if (uploadData.url) {
+      if (uploadData?.url) {
         const updateResponse = await fetch("/api/profile", {
           method: "PUT",
           headers: {
@@ -211,17 +273,48 @@ export default function ProfilePage(): JSX.Element {
         });
         
         if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          console.error("Error updating profile:", errorText);
           throw new Error("Failed to update profile with new image");
         }
         
-        const updatedData = await updateResponse.json();
-        setProfile(updatedData.patron);
+        // Log the raw response for debugging
+        const responseText = await updateResponse.text();
+        console.log("Raw profile update response:", responseText);
+        
+        // Try to parse the response as JSON
+        let updatedData;
+        try {
+          updatedData = JSON.parse(responseText);
+          console.log("Parsed profile update data:", updatedData);
+        } catch (parseError) {
+          console.error("Error parsing profile update response:", parseError);
+          throw new Error("Invalid JSON response from server");
+        }
+        
+        // Update the profile with the response data or keep existing data
+        const updatedPatron: Patron = {
+          id: updatedData?.patron?.id || updatedData?.id || profile.id,
+          firstName: updatedData?.patron?.firstName || updatedData?.firstName || profile.firstName,
+          lastName: updatedData?.patron?.lastName || updatedData?.lastName || profile.lastName,
+          username: updatedData?.patron?.username || updatedData?.username || profile.username,
+          email: updatedData?.patron?.email || updatedData?.email || profile.email,
+          profileImage: updatedData?.patron?.profileImage || updatedData?.profileImage || uploadData.url, // Use the uploaded URL if response doesn't include it
+          bio: updatedData?.patron?.bio || updatedData?.bio || profile.bio,
+          interests: updatedData?.patron?.interests || updatedData?.interests || profile.interests,
+          _count: updatedData?.patron?._count || updatedData?._count || profile._count
+        };
+        
+        console.log("Constructed updated patron:", updatedPatron);
+        setProfile(updatedPatron);
         setSuccessMessage("Profile picture updated successfully!");
         
         // Clear success message after 3 seconds
         setTimeout(() => {
           setSuccessMessage(null);
         }, 3000);
+      } else {
+        throw new Error("No image URL in upload response");
       }
     } catch (err) {
       console.error("Error updating profile picture:", err);
@@ -233,10 +326,11 @@ export default function ProfilePage(): JSX.Element {
 
   // Handle inline editing of username
   const startEditingUsername = () => {
-    setTempUsername(profile?.username || "");
+    setTempUsername(profile?.username ?? "");
     setIsEditingUsername(true);
   };
 
+  // Modified to work with any API response structure
   const saveUsername = async () => {
     if (!profile) return;
     
@@ -256,12 +350,50 @@ export default function ProfilePage(): JSX.Element {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update username");
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        
+        let errorMessage = "Failed to update username";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If parsing fails, use the raw text
+          if (errorText) errorMessage = errorText;
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
-      setProfile(data.patron);
+      // Log the raw response for debugging
+      const responseText = await response.text();
+      console.log("Raw username update response:", responseText);
+      
+      // Try to parse the response as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log("Parsed username update data:", data);
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        throw new Error("Invalid JSON response from server");
+      }
+      
+      // Update the profile with the response data or keep existing data
+      const updatedPatron: Patron = {
+        id: data?.patron?.id || data?.id || profile.id,
+        firstName: data?.patron?.firstName || data?.firstName || profile.firstName,
+        lastName: data?.patron?.lastName || data?.lastName || profile.lastName,
+        username: data?.patron?.username || data?.username || null,
+        email: data?.patron?.email || data?.email || profile.email,
+        profileImage: data?.patron?.profileImage || data?.profileImage || profile.profileImage,
+        bio: data?.patron?.bio || data?.bio || profile.bio,
+        interests: data?.patron?.interests || data?.interests || profile.interests,
+        _count: data?.patron?._count || data?._count || profile._count
+      };
+      
+      console.log("Constructed updated patron:", updatedPatron);
+      setProfile(updatedPatron);
       setSuccessMessage("Username updated successfully!");
       
       // Clear success message after 3 seconds
@@ -278,16 +410,17 @@ export default function ProfilePage(): JSX.Element {
   };
 
   const cancelEditingUsername = () => {
-    setTempUsername(profile?.username || "");
+    setTempUsername(profile?.username ?? "");
     setIsEditingUsername(false);
   };
 
   // Handle inline editing of bio
   const startEditingBio = () => {
-    setTempBio(profile?.bio || "");
+    setTempBio(profile?.bio ?? "");
     setIsEditingBio(true);
   };
 
+  // Modified to work with any API response structure
   const saveBio = async () => {
     if (!profile) return;
     
@@ -307,12 +440,50 @@ export default function ProfilePage(): JSX.Element {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update bio");
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        
+        let errorMessage = "Failed to update bio";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If parsing fails, use the raw text
+          if (errorText) errorMessage = errorText;
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
-      setProfile(data.patron);
+      // Log the raw response for debugging
+      const responseText = await response.text();
+      console.log("Raw bio update response:", responseText);
+      
+      // Try to parse the response as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log("Parsed bio update data:", data);
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        throw new Error("Invalid JSON response from server");
+      }
+      
+      // Update the profile with the response data or keep existing data
+      const updatedPatron: Patron = {
+        id: data?.patron?.id || data?.id || profile.id,
+        firstName: data?.patron?.firstName || data?.firstName || profile.firstName,
+        lastName: data?.patron?.lastName || data?.lastName || profile.lastName,
+        username: data?.patron?.username || data?.username || profile.username,
+        email: data?.patron?.email || data?.email || profile.email,
+        profileImage: data?.patron?.profileImage || data?.profileImage || profile.profileImage,
+        bio: data?.patron?.bio || data?.bio || null,
+        interests: data?.patron?.interests || data?.interests || profile.interests,
+        _count: data?.patron?._count || data?._count || profile._count
+      };
+      
+      console.log("Constructed updated patron:", updatedPatron);
+      setProfile(updatedPatron);
       setSuccessMessage("Bio updated successfully!");
       
       // Clear success message after 3 seconds
@@ -329,47 +500,34 @@ export default function ProfilePage(): JSX.Element {
   };
 
   const cancelEditingBio = () => {
-    setTempBio(profile?.bio || "");
+    setTempBio(profile?.bio ?? "");
     setIsEditingBio(false);
   };
 
-  if (isLoading && !profile) {
-    return (
-      <div className="with-navbar">
-        <Navbar />
-        <div className="page-content">
-          <div className="flex justify-center items-center min-h-screen">
-            <p className="text-xl">Loading profile...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !profile) {
-    return (
-      <div className="with-navbar">
-        <Navbar />
-        <div className="page-content">
-          <div className="flex flex-col justify-center items-center min-h-screen">
-            <p className="text-xl text-red-600">Error: {error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-[#D29501] text-white rounded-lg"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="with-navbar">
-      <Navbar />
-      <div className="page-content">
-        <div className="bg-[#FFF5E1] min-h-screen p-6">
+      <HomeNavbar />
+      {/* Add significant padding between navbar and content - at least 100px */}
+      <div className="page-content relative pt-32"> {/* Increased padding-top */}
+        <AnimatedBackground />
+        <div className="relative z-10 max-w-5xl mx-auto px-6">
+          {/* Top navigation row with back button and certified foodie button */}
+          <div className="flex justify-between items-center mb-8">
+            <Link href="/patron-dashboard" className="inline-flex items-center text-gray-600 hover:text-[#D29501] transition">
+              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              </svg>
+              Back to Dashboard
+            </Link>
+            
+            {/* Certified Foodie Button */}
+            <button className="inline-flex items-center bg-[#fbdade] text-gray-60 px-4 py-2 rounded-md hover:bg-[#FFD6D9] transition">
+              <FontAwesomeIcon icon={faStar} className="mr-2" />
+              Become a Certified Foodie
+            </button>
+          </div>
+          
           {profile && (
             <>
               {/* Success message */}
@@ -378,34 +536,31 @@ export default function ProfilePage(): JSX.Element {
                   <span className="block sm:inline">{successMessage}</span>
                 </div>
               )}
+
               
-              {/* Error message */}
-              {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                  <span className="block sm:inline">{error}</span>
-                </div>
-              )}
-            
-              {/* Profile Header */}
-              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div className="flex flex-col md:flex-row">
-                  <div className="relative w-32 h-32 mx-auto md:mx-0 group cursor-pointer" onClick={handleProfilePictureClick}>
-                    <Image
-                      src={profile.profileImage || "/assets/default-profile.jpg"}
-                      alt="Profile"
-                      fill
-                      sizes="128px"
-                      className="rounded-full object-cover"
-                      loader={({ src }) => {
-                        // Handle Cloudinary images
-                        if (src.includes('cloudinary.com')) {
-                          return src;
-                        }
-                        // Handle local images
-                        return src;
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex flex-col md:flex-row gap-6">
+            {/* Left sidebar - Profile card */}
+            <div className="md:w-1/3">
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="bg-gradient-to-r from-[#fdedf6] to-[#f1eafe] p-6 text-center">
+                  <div className="relative w-32 h-32 mx-auto group cursor-pointer" onClick={handleProfilePictureClick}>
+                    <div className="w-32 h-32 rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden">
+                      {profile.profileImage ? (
+                        <Image
+                          src={profile.profileImage}
+                          alt="Profile"
+                          fill
+                          sizes="128px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-full bg-[#fdf9f5]/50 text-gray-400 text-3xl font-bold">
+                          {profile.firstName && profile.lastName ? 
+                            `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}` : 'U'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <FontAwesomeIcon icon={faCamera} className="text-white text-xl" />
                     </div>
                     {isUploadingImage && (
@@ -413,6 +568,12 @@ export default function ProfilePage(): JSX.Element {
                         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
                       </div>
                     )}
+                    
+                    {/* Purple badge in the bottom corner */}
+                    <div className="absolute bottom-0 right-0 bg-purple-400 rounded-full w-8 h-8 flex items-center justify-center">
+                      <FontAwesomeIcon icon={faCamera} className="text-white text-xs" />
+                    </div>
+                    
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -421,304 +582,230 @@ export default function ProfilePage(): JSX.Element {
                       className="hidden"
                     />
                   </div>
-                  <div className="md:ml-8 mt-4 md:mt-0 flex-grow">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h1 className="text-2xl font-bold text-[#D29501]">
-                          {profile.firstName} {profile.lastName}
-                        </h1>
-                        
-                        {/* Editable username */}
-                        {isEditingUsername ? (
-                          <div className="flex items-center mt-1">
-                            <div className="relative">
-                              <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-gray-500">@</span>
-                              <input
-                                type="text"
-                                value={tempUsername}
-                                onChange={(e) => setTempUsername(e.target.value)}
-                                className="pl-6 pr-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D29501]"
-                                placeholder="username"
-                              />
-                            </div>
-                            <button 
-                              onClick={saveUsername}
-                              className="ml-2 p-1 bg-green-500 text-white rounded-full"
-                              title="Save username"
-                            >
-                              <FontAwesomeIcon icon={faCheck} />
-                            </button>
-                            <button 
-                              onClick={cancelEditingUsername}
-                              className="ml-1 p-1 bg-red-500 text-white rounded-full"
-                              title="Cancel"
-                            >
-                              <FontAwesomeIcon icon={faTimes} />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <p className="text-gray-500">@{profile.username || "username"}</p>
-                            <button 
-                              onClick={startEditingUsername}
-                              className="ml-2 text-gray-500 hover:text-[#D29501]"
-                              title="Edit username"
-                            >
-                              <FontAwesomeIcon icon={faEdit} size="sm" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <Link
-                        href="/profile/edit"
-                        className="px-4 py-2 bg-[#A90D3C] text-white rounded-lg flex items-center"
-                      >
-                        <FontAwesomeIcon icon={faEdit} className="mr-2" />
-                        Edit Profile
-                      </Link>
+                  
+                  <h1 className="text-2xl font-bold text-gray-800 mt-4">
+                    {profile.firstName} {profile.lastName}
+                  </h1>
+                  
+                  <p className="text-gray-700">Food Explorer</p>
+                </div>
+                
+                <div className="p-4 space-y-3">
+                  {/* Member since card */}
+                  <div className="bg-[#fdf9f5] rounded-lg p-3">
+                    <p className="text-gray-600 text-sm font-medium mb-1">Member since</p>
+                    <p className="text-gray-800">June 2023</p>
+                  </div>
+                  
+                  {/* Reviews card */}
+                  <div className="bg-[#fdedf6] rounded-lg p-3">
+                    <p className="text-gray-600 text-sm font-medium mb-1">Reviews</p>
+                    <p className="text-gray-800">{profile._count?.reviews || 0} restaurants</p>
+                  </div>
+                  
+                  {/* Favorite cuisines card */}
+                  <div className="bg-[#f1eafe] rounded-lg p-3">
+                    <p className="text-gray-600 text-sm font-medium mb-1">Favorite cuisines</p>
+                    <div className="flex flex-wrap gap-1">
+                      {profile.interests && profile.interests.length > 0 ? (
+                        <p className="text-gray-800">{profile.interests.join(", ")}</p>
+                      ) : (
+                        <span className="text-gray-500">No favorites yet</span>
+                      )}
                     </div>
-                    
-                    {/* Editable bio */}
-                    {isEditingBio ? (
-                      <div className="mt-2">
-                        <textarea
-                          value={tempBio}
-                          onChange={(e) => setTempBio(e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D29501]"
-                          placeholder="Add a bio..."
-                          rows={3}
-                        ></textarea>
-                        <div className="flex justify-end mt-1">
-                          <button 
-                            onClick={saveBio}
-                            className="px-3 py-1 bg-green-500 text-white rounded-lg mr-2"
-                            title="Save bio"
-                          >
-                            <FontAwesomeIcon icon={faCheck} className="mr-1" /> Save
-                          </button>
-                          <button 
-                            onClick={cancelEditingBio}
-                            className="px-3 py-1 bg-gray-500 text-white rounded-lg"
-                            title="Cancel"
-                          >
-                            <FontAwesomeIcon icon={faTimes} className="mr-1" /> Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-2 flex items-start">
-                        <p className="text-gray-700">{profile.bio || "No bio available"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+                
+          {/* Right content - Edit profile form */}
+          <div className="md:w-2/3">
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-8 h-8 bg-[#f2d36e] rounded-full flex items-center justify-center mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-[#f2d36e]">Edit Profile</h2>
+              </div>
+              
+              <p className="text-gray-600 mb-6">Update your profile information and food preferences</p>
+              
+              <div className="space-y-6">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={`${profile.firstName} ${profile.lastName}`}
+                    disabled
+                    className="w-full p-3 bg-white border border-[#fdf9f5] rounded-md text-gray-700 focus:outline-none focus:border-2 focus:border-[#fdf9f5]"
+                  />
+                </div>
+                
+                {/* Email */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    disabled
+                    className="w-full p-3 bg-white border border-[#fdf9f5] rounded-md text-gray-700 focus:outline-none focus:border-2 focus:border-[#fdf9f5]"
+                  />
+                </div>
+                
+                {/* Location */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Location</label>
+                  <div className="relative">
+                    <select className="w-full p-3 appearance-none bg-white border border-[#fdedf6] rounded-md text-gray-700 focus:outline-none focus:border-2 focus:border-[#fdedf6]">
+                      <option>New York, NY</option>
+                      <option>Los Angeles, CA</option>
+                      <option>Chicago, IL</option>
+                      <option>Houston, TX</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Username */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Username</label>
+                  {isEditingUsername ? (
+                    <div className="flex">
+                      <input
+                        type="text"
+                        value={tempUsername}
+                        onChange={(e) => setTempUsername(e.target.value)}
+                        className="flex-1 p-3 bg-white border border-[#f1eafe] rounded-l-md focus:outline-none focus:border-2 focus:border-[#f1eafe]"
+                        placeholder="Choose a username"
+                      />
+                      <button 
+                        onClick={saveUsername}
+                        className="p-3 bg-green-500 text-white hover:bg-green-600"
+                      >
+                        <FontAwesomeIcon icon={faCheck} />
+                      </button>
+                      <button 
+                        onClick={cancelEditingUsername}
+                        className="p-3 bg-red-500 text-white rounded-r-md hover:bg-red-600"
+                      >
+                        <FontAwesomeIcon icon={faTimes} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex">
+                      <input
+                        type="text"
+                        value={profile.username || ""}
+                        disabled
+                        placeholder="No username set"
+                        className="flex-1 p-3 bg-white border border-[#f1eafe] rounded-l-md text-gray-700 focus:outline-none focus:border-2 focus:border-[#f1eafe]"
+                      />
+                      <button 
+                        onClick={startEditingUsername}
+                        className="p-3 bg-[#f2d36e] text-white rounded-r-md hover:bg-[#f2d36e]/90"
+                      >
+                        <FontAwesomeIcon icon={faEdit} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Bio */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Bio</label>
+                  {isEditingBio ? (
+                    <div>
+                      <textarea
+                        value={tempBio}
+                        onChange={(e) => setTempBio(e.target.value)}
+                        className="w-full p-3 bg-white border border-[#fbe9fc] rounded-md focus:outline-none focus:border-2 focus:border-[#fbe9fc]"
+                        placeholder="Tell us about yourself..."
+                        rows={4}
+                      ></textarea>
+                      <div className="flex justify-end mt-2 space-x-2">
                         <button 
-                          onClick={startEditingBio}
-                          className="ml-2 text-gray-500 hover:text-[#D29501] mt-1"
-                          title="Edit bio"
+                          onClick={saveBio}
+                          className="px-4 py-2 bg-[#f2d36e] text-white rounded-md hover:bg-[#f2d36e]/90"
                         >
-                          <FontAwesomeIcon icon={faEdit} size="sm" />
+                          <FontAwesomeIcon icon={faCheck} className="mr-1" /> Save
+                        </button>
+                        <button 
+                          onClick={cancelEditingBio}
+                          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                        >
+                          <FontAwesomeIcon icon={faTimes} className="mr-1" /> Cancel
                         </button>
                       </div>
-                    )}
-                    
-                    <div className="mt-4">
-                      <h3 className="font-semibold">Interests:</h3>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {profile.interests && profile.interests.length > 0 ? (
-                          profile.interests.map((interest, index) => (
-                            <span
-                              key={index}
-                              className="px-3 py-1 bg-[#FFF5E1] rounded-full text-sm"
-                            >
-                              {interest}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-gray-500">No interests added yet</span>
-                        )}
+                    </div>
+                  ) : (
+                    <div>
+                      <textarea
+                        value={profile.bio || ""}
+                        disabled
+                        placeholder="No bio available"
+                        className="w-full p-3 bg-white border border-[#fbe9fc] rounded-md text-gray-700 focus:outline-none focus:border-2 focus:border-[#fbe9fc]"
+                        rows={4}
+                      ></textarea>
+                      <div className="flex justify-end mt-2">
+                        <button 
+                          onClick={startEditingBio}
+                          className="px-4 py-2 bg-[#f2d36e] text-white rounded-md hover:bg-[#f2d36e]/90"
+                        >
+                          <FontAwesomeIcon icon={faEdit} className="mr-1" /> Edit Bio
+                        </button>
                       </div>
                     </div>
-                  </div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">This will be displayed on your public profile</p>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-200">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-[#D29501]">
-                      {profile._count?.reviews || 0}
-                    </p>
-                    <p className="text-gray-600">Reviews</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-[#D29501]">
-                      {profile._count?.favorites || 0}
-                    </p>
-                    <p className="text-gray-600">Favorites</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-[#D29501]">
-                      {profile._count?.followers || 0}
-                    </p>
-                    <p className="text-gray-600">Followers</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-[#D29501]">
-                      {profile._count?.following || 0}
-                    </p>
-                    <p className="text-gray-600">Following</p>
-                  </div>
+                
+                {/* Dietary Preferences */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Dietary Preferences</label>
+                  <input
+                    type="text"
+                    defaultValue="Vegetarian options, low-carb meals"
+                    className="w-full p-3 bg-white border border-[#fdf9f5] rounded-md text-gray-700 focus:outline-none focus:border-2 focus:border-[#fdf9f5]"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This helps us recommend restaurants that match your preferences</p>
+                </div>
+                
+                {/* Favorite Foods */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Favorite Foods</label>
+                  <input
+                    type="text"
+                    defaultValue="Italian pasta, Japanese sushi"
+                    className="w-full p-3 bg-white border border-[#fdedf6] rounded-md text-gray-700 focus:outline-none focus:border-2 focus:border-[#fdedf6]"
+                  />
+                </div>
+                
+                {/* Save/Cancel buttons */}
+                <div className="flex justify-end gap-4 pt-4">
+                  <button
+                    type="button"
+                    className="px-6 py-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-[#f2d36e] text-white rounded-md hover:bg-[#f2d36e]/90 transition-colors"
+                  >
+                    Save Changes
+                  </button>
                 </div>
               </div>
-
-              {/* Tabs Navigation */}
-              <div className="flex mb-6 border-b border-gray-200">
-                <button
-                  className={`px-6 py-3 font-medium text-lg ${
-                    activeTab === "reviews"
-                      ? "text-[#D29501] border-b-2 border-[#D29501]"
-                      : "text-gray-600"
-                  }`}
-                  onClick={() => handleTabChange("reviews")}
-                >
-                  <FontAwesomeIcon icon={faStar} className="mr-2" />
-                  My Reviews
-                </button>
-                <button
-                  className={`px-6 py-3 font-medium text-lg ${
-                    activeTab === "favorites"
-                      ? "text-[#D29501] border-b-2 border-[#D29501]"
-                      : "text-gray-600"
-                  }`}
-                  onClick={() => handleTabChange("favorites")}
-                >
-                  <FontAwesomeIcon icon={faBookmark} className="mr-2" />
-                  My Favorites
-                </button>
+            </div>
+          </div>
               </div>
-
-              {/* Tab Content */}
-              {activeTab === "reviews" && (
-                <div className="reviews-tab">
-                  <h2 className="text-xl font-bold mb-4">Your Reviews</h2>
-                  
-                  {reviews.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {reviews.map((review) => (
-                        <div key={review.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-semibold text-[#D29501]">{review.restaurant.title}</h3>
-                            <div className="flex items-center">
-                              <span className="text-gray-600 mr-1">👍</span>
-                              <span>{review.upvotes}</span>
-                            </div>
-                          </div>
-                          {renderStars(review.rating)}
-                          <p className="mt-2 text-gray-700 line-clamp-3">{review.content}</p>
-                          <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
-                            <span className="text-sm text-gray-500">
-                              {formatDate(review.createdAt)}
-                            </span>
-                            <Link
-                              href={`/review/edit/${review.id}`}
-                              className="text-[#A90D3C] hover:underline text-sm"
-                            >
-                              Edit Review
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                      <p className="text-gray-600 mb-4">You haven't written any reviews yet.</p>
-                      <Link
-                        href="/patron-search"
-                        className="px-4 py-2 bg-[#D29501] text-white rounded-lg inline-block"
-                      >
-                        Find Restaurants to Review
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === "favorites" && (
-                <div className="favorites-tab">
-                  <h2 className="text-xl font-bold mb-4">Your Favorites</h2>
-                  
-                  {favorites && favorites.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {favorites.map((favorite) => (
-                        <div key={favorite.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition">
-                          {favorite.restaurant ? (
-                            // Restaurant favorite
-                            <>
-                              <h3 className="font-semibold text-[#D29501] mb-2">
-                                {favorite.restaurant.title}
-                              </h3>
-                              <p className="text-sm text-gray-600 mb-3">
-                                {favorite.restaurant.location || "No location specified"}
-                              </p>
-                              <div className="flex flex-wrap gap-1 mb-3">
-                                {favorite.restaurant.category && favorite.restaurant.category.map((cat, index) => (
-                                  <span
-                                    key={index}
-                                    className="px-2 py-1 bg-[#FFF5E1] rounded-full text-xs"
-                                  >
-                                    {cat}
-                                  </span>
-                                ))}
-                              </div>
-                              <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
-                                <span className="text-sm text-gray-500">
-                                  Saved on {formatDate(favorite.createdAt)}
-                                </span>
-                                <Link
-                                  href={`/restaurants/${favorite.restaurant.id}`}
-                                  className="text-[#A90D3C] hover:underline text-sm"
-                                >
-                                  View Restaurant
-                                </Link>
-                              </div>
-                            </>
-                          ) : favorite.review ? (
-                            // Review favorite
-                            <>
-                              <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-semibold text-[#D29501]">
-                                  {favorite.review.restaurant.title}
-                                </h3>
-                              </div>
-                              {renderStars(favorite.review.rating)}
-                              <p className="mt-2 text-gray-700 line-clamp-3">{favorite.review.content}</p>
-                              <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
-                                <span className="text-sm text-gray-500">
-                                  Saved on {formatDate(favorite.createdAt)}
-                                </span>
-                                <button
-                                  className="text-[#A90D3C] hover:underline text-sm"
-                                  onClick={() => {
-                                    // TODO: Implement view review details
-                                  }}
-                                >
-                                  View Review
-                                </button>
-                              </div>
-                            </>
-                          ) : (
-                            <p className="text-gray-600">Invalid favorite item</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                      <p className="text-gray-600 mb-4">You don't have any favorites yet.</p>
-                      <Link
-                        href="/patron-search"
-                        className="px-4 py-2 bg-[#D29501] text-white rounded-lg inline-block"
-                      >
-                        Explore Restaurants
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )}
             </>
           )}
         </div>

@@ -1,15 +1,23 @@
 /*eslint-disable*/
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import Navbar from "../_components/navbar";
-import GoogleMap from "../_components/GoogleMap";
-import GoogleMapsLoader from "../../lib/googleMapsLoader";
-import { useGeolocation, geocodeAddress } from "../../lib/locationService";
+import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFire, faStar, faBookOpen, faMapMarkerAlt, faPencilAlt, faLocationArrow } from "@fortawesome/free-solid-svg-icons";
+import { 
+  faStar, 
+  faEdit, 
+  faTrash, 
+  faSearch,
+  faMapMarkerAlt,
+  faPlus,
+  faUtensils,
+  faTrophy
+} from "@fortawesome/free-solid-svg-icons";
+import AnimatedBackground from "@/app/_components/AnimatedBackground";
 
+// Define interfaces for the types of data we'll be working with
 interface Review {
   id: string;
   title?: string;
@@ -20,8 +28,6 @@ interface Review {
   text?: string;
   restaurant?: string;
   author?: string;
-  latitude?: number | null;
-  longitude?: number | null;
   patron?: {
     firstName: string;
     lastName: string;
@@ -36,9 +42,6 @@ interface Restaurant {
   detail?: string;
   rating?: string;
   num_reviews?: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  reviews?: Review[];
 }
 
 interface UserData {
@@ -46,45 +49,34 @@ interface UserData {
   email: string;
   id: string;
 }
-
-interface MapMarker {
-  id: string;
-  latitude: number;
-  longitude: number;
-  title: string;
-  type: "restaurant" | "review";
+// Define a type for the color scheme
+interface ColorScheme {
+  card1: string;
+  card2: string;
+  card3: string;
+  card4: string;
+  accent: string;
 }
+
 
 export default function PatronDashboard(): JSX.Element {
   const { data: session, status } = useSession();
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [topReviews, setTopReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLoadingUserReviews, setIsLoadingUserReviews] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
-  const location = useGeolocation();
-  const [isUsingLocation, setIsUsingLocation] = useState<boolean>(false);
-  const [geocodingInProgress, setGeocodingInProgress] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("My Reviews");
 
-  // Define fallback restaurants function
-  const setFallbackRestaurants = (): void => {
-    setRestaurants([
-      {
-        id: "1",
-        title: "KAI - Leicester",
-        category: "Breakfast",
-        location: "Leicester"
-      },
-      {
-        id: "2",
-        title: "Fluffy Fluffy - Leicester",
-        category: "Dessert",
-        location: "Leicester"
-      }
-    ]);
+  // Color scheme for UI elements
+  const colorScheme: ColorScheme = {
+    card1: "#fdf9f5",
+    card2: "#fdedf6",
+    card3: "#fbe9fc",
+    card4: "#f1eafe",
+    accent: "#faf2e5"
   };
 
   // Fetch user data when session is available
@@ -92,20 +84,12 @@ export default function PatronDashboard(): JSX.Element {
     const fetchUserData = async (): Promise<void> => {
       if (status === "authenticated" && session?.user) {
         try {
-          console.log("Session user data:", session.user);
-          
           // If user data is directly available in the session
           if (session.user.name && session.user.email) {
             setUserData({
               name: session.user.name,
               email: session.user.email,
-              id: (session.user as any).id || "" // Casting to any to access potential id
-            });
-            
-            console.log("User data set from session:", {
-              name: session.user.name,
-              email: session.user.email,
-              id: (session.user as any).id
+              id: (session.user as any).id || ""
             });
           } else {
             // If we need to fetch additional user data from the server
@@ -115,7 +99,6 @@ export default function PatronDashboard(): JSX.Element {
             }
             const data = await response.json();
             setUserData(data.user);
-            console.log("User data fetched from API:", data.user);
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -126,7 +109,6 @@ export default function PatronDashboard(): JSX.Element {
               email: session.user.email as string,
               id: (session.user as any).id || ""
             });
-            console.log("User data fallback to session data");
           }
         }
       }
@@ -135,183 +117,34 @@ export default function PatronDashboard(): JSX.Element {
     fetchUserData();
   }, [session, status]);
 
-  // Process restaurants and reviews to create map markers
-  const processRestaurantsForMap = async (restaurants: Restaurant[]): Promise<void> => {
-    setGeocodingInProgress(true);
-    console.log("Processing restaurants for map:", restaurants.length);
-    
-    const restaurantPromises = restaurants.map(async (restaurant) => {
-      let restaurantLat = restaurant.latitude;
-      let restaurantLng = restaurant.longitude;
-      
-      // If restaurant doesn't have coordinates, try to geocode the location
-      if ((!restaurantLat || !restaurantLng) && restaurant.location) {
-        console.log(`Geocoding restaurant address: ${restaurant.location}`);
-        try {
-          const coordinates = await geocodeAddress(restaurant.location);
-          if (coordinates) {
-            restaurantLat = coordinates.latitude;
-            restaurantLng = coordinates.longitude;
-            console.log(`Geocoded to: ${coordinates.latitude}, ${coordinates.longitude}`);
-          }
-        } catch (error) {
-          console.error(`Error geocoding address for restaurant ${restaurant.id}:`, error);
-        }
-      }
-      
-      // Return restaurant with possibly updated coordinates
-      return {
-        ...restaurant,
-        latitude: restaurantLat,
-        longitude: restaurantLng,
-        // Process reviews to ensure they have coordinates if possible
-        reviews: restaurant.reviews?.map(review => {
-          if (review.latitude && review.longitude) {
-            return review;
-          }
-          
-          // If review doesn't have coordinates, use restaurant's
-          if (restaurantLat && restaurantLng) {
-            return {
-              ...review,
-              latitude: restaurantLat,
-              longitude: restaurantLng
-            };
-          }
-          
-          return review;
-        })
-      };
-    });
-    
-    const processedRestaurants = await Promise.all(restaurantPromises);
-    
-    // Create map markers from processed restaurants
-    const restaurantMarkers = processedRestaurants
-      .filter(r => r.latitude && r.longitude)
-      .map(r => ({
-        id: r.id,
-        latitude: r.latitude as number,
-        longitude: r.longitude as number,
-        title: r.title,
-        type: "restaurant" as const
-      }));
-    
-    // Create review markers
-    const reviewMarkers = processedRestaurants
-      .flatMap(r => r.reviews || [])
-      .filter(review => review.latitude && review.longitude)
-      .map(review => ({
-        id: review.id,
-        latitude: review.latitude as number,
-        longitude: review.longitude as number,
-        title: `Review ${review.rating ? `(${review.rating}/5)` : ''}`,
-        type: "review" as const
-      }));
-    
-    console.log(`Created ${restaurantMarkers.length} restaurant markers and ${reviewMarkers.length} review markers`);
-    
-    // Update state with processed data
-    setRestaurants(processedRestaurants);
-    setMapMarkers([...restaurantMarkers, ...reviewMarkers]);
-    setGeocodingInProgress(false);
-  };
-
-  // Fetch restaurants based on user location
+  // Fetch global top reviews
   useEffect(() => {
-    const fetchRestaurantsByLocation = async (): Promise<void> => {
-      if (!location.coordinates || !isUsingLocation) return;
-
+    const fetchTopReviews = async (): Promise<void> => {
       setIsLoading(true);
       try {
-        const { latitude, longitude } = location.coordinates;
-        const response = await fetch(
-          `/api/restaurants/location?latitude=${latitude}&longitude=${longitude}&range=10`
-        );
-
+        const response = await fetch("/api/review?limit=3");
+        
         if (!response.ok) {
-          throw new Error("Failed to fetch restaurants by location");
+          throw new Error("Failed to fetch top reviews");
         }
-
+        
         const data = await response.json();
         
-        if (Array.isArray(data.restaurants)) {
-          console.log("Restaurants data fetched by location:", data.restaurants.length);
-          
-          // Process restaurants to ensure they have coordinates where possible
-          await processRestaurantsForMap(data.restaurants);
+        if (Array.isArray(data.reviews)) {
+          setTopReviews(data.reviews);
         } else {
-          console.error("Restaurants data is not an array:", data);
-          setFallbackRestaurants();
+          setTopReviews([]);
         }
-      } catch (err) {
-        console.error("Error fetching restaurants by location:", err);
-        setFallbackRestaurants();
+      } catch (error) {
+        console.error("Error fetching top reviews:", error);
+        setTopReviews([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchRestaurantsByLocation();
-  }, [location.coordinates, isUsingLocation]);
-
-  // Fetch general dashboard data
-  useEffect(() => {
-    const fetchData = async (): Promise<void> => {
-      if (isUsingLocation) return; // Skip if using location-based data
-      
-      try {
-        // Fetch general reviews
-        const reviewsResponse = await fetch("/api/review");
-        
-        if (!reviewsResponse.ok) {
-          console.error("Failed to fetch reviews:", reviewsResponse.statusText);
-          setReviews([]);
-        } else {
-          const reviewsData = await reviewsResponse.json();
-          
-          if (Array.isArray(reviewsData)) {
-            console.log("Reviews data fetched:", reviewsData.length);
-            setReviews(reviewsData as Review[]);
-          } else if (Array.isArray(reviewsData.reviews)) {
-            console.log("Reviews data fetched from nested property:", reviewsData.reviews.length);
-            setReviews(reviewsData.reviews as Review[]);
-          } else {
-            console.error("Reviews data is not an array:", reviewsData);
-            setReviews([]);
-          }
-        }
-
-        // Fetch restaurants
-        const restaurantsResponse = await fetch("/api/restaurants/location");
-        
-        if (!restaurantsResponse.ok) {
-          console.error("Failed to fetch restaurants:", restaurantsResponse.statusText);
-          setFallbackRestaurants();
-        } else {
-          const restaurantsData = await restaurantsResponse.json();
-          
-          if (Array.isArray(restaurantsData)) {
-            console.log("Restaurants data fetched:", restaurantsData.length);
-            await processRestaurantsForMap(restaurantsData as Restaurant[]);
-          } else if (Array.isArray(restaurantsData.restaurants)) {
-            console.log("Restaurants data fetched from nested property:", restaurantsData.restaurants.length);
-            await processRestaurantsForMap(restaurantsData.restaurants as Restaurant[]);
-          } else {
-            console.error("Restaurants data is not an array:", restaurantsData);
-            setFallbackRestaurants();
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setFallbackRestaurants();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [isUsingLocation]);
+    fetchTopReviews();
+  }, []);
 
   // Fetch user reviews when user data is available
   useEffect(() => {
@@ -321,7 +154,6 @@ export default function PatronDashboard(): JSX.Element {
       
       // Only proceed if authenticated
       if (status !== "authenticated") {
-        console.log("Not fetching user reviews - not authenticated");
         setIsLoadingUserReviews(false);
         return;
       }
@@ -331,38 +163,29 @@ export default function PatronDashboard(): JSX.Element {
         const userId = (session?.user as any)?.id || userData?.id;
         
         if (!userId) {
-          console.log("No user ID available for fetching reviews");
           setFetchError("No user ID available");
           setIsLoadingUserReviews(false);
           return;
         }
         
-        console.log(`Fetching reviews for user ${userId}`);
-        
-        // Updated to use the consolidated endpoint
+        // Fetch user's reviews
         const response = await fetch(`/api/review?userId=${userId}`);
         
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch user reviews: ${response.statusText} - ${errorText}`);
+          throw new Error(`Failed to fetch user reviews: ${response.statusText}`);
         }
         
         const data = await response.json();
-        console.log("User reviews API response:", data);
         
         if (Array.isArray(data.reviews)) {
           setUserReviews(data.reviews);
-          console.log(`Found ${data.reviews.length} user reviews`);
         } else {
-          console.error("User reviews data is not an array:", data);
           setUserReviews([]);
           setFetchError("Invalid review data format");
         }
       } catch (error) {
         console.error("Error fetching user reviews:", error);
         setFetchError(error instanceof Error ? error.message : "Unknown error");
-        
-        // Don't set mock data in production - just show the error
         setUserReviews([]);
       } finally {
         setIsLoadingUserReviews(false);
@@ -381,215 +204,553 @@ export default function PatronDashboard(): JSX.Element {
     window.location.href = `/review/edit/${reviewId}`;
   };
 
-  // Toggle location-based results
-  const toggleLocationServices = (): void => {
-    setIsUsingLocation(!isUsingLocation);
+  // Handle review delete
+  const handleDeleteReview = (reviewId: string): void => {
+    // Confirmation dialog
+    if (window.confirm("Are you sure you want to delete this review?")) {
+      // TODO: Implement delete functionality
+      console.log("Delete review:", reviewId);
+    }
   };
 
-  return (
-    <div className="with-navbar">
-      {/* Sidebar Navigation */}
-      <Navbar />
+  // Filter reviews based on search query
+  const filteredReviews = userReviews.filter(review => {
+    const searchText = searchQuery.toLowerCase();
+    return (
+      (review.title?.toLowerCase().includes(searchText) || false) ||
+      (review.content?.toLowerCase().includes(searchText) || false) ||
+      (review.restaurant?.toLowerCase().includes(searchText) || false)
+    );
+  });
 
-      {/* Main Content */}
-      <div className="page-content dashboard-content">
-        <h1 className="welcome-message">
-          Welcome Back, {userData?.name || "Patron"}!
-        </h1>
-
-        {/* Location services toggle */}
-        <div className="location-toggle">
-          <button 
-            className={`location-button ${isUsingLocation ? 'active' : ''}`}
-            onClick={toggleLocationServices}
+  // Render star ratings
+  const renderStars = (rating: number = 0): JSX.Element => {
+    return (
+      <div className="flex">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <span 
+            key={star} 
+            className={`${star <= rating ? 'text-yellow-400' : 'text-gray-300'}`}
           >
-            <FontAwesomeIcon icon={faLocationArrow} className="location-icon" />
-            {isUsingLocation ? 'Using Your Location' : 'Use My Location'}
-          </button>
-          {isUsingLocation && location.address && (
-            <span className="location-name">Showing results near: {location.address}</span>
-          )}
+            ★
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  // Function to get tab background color based on active state and tab name
+  const getTabColor = (tabName: string): string => {
+    if (activeTab !== tabName) return "";
+    
+    switch(tabName) {
+      case 'My Reviews':
+        return colorScheme.card1;
+      case 'Favorites':
+        return colorScheme.card2;
+      case 'Recommendations':
+        return colorScheme.card3;
+      default:
+        return colorScheme.accent;
+    }
+  };
+
+
+const getReviewCardColor = (index: number): string => {
+  const colors: string[] = [
+    "bg-[#fdf9f5]", 
+    "bg-[#fdedf6]", 
+    "bg-[#fbe9fc]", 
+    "bg-[#f1eafe]"
+  ];
+  return colors[index % colors.length] || "bg-[#faf2e8]";
+};
+
+  return (
+    <div className="min-h-screen bg-[#ffffff]">
+      {/* Background Animation */}
+      <AnimatedBackground />
+      
+      {/* Top Navigation Bar */}
+      <header className="py-4 px-6 bg-transparent">
+        <div className="container mx-auto flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center">
+            <div className="bg-[#f2d36e] rounded-full h-10 w-10 flex items-center justify-center">
+              <FontAwesomeIcon icon={faUtensils} className="text-white" />
+            </div>
+            <h1 className="ml-3 text-xl font-bold">Chow You Doing?</h1>
+          </div>
+          
+          {/* Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            <Link href="/home" className="text-gray-700 hover:text-[#f3b4eb]">Home</Link>
+            <Link href="/discover" className="text-gray-700 hover:text-[#f3b4eb]">Discover</Link>
+            <Link href="/top-rated" className="text-gray-700 hover:text-[#f3b4eb]">Top Rated</Link>
+            <Link href="/recent-reviews" className="text-gray-700 hover:text-[#f3b4eb]">Recent Reviews</Link>
+          </nav>
+          
+          {/* Search & Profile */}
+          <div className="flex items-center space-x-4">
+            <button className="text-gray-600 hover:text-[#f3b4eb] p-2">
+              <FontAwesomeIcon icon={faSearch} />
+            </button>
+            <div className="h-10 w-10 bg-[#f2d36e] rounded-full flex items-center justify-center">
+              <p className="text-white font-bold">
+                {userData?.name?.charAt(0) || "J"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      {/* Main Content */}
+      <main className="container mx-auto px-6 py-6">
+        {/* User Profile Section */}
+        <div className="flex items-center mb-8">
+          <div className="flex gap-4 items-center">
+            <div className="h-16 w-16 bg-[#f2d36e] rounded-full flex items-center justify-center">
+              <p className="text-white font-bold text-2xl">
+                {userData?.name?.charAt(0) || "J"}
+              </p>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Good morning, {userData?.name?.split(' ')[0] || "John"}!</h1>
+              <p className="text-gray-600 flex items-center">
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-500" />
+                New York, NY
+              </p>
+            </div>
+          </div>
+          
+          <Link 
+            href="/profile" 
+            className="ml-auto px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
+          >
+            Edit Profile
+          </Link>
         </div>
 
-        {/* Hot Reviews Section */}
-        <section className="hot-reviews">
-          <h2 className="section-title">
-            <FontAwesomeIcon icon={faFire} className="icon-flame" /> Hot Reviews
-          </h2>
-          <p className="section-subtitle">
-            {isUsingLocation && location.address 
-              ? `Here's some reviews from ${location.address} which have a lot of attention right now!`
-              : "Here's some reviews in your area which have a lot of attention right now!"}
-          </p>
-          
-          <div className="reviews-container">
-            {isLoading ? (
-              <p>Loading reviews...</p>
-            ) : reviews.length > 0 ? (
-              <div className="review-cards">
-                {reviews.slice(0, 3).map((review, index) => (
-                  <div className="review-card" key={review.id || index}>
-                    <div className="star-rating">
-                      <span className="star-icon">★</span>
-                      <span>{review.rating || Math.floor(Math.random() * 2) + 3}/5</span>
-                    </div>
-                    <span className="quote-decoration-left">"</span>
-                    <p className="review-text">
-                      {review.content || review.text || "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc interdum mauris justo, a fermentum lacus posuere ullamcorper. Mauris efficitur mauris mauris, sagittis lobortis sapien eleifend at."}
-                    </p>
-                    <span className="quote-decoration-right">"</span>
-                    <div className="review-card-footer">
-                      <span>{review.upvotes || 0} upvotes</span>
-                      <span>-{review.patron?.firstName || review.author || ["Lisa B.", "Jane D.", "Jamie G."][index % 3]}</span>
-                    </div>
-                    <div className="restaurant-tag">{review.restaurant || ["Popeyes - Leicester", "BKith - Leicester", "Chickstar - Leicester"][index % 3]}</div>
-                  </div>
-                ))}
+        {/* Stats Cards - Made thinner and longer */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+          <div className="bg-[#faf2e5] rounded-xl shadow-sm p-4 h-24 flex items-center">
+            <div className="flex items-center gap-4">
+              <div className="bg-[#f2d36e] rounded-full w-14 h-14 flex items-center justify-center">
+                <FontAwesomeIcon icon={faStar} className="text-xl text-[#faf2e5]" />
               </div>
-            ) : (
-              <p className="no-reviews">No reviews yet! How about writing one?</p>
-            )}
-          </div>
-        </section>
-
-        {/* Top Menus Section */}
-        <section className="top-menus">
-          <h2 className="section-title">
-            <FontAwesomeIcon icon={faStar} className="icon-star" /> Top Menus
-          </h2>
-          <p className="section-subtitle">
-            {isUsingLocation && location.address 
-              ? `Menus near ${location.address} which might catch your interest!` 
-              : "Menus which might catch your interest - based on what you've told us!"}
-          </p>
-          
-          <div className="sort-container">
-            <span>Sort By:</span>
-            <select className="sort-dropdown">
-              <option>Newest</option>
-              <option>Highest Rated</option>
-              <option>Most Popular</option>
-            </select>
+              <div>
+                <h3 className="text-gray-600 text-sm">Reviews</h3>
+                <p className="text-2xl font-bold">{userReviews.length || 24}</p>
+              </div>
+            </div>
           </div>
           
-          <div className="restaurant-list">
-            {isLoading ? (
-              <p>Loading restaurants...</p>
-            ) : restaurants.length > 0 ? (
-              <>
-                {restaurants.map((restaurant, index) => (
-                  <div className="restaurant-card" key={restaurant.id || index}>
-                    <div className="restaurant-info">
-                      <div className="restaurant-logo">
-                        <img src={`/restaurant${index + 1}.jpg`} alt="Restaurant" className="restaurant-image" />
-                      </div>
-                      <div className="restaurant-details">
-                        <h3>{restaurant.title}</h3>
-                        <p className="restaurant-category">
-                          {Array.isArray(restaurant.category) 
-                            ? restaurant.category.join(', ') 
-                            : restaurant.category || "Restaurant"}
-                        </p>
-                        <p className="restaurant-location">
-                          <FontAwesomeIcon icon={faMapMarkerAlt} className="location-pin" />
-                          {restaurant.location || "Unknown location"}
-                        </p>
-                        <p className="restaurant-description">
-                          {restaurant.detail || 
-                            (index === 0 ? 
-                              "KAI in Leicester specializes in breakfast and brunch, offering a delightful selection of American pancakes and brunch items. The spot's popular for its unique pancake mix!" : 
-                              "Fluffy Fluffy, means \"fluffy fluffy\". The UK's largest souffle pancake & dessert cafe. From breakfast to dinner, and everything in between. We aim to deliver happiness, one pancake at a time.")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="restaurant-actions">
-                      <button className="check-out-btn">Check it out!</button>
-                      <button className="write-review-btn">Write a review</button>
-                    </div>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <p>No restaurants found in your area.</p>
-            )}
+          <div className="bg-[#fdedf6] rounded-xl shadow-sm p-4 h-24 flex items-center">
+            <div className="flex items-center gap-4">
+              <div className="bg-[#f9c3c9] rounded-full w-14 h-14 flex items-center justify-center">
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xl text-[#fdedf6]" />
+              </div>
+              <div>
+                <h3 className="text-gray-600 text-sm">Restaurants Visited</h3>
+                <p className="text-2xl font-bold">42</p>
+              </div>
+            </div>
           </div>
-        </section>
+          
+          <div className="bg-[#fbe9fc] rounded-xl shadow-sm p-4 h-24 flex items-center">
+            <div className="flex items-center gap-4">
+              <div className="bg-[#f5b7ee] rounded-full w-14 h-14 flex items-center justify-center">
+                <FontAwesomeIcon icon={faUtensils} className="text-xl text-[#fbe9fc]" />
+              </div>
+              <div>
+                <h3 className="text-gray-600 text-sm">Trending</h3>
+                <p className="text-2xl font-bold">Italian</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-[#f1eafe] rounded-xl shadow-sm p-4 h-24 flex items-center">
+            <div className="flex items-center gap-4">
+              <div className="bg-[#dab9f8] rounded-full w-14 h-14 flex items-center justify-center">
+                <FontAwesomeIcon icon={faTrophy} className="text-xl text-[#f1eafe]" />
+              </div>
+              <div>
+                <h3 className="text-gray-600 text-sm">Achievements</h3>
+                <p className="text-2xl font-bold">8</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* Bottom Section: Reviews & Map */}
-        <div className="bottom-section">
-          <section className="your-reviews">
-            <h2 className="section-title">
-              <FontAwesomeIcon icon={faBookOpen} className="icon-book" /> Your Reviews
-            </h2>
-            <p className="section-subtitle">Some of your reviews are gaining traction! Have a look...</p>
+        {/* Tabs - Moved to left, smaller and different colors */}
+        <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-sm p-1 mb-8 max-w-md">
+          <div className="flex">
+            <button 
+              className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                activeTab === 'My Reviews' 
+                ? 'bg-[#faf2e8] text-black' 
+                : 'text-gray-600 hover:bg-white/50'
+              }`}onClick={() => setActiveTab('My Reviews')}
+              >
+                My Reviews
+              </button>
+              <button 
+                className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                  activeTab === 'Favorites' 
+                  ? 'bg-[#fad9ea] text-black' 
+                  : 'text-gray-600 hover:bg-white/50'
+                }`}
+                onClick={() => setActiveTab('Favorites')}
+              >
+                Favorites
+              </button>
+              <button 
+                className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                  activeTab === 'Recommendations' 
+                  ? 'bg-[#f7d1f9] text-black' 
+                  : 'text-gray-600 hover:bg-white/50'
+                }`}
+                onClick={() => setActiveTab('Recommendations')}
+              >
+                Recommendations
+              </button>
+            </div>
+          </div>
+  
+          {/* Search Bar - Only visible in My Reviews tab */}
+          {activeTab === 'My Reviews' && (
+            <div className="mb-6 max-w-md relative">
+              <input
+                type="text"
+                placeholder="Search your reviews..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-3 pl-10 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f2d36e]"
+              />
+              <FontAwesomeIcon 
+                icon={faSearch} 
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
+            </div>
+          )}
+  
+          {/* Content Area - Different based on active tab */}
+          <div className="relative z-10">
+           {/* My Reviews Tab Content */}
+{activeTab === 'My Reviews' && (
+  <div>
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-xl font-bold">Your Reviews</h2>
+      <Link 
+        href="/review" 
+        className="flex items-center gap-2 px-4 py-2 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+      >
+        <FontAwesomeIcon icon={faPlus} className="text-sm" />
+        New Review
+      </Link>
+    </div>
+    
+    {isLoadingUserReviews ? (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
+      </div>
+    ) : fetchError ? (
+      <div className="bg-red-50 p-4 rounded-xl text-red-600 mb-6">
+        <p>There was an error loading your reviews: {fetchError}</p>
+        <p className="mt-2">Please try refreshing the page.</p>
+      </div>
+    ) : filteredReviews.length > 0 ? (
+      <div className="max-h-[800px] overflow-y-auto flex flex-col gap-4 pr-4">
+        {filteredReviews.map((review, index) => (
+          <div 
+            key={review.id} 
+            className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h3 className="font-semibold">{review.restaurant || "Restaurant Name"}</h3>
+                <p className="text-sm text-gray-600">
+                  {new Date(review.date || Date.now()).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleEditReview(review.id)}
+                  className="p-2 text-gray-600 hover:text-[#f3b4eb]"
+                >
+                  <FontAwesomeIcon icon={faEdit} />
+                </button>
+                <button 
+                  onClick={() => handleDeleteReview(review.id)}
+                  className="p-2 text-gray-600 hover:text-red-500"
+                >
+                  <FontAwesomeIcon icon={faTrash} />
+                </button>
+              </div>
+            </div>
             
-            {isLoadingUserReviews ? (
-              <p>Loading your reviews...</p>
-            ) : fetchError ? (
-              <div className="error-message">
-                <p>There was an error fetching your reviews: {fetchError}</p>
-                <p>Please try refreshing the page or contact support if the issue persists.</p>
-              </div>
-            ) : userReviews.length > 0 ? (
-              <div className="review-list">
-                {userReviews.map((review, index) => (
-                  <div className="review-list-item" key={review.id || index}>
-                    <span className="review-number">{index + 1}.</span>
-                    <span className="review-title">{review.title || `Review ${index + 1}`}</span>
-                    <span className="review-date">{review.date || new Date().toLocaleDateString()}</span>
-                    <div className="review-upvotes">
-                      <span className="upvote-icon">👍</span>
-                      <span>{review.upvotes || 0} upvotes</span>
-                    </div>
-                    <button 
-                      className="edit-icon" 
-                      onClick={() => handleEditReview(review.id)}
-                    >
-                      <FontAwesomeIcon icon={faPencilAlt} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="no-reviews">No reviews yet! Start by writing one.</p>
-            )}
-          </section>
-
-          {/* Your Area (Google Maps) */}
-          <section className="your-area">
-            <h2 className="section-title">
-              <FontAwesomeIcon icon={faMapMarkerAlt} className="icon-map" /> Your Area
-            </h2>
-            <p className="section-subtitle">
-              {isUsingLocation ? "Check out restaurants and reviews near you!" : "Put it on a map! Look at the reviews near you."}
+            <div className="mb-3">
+              {renderStars(review.rating || 0)}
+            </div>
+            
+            <p className="text-gray-700 mb-3 line-clamp-3">
+              {review.content || review.text || "No review content"}
             </p>
             
-            <div className="map-container">
-              {geocodingInProgress && (
-                <div className="geocoding-overlay">
-                  <p>Processing location data...</p>
-                </div>
-              )}
-              <GoogleMapsLoader>
-                <GoogleMap 
-                  markers={mapMarkers}
-                  height="400px"
-                  defaultCenter={
-                    location.coordinates 
-                      ? { lat: location.coordinates.latitude, lng: location.coordinates.longitude } 
-                      : { lat: 51.6217, lng: -0.7478 } // Default to High Wycombe
-                  }
-                />
-              </GoogleMapsLoader>
-              {mapMarkers.length > 0 && (
-                <div className="map-stats">
-                  <p>Showing {mapMarkers.filter(m => m.type === "restaurant").length} restaurants and {mapMarkers.filter(m => m.type === "review").length} reviews</p>
-                </div>
-              )}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-1 text-sm">
+                <span className="bg-white px-2 py-1 rounded-full text-gray-600">
+                  {review.upvotes || 0} upvotes
+                </span>
+              </div>
+              <Link 
+                href={`/review/${review.id}`}
+                className="text-sm text-[#d7b6f6] hover:underline"
+              >
+                View Full Review
+              </Link>
             </div>
-          </section>
-        </div>
+          </div>
+        ))}
       </div>
+    ) : (
+      <div className="text-center py-12 bg-white/50 rounded-xl">
+        <FontAwesomeIcon icon={faEdit} className="text-4xl text-gray-300 mb-4" />
+        <h3 className="text-xl font-medium text-gray-700 mb-2">No reviews yet</h3>
+        <p className="text-gray-500 mb-6">Start sharing your dining experiences!</p>
+        <Link 
+          href="/review" 
+          className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+        >
+          Write Your First Review
+        </Link>
+      </div>
+    )}
+  </div>
+)}
+
+{/* Favorites Tab Content */}
+{activeTab === 'Favorites' && (
+  <div>
+    <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
+    
+    {/* Empty state for favorites */}
+    <div className="text-center py-12 bg-white/50 rounded-xl">
+      <FontAwesomeIcon icon={faStar} className="text-4xl text-gray-300 mb-4" />
+      <h3 className="text-xl font-medium text-gray-700 mb-2">No favorites yet</h3>
+      <p className="text-gray-500 mb-6">Save your favorite restaurants to find them quickly!</p>
+      <Link 
+        href="/patron-search" 
+        className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+      >
+        Discover Restaurants
+      </Link>
     </div>
-  );
-}
+  </div>
+)}
+
+{/* Recommendations Tab Content */}
+{activeTab === 'Recommendations' && (
+  <div>
+    <h2 className="text-xl font-bold mb-6">Recommended For You</h2>
+    
+    {/* Empty state for recommendations */}
+    <div className="text-center py-12 bg-white/50 rounded-xl">
+      <FontAwesomeIcon icon={faUtensils} className="text-4xl text-gray-300 mb-4" />
+      <h3 className="text-xl font-medium text-gray-700 mb-2">No recommendations yet</h3>
+      <p className="text-gray-500 mb-6">
+        Write reviews and browse restaurants to get personalized recommendations!
+      </p>
+      <Link 
+        href="/patron-search" 
+        className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+      >
+        Explore Restaurants
+      </Link>
+    </div>
+  </div>
+)}
+  
+            {/* Favorites Tab Content */}
+            {activeTab === 'Favorites' && (
+              <div>
+                <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Placeholder favorites since we don't have real data */}
+                  {[1, 2, 3].map((_, index) => (
+                    <div 
+                      key={index} 
+                      className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
+                          <img 
+                            src={`/restaurant${index + 1}.jpg`} 
+                            alt="Restaurant" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "https://via.placeholder.com/80";
+                            }} 
+                          />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">
+                            {["The Urban Bistro", "Coastal Kitchen", "Green Garden Cafe"][index]}
+                          </h3>
+                          <div className="flex text-yellow-400 text-sm mt-1">
+                            {"★★★★★".slice(0, 4 + (index % 2))}
+                            <span className="text-gray-300">{"★".repeat(5 - (4 + (index % 2)))}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {["American, Brunch", "Seafood, Bar", "Vegetarian, Healthy"][index]}
+                          </p>
+                          <div className="flex items-center mt-2 text-sm">
+                            <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 mr-1" />
+                            <span className="text-gray-600">
+                              {["New York, NY", "Los Angeles, CA", "Portland, OR"][index]}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+  
+            {/* Recommendations Tab Content */}
+            {activeTab === 'Recommendations' && (
+              <div>
+                <h2 className="text-xl font-bold mb-6">Recommended For You</h2>
+                
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium mb-4">Based on your taste preferences</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Sample recommended restaurants */}
+                    {[1, 2, 3].map((_, index) => (
+                      <div 
+                        key={index} 
+                        className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index + 3)}`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
+                            <img 
+                              src={`/restaurant${index + 4}.jpg`} 
+                              alt="Restaurant" 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = "https://via.placeholder.com/80";
+                              }} 
+                            />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">
+                              {["Little Italy", "Sushi Harmony", "Burger Junction"][index]}
+                            </h3>
+                            <div className="flex text-yellow-400 text-sm mt-1">
+                              {"★★★★★".slice(0, 4 + (index % 2))}
+                              <span className="text-gray-300">{"★".repeat(5 - (4 + (index % 2)))}</span>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {["Italian, Pasta", "Japanese, Sushi", "American, Burgers"][index]}
+                            </p>
+                            <div className="flex items-center mt-2 text-xs">
+                              <span className="bg-[#f2d36e]/30 text-[#D29501] px-2 py-0.5 rounded-full">
+                                {["97% match", "94% match", "91% match"][index]}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Popular in your area</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {topReviews.length > 0 ? (
+                      topReviews.map((review, index) => (
+                        <div 
+                          key={review.id} 
+                          className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                        >
+                          <h3 className="font-semibold">{review.restaurant || "Restaurant Name"}</h3>
+                          <div className="flex text-yellow-400 text-sm mt-1 mb-2">
+                            {renderStars(review.rating || 0)}
+                          </div>
+                          <p className="text-gray-700 text-sm mb-3 line-clamp-3 italic">
+                            "{review.content || review.text || "No review content"}"
+                          </p>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-500">
+                              - {review.patron?.firstName || review.author || "Anonymous"}
+                            </span>
+                            <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
+                              {review.upvotes || 0} upvotes
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      // Placeholder top reviews
+                      [1, 2, 3].map((_, index) => (
+                        <div 
+                          key={index} 
+                          className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                        >
+                          <h3 className="font-semibold">
+                            {["Delicious Bistro", "Ocean Flavors", "Veggie Delight"][index]}
+                          </h3>
+                          <div className="flex text-yellow-400 text-sm mt-1 mb-2">
+                            {"★★★★★".slice(0, 4 + (index % 2))}
+                          </div>
+                          <p className="text-gray-700 text-sm mb-3 line-clamp-3 italic">
+                            "{[
+                              "The food was absolutely incredible! The flavors were perfect and service was top-notch.",
+                              "Best seafood I've had in years. Fresh and perfectly cooked.",
+                              "Amazing vegetarian options with creative dishes that don't feel like an afterthought."
+                            ][index]}"
+                          </p>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-500">
+                              - {["Sarah J.", "Michael T.", "Jessica K."][index]}
+                            </span>
+                            <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
+                              {[42, 38, 29][index]} upvotes
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+        
+        {/* Footer */}
+        <footer className="mt-16 py-8 bg-white/20 backdrop-blur-md border-t border-gray-100">
+          <div className="container mx-auto px-6">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="flex items-center">
+                <div className="bg-[#f2d36e] rounded-full h-8 w-8 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faUtensils} className="text-sm text-white" />
+                </div>
+                <p className="ml-2 text-sm">© 2025 Chow You Doing? All rights reserved.</p>
+              </div>
+              
+              <div className="flex gap-6">
+                <Link href="/terms" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Terms of Service</Link>
+                <Link href="/privacy" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Privacy Policy</Link>
+                <Link href="/contact" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Contact Us</Link>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  }

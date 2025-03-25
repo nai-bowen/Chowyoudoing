@@ -3,15 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF, FaApple } from "react-icons/fa";
-import { Kufam, Londrina_Solid } from "next/font/google";  // Correct import
-import Image from "next/image";
+import FloatingFoodEmojis from '@/app/_components/FloatingFoodEmojis';
 
-// Importing fonts
-const kufam = Kufam({ subsets: ["latin"], weight: ["400", "500", "700"] });
-const londrinaSolid = Londrina_Solid({ subsets: ["latin"], weight: ["400"] });
-const interestOptions = [
+// Define interest options
+const interestOptions: string[] = [
   "Pizza", "Japanese", "Chinese", "Fish & Chips", "Italian",
   "Greek", "Caribbean", "American", "Sushi", "Sandwiches",
   "Dessert", "Vegan/Vegetarian", "Lebanese", "Mexican",
@@ -23,28 +21,33 @@ interface RegisterResponse {
   error?: string;
 }
 
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  interests: string[];
+}
 
-export default function RegisterPage() {
+export default function RegisterPage(): JSX.Element {
   const router = useRouter();
-  const [formData, setFormData] = useState<{
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-    interests: string[];
-  }>({
+  const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
-    interests: [],  // Initialized as an empty array
+    interests: [],
   });
   
-  
+  const [step, setStep] = useState<number>(1);
+  const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
   // Handle interest selection
-  const handleInterestToggle = (interest: string) => {
+  const handleInterestToggle = (interest: string): void => {
     setFormData((prevData) => {
       const interests = prevData.interests.includes(interest)
         ? prevData.interests.filter((item) => item !== interest)  // Remove if already selected
@@ -53,15 +56,11 @@ export default function RegisterPage() {
     });
   };
   
-  
-  const [step, setStep] = useState(1);
-  const [error, setError] = useState("");
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleContinue = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleContinue = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     const form = e.currentTarget;
 
@@ -70,16 +69,30 @@ export default function RegisterPage() {
       return;
     }
 
+    // Additional validation for step 2
+    if (step === 2) {
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match.");
+        return;
+      }
+      
+      if (formData.password.length < 6) {
+        setError("Password must be at least 6 characters long.");
+        return;
+      }
+    }
+
     setError("");
     setStep((prev) => prev + 1);
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = (): void => {
     setStep((prev) => prev - 1);
   };
 
-  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    setIsLoading(true);
     
     const payload = {
       ...formData,
@@ -102,283 +115,267 @@ export default function RegisterPage() {
       }
     } catch (err) {
       setError("An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
     }
   };
   
-  
+  // Render step indicator with only circles
+  const renderStepIndicator = (): JSX.Element => {
+    return (
+      <div className="flex justify-center mb-6 gap-6">
+        {[1, 2, 3].map((s) => (
+          <div key={s} className="flex items-center">
+            <div 
+              className={`h-4 w-4 rounded-full ${
+                s < step ? "bg-[#f2d36f]" : 
+                s === step ? "bg-[#dbbaf8]" : 
+                "bg-gray-300"
+              }`}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="flex min-h-screen overflow-hidden relative">
-      {/* Sidebar */}
-      <div className="w-1/2 bg-[#FFD879] flex flex-col justify-between p-8 relative">
-        {/* Logo in top-left */}
-        <h1
-          className={`${londrinaSolid.className} text-[35px] text-white absolute top-8 left-8`}
-        >
-          Chow You Doing?
-        </h1>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#f9ebc2] via-[#faf0f6] to-white">
+      {/* Blob decorations */}
+      <div className="fixed top-0 right-0 w-64 h-64 bg-[#FFD879]/20 rounded-full blur-3xl"></div>
+      <div className="fixed bottom-0 left-0 w-64 h-64 bg-[#FFC1B5]/20 rounded-full blur-3xl"></div>
+      <FloatingFoodEmojis />
+      
+      {/* Registration Card */}
+      <div className="w-full max-w-md bg-white/60 backdrop-blur-md rounded-3xl border border-white/30 
+                    shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
+        <div className="p-8">
+          {/* Title with gradient */}
+          <h1 className="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-[#dab9f8] to-[#f2d36f] bg-clip-text text-transparent">
+            CHOW YOU DOING
+          </h1>
 
-        {/* Image with updated margin */}
-        <div className="flex justify-start items-end h-full">
-          <Image
-            src="/assets/eat.png"
-            alt="Illustration"
-            width={662}
-            height={669}
-            className="object-contain max-w-full h-auto ml-[-4.5rem] mb-[-5rem]"
-          />
-        </div>
-      </div>
+          <p className="text-center text-[#f2d36f] mb-6">
+            CREATE YOUR FOODIE ACCOUNT
+          </p>
+          
+          {/* Step Indicator */}
+          {renderStepIndicator()}
+          
+          {/* Step text */}
+          <h3 className="text-center text-[#dbbaf8] font-medium mb-6">
+            {step === 1 ? "PERSONAL INFORMATION" : 
+             step === 2 ? "SECURE YOUR ACCOUNT" : 
+             "FOOD PREFERENCES (OPTIONAL)"}
+          </h3>
+          
+          {/* Form */}
+          <form
+            onSubmit={step === 3 ? handleRegister : handleContinue}
+            className="space-y-6"
+            noValidate
+          >
+            {step === 1 && (
+              <>
+                <div>
+                  <label htmlFor="firstName" className="block text-[#dbbaf8] font-medium mb-1">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    placeholder="Your first name"
+                    required
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                </div>
 
-      {/* Form Section */}
-      <div className="w-1/2 bg-white flex flex-col justify-center items-center px-12">
-        <h1
-          className={`${kufam.className} text-[32px] font-bold text-[#D29501]`}
-        >
-          Registration
-        </h1>
-        <h3
-          className={`${kufam.className} text-[12px] text-[#B1B1B1] font-semibold text-center mb-4`}
-        >
-          {step === 1
-            ? "First, we need to ask some General Information"
-            : step === 2
-            ? "Let's focus on security... Choose a Password"
-            : "What types of food do you like?"}
-        </h3>
+                <div>
+                  <label htmlFor="lastName" className="block text-[#dbbaf8] font-medium mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    id="lastName"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    placeholder="Your last name"
+                    required
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                </div>
 
-        {/* Progress Bar */}
-        <div className="w-full flex justify-center mb-6">
-          {[1, 2, 3].map((s) => (
-            <div
-              key={s}
-              className={`h-1 w-20 mx-2 rounded-full ${
-                step >= s ? "bg-[#FFB400]" : "bg-[#D9D9D9]"
-              }`}
-            ></div>
-          ))}
-        </div>
+                <div>
+                  <label htmlFor="email" className="block text-[#dbbaf8] font-medium mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="you@example.com"
+                    required
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                </div>
+              </>
+            )}
 
-        {/* Form */}
-        <form
-          onSubmit={step === 3 ? handleRegister : handleContinue}
-          className="w-full max-w-md space-y-4"
-          noValidate
-        >
-          {step === 1 && (
-            <>
+            {step === 2 && (
+              <>
+                <div>
+                  <label htmlFor="password" className="block text-[#dbbaf8] font-medium mb-1">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Choose a secure password"
+                      required
+                      minLength={6}
+                      className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                              focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 ml-3">
+                    At least 6 characters required
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-[#dbbaf8] font-medium mb-1">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Confirm your password"
+                      required
+                      className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                              focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
               <div>
-                <label
-                  htmlFor="firstName"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  First name
-                </label>
-                <input
-                  type="text"
-                  id="firstName"
-                  name="firstName"
-                  placeholder="your name"
-                  onChange={handleChange}
-                  required
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
+                <p className="text-gray-600 mb-4">
+                  Select your favorite food categories to help us recommend restaurants you'll love.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-2">
+                  {interestOptions.map((interest) => {
+                    const isSelected = formData.interests.includes(interest);
+                    return (
+                      <button
+                        key={interest}
+                        type="button"
+                        onClick={() => handleInterestToggle(interest)}
+                        className={`p-2 rounded-full text-sm font-medium transition-all ${
+                          isSelected
+                            ? "bg-[#dbbaf8] text-white"
+                            : "bg-white/80 border border-[#FFD879]/50 text-gray-700 hover:bg-[#FFD879]/20"
+                        }`}
+                      >
+                        {interest}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-
-              <div>
-                <label
-                  htmlFor="lastName"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  Surname
-                </label>
-                <input
-                  type="text"
-                  id="lastName"
-                  name="lastName"
-                  placeholder="your last name"
-                  onChange={handleChange}
-                  required
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
+            )}
+            
+            {error && (
+              <div className="bg-red-100 border border-red-200 text-red-600 p-3 rounded-lg">
+                {error}
               </div>
-
-              <div>
-                <label
-                  htmlFor="email"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
+            )}
+            
+            {/* Navigation Buttons */}
+            <div className={`flex ${step === 1 ? 'justify-center' : 'justify-between'} mt-6`}>
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={handlePrevious}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50"
                 >
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  placeholder="name@domain.com"
-                  onChange={handleChange}
-                  required
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-              </div>
-
-              {/* Updated Continue Button */}
+                  Back
+                </button>
+              )}
+              
               <button
                 type="submit"
-                className="w-[60%] py-2 bg-[#FFC1B5] text-white rounded-[100px] shadow-md hover:bg-[#FFB4A3] transition-all mx-auto block"
+                disabled={isLoading}
+                className={`px-6 py-3 ${
+                  step === 3 ? 'bg-[#dbbaf8]' : 'bg-[#f2d36f]'
+                } text-white font-medium rounded-full 
+                           hover:opacity-90 focus:outline-none disabled:opacity-70 ${
+                  step === 1 ? 'w-3/4' : 'w-auto'
+                }`}
               >
-                Continue
+                {isLoading 
+                  ? "Processing..." 
+                  : step === 3 
+                    ? "Create Account" 
+                    : "Continue"}
+              </button>
+            </div>
+          </form>
+          
+          {step === 1 && (
+            <>
+              <div className="flex items-center justify-between my-6">
+                <hr className="w-full border-gray-300" />
+                <p className="mx-4 text-gray-500">OR</p>
+                <hr className="w-full border-gray-300" />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => signIn("google", { callbackUrl: "/patron-dashboard" })}
+                className="w-full flex items-center justify-center gap-2 p-3 border border-gray-300 
+                         rounded-full bg-white hover:bg-gray-50"
+              >
+                <FcGoogle size={20} />
+                <span>Continue with Google</span>
               </button>
             </>
           )}
-
-          {step === 2 && (
-            <>
-              <div>
-                <label
-                  htmlFor="password"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  placeholder="Enter password"
-                  onChange={handleChange}
-                  required
-                  minLength={6}
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  placeholder="Confirm password"
-                  onChange={handleChange}
-                  required
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-              </div>
-
-              {/* Buttons for step 2 */}
-              <div className="flex justify-between">
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  className="px-6 py-3 border rounded-md text-gray-700 hover:bg-gray-100"
-                >
-                  Previous
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-[#FFC1B5] text-white rounded-md shadow-md hover:bg-[#FFB4A3]"
-                >
-                  Continue
-                </button>
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <h3 className={`${kufam.className} text-[12px] text-[#B1B1B1] font-semibold text-center mb-4`}>
-                What types of food do you like? Tell us a bit about your interests if you want! (Optional)
-              </h3>
-
-              <div className="grid grid-cols-3 gap-3 w-full max-w-md">
-                {interestOptions.map((interest) => {
-                  const isSelected = formData.interests.includes(interest);
-                  return (
-                    <button
-                      key={interest}
-                      type="button"
-                      onClick={() => handleInterestToggle(interest)}
-                      className={`p-2 rounded-md text-sm font-medium transition-all ${
-                        isSelected
-                          ? "bg-[#FFB686] text-white relative"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {interest}
-                      {isSelected && (
-                        <span className="absolute top-1 right-2 text-white font-bold text-lg">
-                          ×
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Buttons */}
-              <div className="flex justify-between mt-6">
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  className="px-6 py-3 border rounded-md text-gray-700 hover:bg-gray-100"
-                >
-                  Previous
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-[#FFC1B5] text-white rounded-md shadow-md hover:bg-[#FFB4A3]"
-                >
-                  Done
-                </button>
-              </div>
-            </>
-          )}
-
-        </form>
-
-        {error && <p className="mt-3 text-red-600">{error}</p>}
-
-        <div className="flex items-center w-full max-w-md my-6">
-          <div className="flex-grow border-t border-gray-400"></div>
-          <span className="mx-4 text-gray-600">or</span>
-          <div className="flex-grow border-t border-gray-400"></div>
         </div>
-
-        {/* Social Signup Buttons with lighter shadows and rounded corners */}
-        <div className="w-full max-w-md space-y-3">
-          <button
-            onClick={() => signIn("google")}
-            className="w-full flex items-center justify-center p-3 border rounded-[1rem] shadow hover:bg-gray-100 transition"
-          >
-            <FcGoogle size={24} className="mr-2" /> Sign up with Google
-          </button>
-          <button className="w-full flex items-center justify-center p-3 border rounded-[1rem] shadow hover:bg-gray-100 transition">
-            <FaFacebookF size={24} className="text-blue-600 mr-2" /> Sign up with Facebook
-          </button>
-          <button className="w-full flex items-center justify-center p-3 border rounded-[1rem] shadow hover:bg-gray-100 transition">
-            <FaApple size={24} className="mr-2" /> Sign up with Apple
-          </button>
+        
+        <div className="py-4 text-center border-t border-gray-200 bg-white/30">
+          <p className="text-gray-400">
+            ALREADY HAVE AN ACCOUNT?{" "}
+            <Link href="/login" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
+              SIGN IN
+            </Link>
+          </p>
         </div>
-
-        {/* Already have an account */}
-        <p className="mt-6 text-center">
-          <span
-            className={`${kufam.className} text-[15px] text-[#FFA02B] font-medium`}
-          >
-            Already have an account?{" "}
-          </span>
-          <a
-            href="/login"
-            className={`${kufam.className} text-[15px] text-[#D29501] font-bold hover:underline`}
-          >
-            Log in Here
-          </a>
-        </p>
       </div>
     </div>
   );

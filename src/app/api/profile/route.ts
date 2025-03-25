@@ -1,7 +1,27 @@
+/*eslint-disable*/
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/server/db";
+import { Prisma } from "@prisma/client";
+
+// Define types for our API responses
+interface ProfileResponse {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  username: string | null;
+  profileImage: string | null;
+  bio: string | null;
+  interests: string[];
+  _count?: {
+    reviews: number;
+    followers: number;
+    following: number;
+    favorites: number;
+  };
+}
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
@@ -16,7 +36,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Fetch the user's profile from the database
+    console.log("Fetching profile for user ID:", session.user.id);
+
+    // Fetch the user's profile from the database with counts
     const patron = await db.patron.findUnique({
       where: {
         id: session.user.id
@@ -26,34 +48,47 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         firstName: true,
         lastName: true,
         email: true,
-        profileImage: true, // This field might need to be added to your schema
-        bio: true,          // This field might need to be added to your schema
-        interests: true     // Including interests which could be useful for UI
+        username: true,
+        profileImage: true,
+        bio: true,
+        interests: true,
+        _count: {
+          select: {
+            reviews: true,
+            followers: true,
+            following: true,
+            favorites: true
+          }
+        }
       }
     });
 
     // If no user found, return error
     if (!patron) {
+      console.log("User profile not found for ID:", session.user.id);
       return NextResponse.json(
         { error: "User profile not found" },
         { status: 404 }
       );
     }
 
+    console.log("Profile found:", patron);
+
     // Format user profile data for response
-    const profileData = {
+    const profileData: ProfileResponse = {
       id: patron.id,
-      name: `${patron.firstName} ${patron.lastName}`,
-      firstName: patron.firstName,
-      lastName: patron.lastName,
+      firstName: patron.firstName || "",
+      lastName: patron.lastName || "",
       email: patron.email,
-      profileImage: patron.profileImage || null,
-      bio: patron.bio || "",
-      interests: patron.interests || []
+      username: patron.username,
+      profileImage: patron.profileImage,
+      bio: patron.bio,
+      interests: patron.interests || [],
+      _count: patron._count
     };
 
     // Return the profile data
-    return NextResponse.json({ profile: profileData });
+    return NextResponse.json(profileData);
     
   } catch (error) {
     console.error("Error fetching profile data:", error);
@@ -67,7 +102,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// Implement PUT endpoint to update profile data if needed
+// PUT endpoint to update profile data
 export async function PUT(req: NextRequest): Promise<NextResponse> {
   try {
     const session = await getServerSession(authOptions);
@@ -80,42 +115,61 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
     }
     
     // Parse request body
-    const { profileImage, bio, interests } = await req.json();
+    const updateData = await req.json();
+    console.log("Update profile request body:", updateData);
+    
+    // Extract fields that can be updated
+    const allowedFields: Prisma.PatronUpdateInput = {};
+    
+    // Only add fields that were provided in the request
+    if (updateData.username !== undefined) allowedFields.username = updateData.username;
+    if (updateData.profileImage !== undefined) allowedFields.profileImage = updateData.profileImage;
+    if (updateData.bio !== undefined) allowedFields.bio = updateData.bio;
+    if (updateData.interests !== undefined) allowedFields.interests = updateData.interests;
+    
+    console.log("Updating fields:", allowedFields);
     
     // Update the user's profile
     const updatedPatron = await db.patron.update({
       where: {
         id: session.user.id
       },
-      data: {
-        profileImage: profileImage,
-        bio: bio,
-        interests: interests
-      },
+      data: allowedFields,
       select: {
         id: true,
         firstName: true,
         lastName: true,
         email: true,
+        username: true,
         profileImage: true,
         bio: true,
-        interests: true
+        interests: true,
+        _count: {
+          select: {
+            reviews: true,
+            followers: true,
+            following: true,
+            favorites: true
+          }
+        }
       }
     });
     
-    return NextResponse.json({
-      success: true,
-      profile: {
-        id: updatedPatron.id,
-        name: `${updatedPatron.firstName} ${updatedPatron.lastName}`,
-        firstName: updatedPatron.firstName,
-        lastName: updatedPatron.lastName,
-        email: updatedPatron.email,
-        profileImage: updatedPatron.profileImage || null,
-        bio: updatedPatron.bio || "",
-        interests: updatedPatron.interests || []
-      }
-    });
+    console.log("Profile updated successfully:", updatedPatron);
+    
+    const profileResponse: ProfileResponse = {
+      id: updatedPatron.id,
+      firstName: updatedPatron.firstName || "",
+      lastName: updatedPatron.lastName || "",
+      email: updatedPatron.email,
+      username: updatedPatron.username,
+      profileImage: updatedPatron.profileImage,
+      bio: updatedPatron.bio,
+      interests: updatedPatron.interests || [],
+      _count: updatedPatron._count
+    };
+    
+    return NextResponse.json(profileResponse);
     
   } catch (error) {
     console.error("Error updating profile data:", error);
