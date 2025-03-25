@@ -1,7 +1,8 @@
 /*eslint-disable*/
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,9 +14,11 @@ import {
   faMapMarkerAlt,
   faPlus,
   faUtensils,
-  faTrophy
+  faTrophy,
+  faTimes
 } from "@fortawesome/free-solid-svg-icons";
 import AnimatedBackground from "@/app/_components/AnimatedBackground";
+import EnhancedReviewModal from "@/app/_components/EnhancedReviewModal";
 
 // Define interfaces for the types of data we'll be working with
 interface Review {
@@ -34,6 +37,14 @@ interface Review {
   };
 }
 
+interface SearchResult {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  restaurant?: string;
+}
+
 interface Restaurant {
   id: string;
   title: string;
@@ -49,6 +60,7 @@ interface UserData {
   email: string;
   id: string;
 }
+
 // Define a type for the color scheme
 interface ColorScheme {
   card1: string;
@@ -58,8 +70,59 @@ interface ColorScheme {
   accent: string;
 }
 
+// SearchResults component (adapted from the provided one)
+const SearchResults: React.FC<{
+  results: SearchResult[];
+  isLoading: boolean;
+  onSelect: (result: SearchResult) => void;
+}> = ({ results, isLoading, onSelect }) => {
+  if (isLoading) {
+    return (
+      <div className="absolute left-0 mt-2 w-full glass rounded-lg border border-white/30 z-40 overflow-hidden">
+        <div className="p-4 flex items-center justify-center">
+          <div className="flex items-center space-x-3">
+            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse"></div>
+            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (results.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="absolute right-0 mt-2 w-64 glass rounded-lg border border-white/30 z-40 overflow-hidden animate-fade-in bg-white shadow-xl">
+      <div className="max-h-72 overflow-y-auto">
+        {results.map((result) => (
+          <div
+            key={result.id}
+            onClick={() => onSelect(result)}
+            className="flex items-center p-4 hover:bg-white/50 transition-colors border-b border-gray-100/50 last:border-0 cursor-pointer"
+          >
+            <div className="flex-1">
+              <p className="text-gray-800 font-medium">{result.name}</p>
+              <div className="flex items-center justify-between mt-1">
+                {result.restaurant && (
+                  <p className="text-gray-500 text-sm">{result.restaurant}</p>
+                )}
+                <span className="ml-auto text-xs px-2 py-1 bg-yellow-100/50 text-yellow-700 rounded-full">
+                  {result.type}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function PatronDashboard(): JSX.Element {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
@@ -70,6 +133,18 @@ export default function PatronDashboard(): JSX.Element {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("My Reviews");
 
+  // New states for search functionality
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Review Modal State
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<{id: string, name: string} | null>(null);
+
   // Color scheme for UI elements
   const colorScheme: ColorScheme = {
     card1: "#fdf9f5",
@@ -78,6 +153,32 @@ export default function PatronDashboard(): JSX.Element {
     card4: "#f1eafe",
     accent: "#faf2e5"
   };
+
+  // Handle click outside of search container
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent): void {
+      if (
+        searchContainerRef.current && 
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsSearchOpen(false);
+      }
+    }
+
+    // Bind the event listener
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      // Unbind the event listener on clean up
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Focus search input when search is opened
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
 
   // Fetch user data when session is available
   useEffect(() => {
@@ -198,6 +299,51 @@ export default function PatronDashboard(): JSX.Element {
     }
   }, [session, userData, status]);
 
+  // Handle search query changes
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchTerm.length >= 2) {
+        setIsSearching(true);
+        try {
+          const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerm)}&restaurants=true&meals=false&categories=false&locations=false`);
+          if (!response.ok) throw new Error("Search failed");
+          
+          const data = await response.json();
+          
+          // Transform the data to match the SearchResult interface
+          const formattedResults: SearchResult[] = (data.results || []).map((result: any) => ({
+            id: result.id,
+            name: result.name,
+            type: result.type,
+            url: `/patron-search?q=${encodeURIComponent(result.name)}`,
+            restaurant: result.restaurant
+          }));
+          
+          setSearchResults(formattedResults);
+        } catch (error) {
+          console.error("Search error:", error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
+  // Handle opening the review modal
+  const handleOpenReviewModal = (): void => {
+    // Default to a blank restaurant initially
+    setSelectedRestaurant({
+      id: "",
+      name: ""
+    });
+    setIsReviewModalOpen(true);
+  };
+
   // Handle review edit
   const handleEditReview = (reviewId: string): void => {
     // Navigate to edit review page
@@ -211,6 +357,51 @@ export default function PatronDashboard(): JSX.Element {
       // TODO: Implement delete functionality
       console.log("Delete review:", reviewId);
     }
+  };
+
+  // Handle review modal close
+  const handleReviewModalClose = (): void => {
+    setIsReviewModalOpen(false);
+    // After closing the modal, refresh user reviews to show any new ones
+    if (status === "authenticated" && ((session?.user as any)?.id || userData?.id)) {
+      const userId = (session?.user as any)?.id || userData?.id;
+      
+      if (userId) {
+        fetch(`/api/review?userId=${userId}`)
+          .then(response => response.json())
+          .then(data => {
+            if (Array.isArray(data.reviews)) {
+              setUserReviews(data.reviews);
+            }
+          })
+          .catch(error => console.error("Error refreshing reviews:", error));
+      }
+    }
+  };
+
+  // Toggle search input visibility
+  const toggleSearch = (): void => {
+    setIsSearchOpen(!isSearchOpen);
+    if (!isSearchOpen) {
+      setSearchTerm("");
+      setSearchResults([]);
+    }
+  };
+
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setSearchTerm(e.target.value);
+  };
+
+  // Handle search result selection
+  const handleSearchResultSelect = (result: SearchResult): void => {
+    // Navigate to the patron search page with the restaurant ID
+    router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
+    
+    // Clear the search
+    setIsSearchOpen(false);
+    setSearchTerm("");
+    setSearchResults([]);
   };
 
   // Filter reviews based on search query
@@ -255,16 +446,15 @@ export default function PatronDashboard(): JSX.Element {
     }
   };
 
-
-const getReviewCardColor = (index: number): string => {
-  const colors: string[] = [
-    "bg-[#fdf9f5]", 
-    "bg-[#fdedf6]", 
-    "bg-[#fbe9fc]", 
-    "bg-[#f1eafe]"
-  ];
-  return colors[index % colors.length] || "bg-[#faf2e8]";
-};
+  const getReviewCardColor = (index: number): string => {
+    const colors: string[] = [
+      "bg-[#fdf9f5]", 
+      "bg-[#fdedf6]", 
+      "bg-[#fbe9fc]", 
+      "bg-[#f1eafe]"
+    ];
+    return colors[index % colors.length] || "bg-[#faf2e8]";
+  };
 
   return (
     <div className="min-h-screen bg-[#ffffff]">
@@ -284,17 +474,50 @@ const getReviewCardColor = (index: number): string => {
           
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/home" className="text-gray-700 hover:text-[#f3b4eb]">Home</Link>
-            <Link href="/discover" className="text-gray-700 hover:text-[#f3b4eb]">Discover</Link>
+            <Link href="/" className="text-gray-700 hover:text-[#f3b4eb]">Home</Link>
+            <Link href="/patron-dashboard" className="text-gray-700 hover:text-[#f3b4eb]">Dashboard</Link>
             <Link href="/top-rated" className="text-gray-700 hover:text-[#f3b4eb]">Top Rated</Link>
             <Link href="/recent-reviews" className="text-gray-700 hover:text-[#f3b4eb]">Recent Reviews</Link>
           </nav>
           
           {/* Search & Profile */}
           <div className="flex items-center space-x-4">
-            <button className="text-gray-600 hover:text-[#f3b4eb] p-2">
-              <FontAwesomeIcon icon={faSearch} />
-            </button>
+            {/* Search Button & Input */}
+            <div className="relative" ref={searchContainerRef}>
+              {isSearchOpen ? (
+                <div className="flex items-center bg-white rounded-full border border-gray-200 px-3 py-1 shadow-md">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search restaurants..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="w-36 sm:w-48 md:w-64 p-1 border-none focus:outline-none"
+                  />
+                  <button 
+                    onClick={toggleSearch}
+                    className="ml-2 text-gray-500 hover:text-[#f3b4eb]"
+                  >
+                    <FontAwesomeIcon icon={faTimes} />
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={toggleSearch} 
+                  className="text-gray-600 hover:text-[#f3b4eb] p-2"
+                >
+                  <FontAwesomeIcon icon={faSearch} />
+                </button>
+              )}
+              
+              {/* Search Results Dropdown */}
+              <SearchResults 
+                results={searchResults}
+                isLoading={isSearching}
+                onSelect={handleSearchResultSelect}
+              />
+            </div>
+            
             <div className="h-10 w-10 bg-[#f2d36e] rounded-full flex items-center justify-center">
               <p className="text-white font-bold">
                 {userData?.name?.charAt(0) || "J"}
@@ -390,202 +613,254 @@ const getReviewCardColor = (index: number): string => {
                 activeTab === 'My Reviews' 
                 ? 'bg-[#faf2e8] text-black' 
                 : 'text-gray-600 hover:bg-white/50'
-              }`}onClick={() => setActiveTab('My Reviews')}
-              >
-                My Reviews
-              </button>
-              <button 
-                className={`py-3 px-4 font-medium rounded-lg transition-all ${
-                  activeTab === 'Favorites' 
-                  ? 'bg-[#fad9ea] text-black' 
-                  : 'text-gray-600 hover:bg-white/50'
-                }`}
-                onClick={() => setActiveTab('Favorites')}
-              >
-                Favorites
-              </button>
-              <button 
-                className={`py-3 px-4 font-medium rounded-lg transition-all ${
-                  activeTab === 'Recommendations' 
-                  ? 'bg-[#f7d1f9] text-black' 
-                  : 'text-gray-600 hover:bg-white/50'
-                }`}
-                onClick={() => setActiveTab('Recommendations')}
-              >
-                Recommendations
-              </button>
-            </div>
+              }`}
+              onClick={() => setActiveTab('My Reviews')}
+            >
+              My Reviews
+            </button>
+            <button 
+              className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                activeTab === 'Favorites' 
+                ? 'bg-[#fad9ea] text-black' 
+                : 'text-gray-600 hover:bg-white/50'
+              }`}
+              onClick={() => setActiveTab('Favorites')}
+            >
+              Favorites
+            </button>
+            <button 
+              className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                activeTab === 'Recommendations' 
+                ? 'bg-[#f7d1f9] text-black' 
+                : 'text-gray-600 hover:bg-white/50'
+              }`}
+              onClick={() => setActiveTab('Recommendations')}
+            >
+              Recommendations
+            </button>
           </div>
+        </div>
   
-          {/* Search Bar - Only visible in My Reviews tab */}
+        {/* Search Bar - Only visible in My Reviews tab */}
+        {activeTab === 'My Reviews' && (
+          <div className="mb-6 max-w-md relative">
+            <input
+              type="text"
+              placeholder="Search your reviews..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-3 pl-10 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f2d36e]"
+            />
+            <FontAwesomeIcon 
+              icon={faSearch} 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            />
+          </div>
+        )}
+  
+        {/* Content Area - Different based on active tab */}
+        <div className="relative z-10">
+          {/* My Reviews Tab Content */}
           {activeTab === 'My Reviews' && (
-            <div className="mb-6 max-w-md relative">
-              <input
-                type="text"
-                placeholder="Search your reviews..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 pl-10 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f2d36e]"
-              />
-              <FontAwesomeIcon 
-                icon={faSearch} 
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              />
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Your Reviews</h2>
+                <button 
+                  onClick={handleOpenReviewModal}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="text-sm" />
+                  New Review
+                </button>
+              </div>
+    
+              {isLoadingUserReviews ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
+                </div>
+              ) : fetchError ? (
+                <div className="bg-red-50 p-4 rounded-xl text-red-600 mb-6">
+                  <p>There was an error loading your reviews: {fetchError}</p>
+                  <p className="mt-2">Please try refreshing the page.</p>
+                </div>
+              ) : filteredReviews.length > 0 ? (
+                <div className="max-h-[800px] overflow-y-auto flex flex-col gap-4 pr-4">
+                  {filteredReviews.map((review, index) => (
+                    <div 
+                      key={review.id} 
+                      className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold">{review.restaurant || "Restaurant Name"}</h3>
+                          <p className="text-sm text-gray-600">
+                            {new Date(review.date || Date.now()).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleEditReview(review.id)}
+                            className="p-2 text-gray-600 hover:text-[#f3b4eb]"
+                          >
+                            <FontAwesomeIcon icon={faEdit} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteReview(review.id)}
+                            className="p-2 text-gray-600 hover:text-red-500"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        {renderStars(review.rating || 0)}
+                      </div>
+                      
+                      <p className="text-gray-700 mb-3 line-clamp-3">
+                        {review.content || review.text || "No review content"}
+                      </p>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1 text-sm">
+                          <span className="bg-white px-2 py-1 rounded-full text-gray-600">
+                            {review.upvotes || 0} upvotes
+                          </span>
+                        </div>
+                        <Link 
+                          href={`/review/${review.id}`}
+                          className="text-sm text-[#d7b6f6] hover:underline"
+                        >
+                          View Full Review
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-white/50 rounded-xl">
+                  <FontAwesomeIcon icon={faEdit} className="text-4xl text-gray-300 mb-4" />
+                  <h3 className="text-xl font-medium text-gray-700 mb-2">No reviews yet</h3>
+                  <p className="text-gray-500 mb-6">Start sharing your dining experiences!</p>
+                  <Link 
+                    href="/review" 
+                    className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+                  >
+                    Write Your First Review
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Favorites Tab Content */}
+          {activeTab === 'Favorites' && (
+            <div>
+              <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
+              
+              {/* Empty state for favorites */}
+              <div className="text-center py-12 bg-white/50 rounded-xl">
+                <FontAwesomeIcon icon={faStar} className="text-4xl text-gray-300 mb-4" />
+                <h3 className="text-xl font-medium text-gray-700 mb-2">No favorites yet</h3>
+                <p className="text-gray-500 mb-6">Save your favorite restaurants to find them quickly!</p>
+                <Link 
+                  href="/patron-search" 
+                  className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+                >
+                  Discover Restaurants
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Recommendations Tab Content */}
+          {activeTab === 'Recommendations' && (
+            <div>
+              <h2 className="text-xl font-bold mb-6">Recommended For You</h2>
+              
+              {/* Empty state for recommendations */}
+              <div className="text-center py-12 bg-white/50 rounded-xl">
+                <FontAwesomeIcon icon={faUtensils} className="text-4xl text-gray-300 mb-4" />
+                <h3 className="text-xl font-medium text-gray-700 mb-2">No recommendations yet</h3>
+                <p className="text-gray-500 mb-6">
+                  Write reviews and browse restaurants to get personalized recommendations!
+                </p>
+                <Link 
+                  href="/patron-search" 
+                  className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+                >
+                  Explore Restaurants
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Favorites Tab Content (has content) */}
+          {activeTab === 'Favorites' && false && (
+            <div>
+              <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Placeholder favorites since we don't have real data */}
+                {[1, 2, 3].map((_, index) => (
+                  <div 
+                    key={index} 
+                    className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
+                        <img 
+                          src={`/restaurant${index + 1}.jpg`} 
+                          alt="Restaurant" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "https://via.placeholder.com/80";
+                          }} 
+                        />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">
+                          {["The Urban Bistro", "Coastal Kitchen", "Green Garden Cafe"][index]}
+                        </h3>
+                        <div className="flex text-yellow-400 text-sm mt-1">
+                          {"★★★★★".slice(0, 4 + (index % 2))}
+                          <span className="text-gray-300">{"★".repeat(5 - (4 + (index % 2)))}</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {["American, Brunch", "Seafood, Bar", "Vegetarian, Healthy"][index]}
+                        </p>
+                        <div className="flex items-center mt-2 text-sm">
+                          <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 mr-1" />
+                          <span className="text-gray-600">
+                            {["New York, NY", "Los Angeles, CA", "Portland, OR"][index]}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
   
-          {/* Content Area - Different based on active tab */}
-          <div className="relative z-10">
-           {/* My Reviews Tab Content */}
-{activeTab === 'My Reviews' && (
-  <div>
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-xl font-bold">Your Reviews</h2>
-      <Link 
-        href="/review" 
-        className="flex items-center gap-2 px-4 py-2 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
-      >
-        <FontAwesomeIcon icon={faPlus} className="text-sm" />
-        New Review
-      </Link>
-    </div>
-    
-    {isLoadingUserReviews ? (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
-      </div>
-    ) : fetchError ? (
-      <div className="bg-red-50 p-4 rounded-xl text-red-600 mb-6">
-        <p>There was an error loading your reviews: {fetchError}</p>
-        <p className="mt-2">Please try refreshing the page.</p>
-      </div>
-    ) : filteredReviews.length > 0 ? (
-      <div className="max-h-[800px] overflow-y-auto flex flex-col gap-4 pr-4">
-        {filteredReviews.map((review, index) => (
-          <div 
-            key={review.id} 
-            className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
-          >
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="font-semibold">{review.restaurant || "Restaurant Name"}</h3>
-                <p className="text-sm text-gray-600">
-                  {new Date(review.date || Date.now()).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => handleEditReview(review.id)}
-                  className="p-2 text-gray-600 hover:text-[#f3b4eb]"
-                >
-                  <FontAwesomeIcon icon={faEdit} />
-                </button>
-                <button 
-                  onClick={() => handleDeleteReview(review.id)}
-                  className="p-2 text-gray-600 hover:text-red-500"
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </button>
-              </div>
-            </div>
-            
-            <div className="mb-3">
-              {renderStars(review.rating || 0)}
-            </div>
-            
-            <p className="text-gray-700 mb-3 line-clamp-3">
-              {review.content || review.text || "No review content"}
-            </p>
-            
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1 text-sm">
-                <span className="bg-white px-2 py-1 rounded-full text-gray-600">
-                  {review.upvotes || 0} upvotes
-                </span>
-              </div>
-              <Link 
-                href={`/review/${review.id}`}
-                className="text-sm text-[#d7b6f6] hover:underline"
-              >
-                View Full Review
-              </Link>
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div className="text-center py-12 bg-white/50 rounded-xl">
-        <FontAwesomeIcon icon={faEdit} className="text-4xl text-gray-300 mb-4" />
-        <h3 className="text-xl font-medium text-gray-700 mb-2">No reviews yet</h3>
-        <p className="text-gray-500 mb-6">Start sharing your dining experiences!</p>
-        <Link 
-          href="/review" 
-          className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
-        >
-          Write Your First Review
-        </Link>
-      </div>
-    )}
-  </div>
-)}
-
-{/* Favorites Tab Content */}
-{activeTab === 'Favorites' && (
-  <div>
-    <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
-    
-    {/* Empty state for favorites */}
-    <div className="text-center py-12 bg-white/50 rounded-xl">
-      <FontAwesomeIcon icon={faStar} className="text-4xl text-gray-300 mb-4" />
-      <h3 className="text-xl font-medium text-gray-700 mb-2">No favorites yet</h3>
-      <p className="text-gray-500 mb-6">Save your favorite restaurants to find them quickly!</p>
-      <Link 
-        href="/patron-search" 
-        className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
-      >
-        Discover Restaurants
-      </Link>
-    </div>
-  </div>
-)}
-
-{/* Recommendations Tab Content */}
-{activeTab === 'Recommendations' && (
-  <div>
-    <h2 className="text-xl font-bold mb-6">Recommended For You</h2>
-    
-    {/* Empty state for recommendations */}
-    <div className="text-center py-12 bg-white/50 rounded-xl">
-      <FontAwesomeIcon icon={faUtensils} className="text-4xl text-gray-300 mb-4" />
-      <h3 className="text-xl font-medium text-gray-700 mb-2">No recommendations yet</h3>
-      <p className="text-gray-500 mb-6">
-        Write reviews and browse restaurants to get personalized recommendations!
-      </p>
-      <Link 
-        href="/patron-search" 
-        className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
-      >
-        Explore Restaurants
-      </Link>
-    </div>
-  </div>
-)}
-  
-            {/* Favorites Tab Content */}
-            {activeTab === 'Favorites' && (
-              <div>
-                <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
+          {/* Recommendations Tab Content (has content) */}
+          {activeTab === 'Recommendations' && false && (
+            <div>
+              <h2 className="text-xl font-bold mb-6">Recommended For You</h2>
+              
+              <div className="mb-8">
+                <h3 className="text-lg font-medium mb-4">Based on your taste preferences</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Placeholder favorites since we don't have real data */}
+                  {/* Sample recommended restaurants */}
                   {[1, 2, 3].map((_, index) => (
                     <div 
                       key={index} 
-                      className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                      className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index + 3)}`}
                     >
                       <div className="flex items-start gap-4">
                         <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
                           <img 
-                            src={`/restaurant${index + 1}.jpg`} 
+                            src={`/restaurant${index + 4}.jpg`} 
                             alt="Restaurant" 
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -596,19 +871,18 @@ const getReviewCardColor = (index: number): string => {
                         </div>
                         <div>
                           <h3 className="font-semibold">
-                            {["The Urban Bistro", "Coastal Kitchen", "Green Garden Cafe"][index]}
+                            {["Little Italy", "Sushi Harmony", "Burger Junction"][index]}
                           </h3>
                           <div className="flex text-yellow-400 text-sm mt-1">
                             {"★★★★★".slice(0, 4 + (index % 2))}
                             <span className="text-gray-300">{"★".repeat(5 - (4 + (index % 2)))}</span>
                           </div>
                           <p className="text-sm text-gray-600 mt-1">
-                            {["American, Brunch", "Seafood, Bar", "Vegetarian, Healthy"][index]}
+                            {["Italian, Pasta", "Japanese, Sushi", "American, Burgers"][index]}
                           </p>
-                          <div className="flex items-center mt-2 text-sm">
-                            <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 mr-1" />
-                            <span className="text-gray-600">
-                              {["New York, NY", "Los Angeles, CA", "Portland, OR"][index]}
+                          <div className="flex items-center mt-2 text-xs">
+                            <span className="bg-[#f2d36e]/30 text-[#D29501] px-2 py-0.5 rounded-full">
+                              {["97% match", "94% match", "91% match"][index]}
                             </span>
                           </div>
                         </div>
@@ -617,140 +891,99 @@ const getReviewCardColor = (index: number): string => {
                   ))}
                 </div>
               </div>
-            )}
-  
-            {/* Recommendations Tab Content */}
-            {activeTab === 'Recommendations' && (
+              
               <div>
-                <h2 className="text-xl font-bold mb-6">Recommended For You</h2>
-                
-                <div className="mb-8">
-                  <h3 className="text-lg font-medium mb-4">Based on your taste preferences</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Sample recommended restaurants */}
-                    {[1, 2, 3].map((_, index) => (
+                <h3 className="text-lg font-medium mb-4">Popular in your area</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {topReviews.length > 0 ? (
+                    topReviews.map((review, index) => (
                       <div 
-                        key={index} 
-                        className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index + 3)}`}
+                        key={review.id} 
+                        className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
                       >
-                        <div className="flex items-start gap-4">
-                          <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
-                            <img 
-                              src={`/restaurant${index + 4}.jpg`} 
-                              alt="Restaurant" 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = "https://via.placeholder.com/80";
-                              }} 
-                            />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold">
-                              {["Little Italy", "Sushi Harmony", "Burger Junction"][index]}
-                            </h3>
-                            <div className="flex text-yellow-400 text-sm mt-1">
-                              {"★★★★★".slice(0, 4 + (index % 2))}
-                              <span className="text-gray-300">{"★".repeat(5 - (4 + (index % 2)))}</span>
-                            </div>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {["Italian, Pasta", "Japanese, Sushi", "American, Burgers"][index]}
-                            </p>
-                            <div className="flex items-center mt-2 text-xs">
-                              <span className="bg-[#f2d36e]/30 text-[#D29501] px-2 py-0.5 rounded-full">
-                                {["97% match", "94% match", "91% match"][index]}
-                              </span>
-                            </div>
-                          </div>
+                        <h3 className="font-semibold">{review.restaurant || "Restaurant Name"}</h3>
+                        <div className="flex text-yellow-400 text-sm mt-1 mb-2">
+                          {renderStars(review.rating || 0)}
+                        </div>
+                        <p className="text-gray-700 text-sm mb-3 line-clamp-3 italic">
+                          "{review.content || review.text || "No review content"}"
+                        </p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-500">
+                            - {review.patron?.firstName || review.author || "Anonymous"}
+                          </span>
+                          <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
+                            {review.upvotes || 0} upvotes
+                          </span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Popular in your area</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {topReviews.length > 0 ? (
-                      topReviews.map((review, index) => (
-                        <div 
-                          key={review.id} 
-                          className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
-                        >
-                          <h3 className="font-semibold">{review.restaurant || "Restaurant Name"}</h3>
-                          <div className="flex text-yellow-400 text-sm mt-1 mb-2">
-                            {renderStars(review.rating || 0)}
-                          </div>
-                          <p className="text-gray-700 text-sm mb-3 line-clamp-3 italic">
-                            "{review.content || review.text || "No review content"}"
-                          </p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-500">
-                              - {review.patron?.firstName || review.author || "Anonymous"}
-                            </span>
-                            <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
-                              {review.upvotes || 0} upvotes
-                            </span>
-                          </div>
+                    ))
+                  ) : (
+                    // Placeholder top reviews
+                    [1, 2, 3].map((_, index) => (
+                      <div 
+                        key={index} 
+                        className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                      >
+                        <h3 className="font-semibold">
+                          {["Delicious Bistro", "Ocean Flavors", "Veggie Delight"][index]}
+                        </h3>
+                        <div className="flex text-yellow-400 text-sm mt-1 mb-2">
+                          {"★★★★★".slice(0, 4 + (index % 2))}
                         </div>
-                      ))
-                    ) : (
-                      // Placeholder top reviews
-                      [1, 2, 3].map((_, index) => (
-                        <div 
-                          key={index} 
-                          className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
-                        >
-                          <h3 className="font-semibold">
-                            {["Delicious Bistro", "Ocean Flavors", "Veggie Delight"][index]}
-                          </h3>
-                          <div className="flex text-yellow-400 text-sm mt-1 mb-2">
-                            {"★★★★★".slice(0, 4 + (index % 2))}
-                          </div>
-                          <p className="text-gray-700 text-sm mb-3 line-clamp-3 italic">
-                            "{[
-                              "The food was absolutely incredible! The flavors were perfect and service was top-notch.",
-                              "Best seafood I've had in years. Fresh and perfectly cooked.",
-                              "Amazing vegetarian options with creative dishes that don't feel like an afterthought."
-                            ][index]}"
-                          </p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-500">
-                              - {["Sarah J.", "Michael T.", "Jessica K."][index]}
-                            </span>
-                            <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
-                              {[42, 38, 29][index]} upvotes
-                            </span>
-                          </div>
+                        <p className="text-gray-700 text-sm mb-3 line-clamp-3 italic">
+                          "{[
+                            "The food was absolutely incredible! The flavors were perfect and service was top-notch.",
+                            "Best seafood I've had in years. Fresh and perfectly cooked.",
+                            "Amazing vegetarian options with creative dishes that don't feel like an afterthought."
+                          ][index]}"
+                        </p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-500">
+                            - {["Sarah J.", "Michael T.", "Jessica K."][index]}
+                          </span>
+                          <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
+                            {[42, 38, 29][index]} upvotes
+                          </span>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
-        </main>
-        
-        {/* Footer */}
-        <footer className="mt-16 py-8 bg-white/20 backdrop-blur-md border-t border-gray-100">
-          <div className="container mx-auto px-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="flex items-center">
-                <div className="bg-[#f2d36e] rounded-full h-8 w-8 flex items-center justify-center">
-                  <FontAwesomeIcon icon={faUtensils} className="text-sm text-white" />
-                </div>
-                <p className="ml-2 text-sm">© 2025 Chow You Doing? All rights reserved.</p>
-              </div>
-              
-              <div className="flex gap-6">
-                <Link href="/terms" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Terms of Service</Link>
-                <Link href="/privacy" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Privacy Policy</Link>
-                <Link href="/contact" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Contact Us</Link>
               </div>
             </div>
+          )}
+        </div>
+        {/* Review Modal */}
+        {selectedRestaurant && (
+          <EnhancedReviewModal
+            isOpen={isReviewModalOpen}
+            onClose={handleReviewModalClose}
+            restaurantId={selectedRestaurant.id}
+            restaurantName={selectedRestaurant.name}
+          />
+        )}
+      </main>
+      
+      {/* Footer */}
+      <footer className="mt-16 py-8 bg-white/20 backdrop-blur-md border-t border-gray-100">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center">
+              <div className="bg-[#f2d36e] rounded-full h-8 w-8 flex items-center justify-center">
+                <FontAwesomeIcon icon={faUtensils} className="text-sm text-white" />
+              </div>
+              <p className="ml-2 text-sm">© 2025 Chow You Doing? All rights reserved.</p>
+            </div>
+            
+            <div className="flex gap-6">
+              <Link href="/terms" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Terms of Service</Link>
+              <Link href="/privacy" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Privacy Policy</Link>
+              <Link href="/contact" className="text-sm text-gray-600 hover:text-[#f3b4eb]">Contact Us</Link>
+            </div>
           </div>
-        </footer>
-      </div>
-    );
-  }
+        </div>
+      </footer>
+    </div>
+  );
+}

@@ -5,7 +5,6 @@ import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Navbar from "../_components/navbar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faBookmark, faStar, faUsers, faUserPlus, faCamera, faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
