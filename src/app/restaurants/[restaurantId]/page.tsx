@@ -204,7 +204,7 @@ export default function RestaurantPage() {
   ) : (
     <p className="mt-4 text-lg">
       No reviews for this restaurant yet!{" "}
-      <Link href="/write-review" className="text-[#A90D3C] font-semibold">
+      <Link href="/review" className="text-[#A90D3C] font-semibold">
         Would you like to write one?
       </Link>
     </p>
