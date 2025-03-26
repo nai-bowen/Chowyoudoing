@@ -465,14 +465,32 @@ export default function PatronDashboard(): JSX.Element {
 
 
   // Handle review delete
-  const handleDeleteReview = (reviewId: string): void => {
+  const handleDeleteReview = async (reviewId: string): Promise<void> => {
     // Confirmation dialog
-    if (window.confirm("Are you sure you want to delete this review?")) {
-      // TODO: Implement delete functionality
-      console.log("Delete review:", reviewId);
+    if (!window.confirm("Are you sure you want to delete this review?")) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/review/${reviewId}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json() as { error: string };
+        throw new Error(errorData.error || "Failed to delete review");
+      }
+      
+      // Remove the deleted review from state
+      setUserReviews(prevReviews => prevReviews.filter(review => review.id !== reviewId));
+      
+      // Show success message (optional)
+      alert("Review deleted successfully");
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete review");
     }
   };
-
   // Handle review modal close
   const handleReviewModalClose = (): void => {
     setIsReviewModalOpen(false);
