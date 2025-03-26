@@ -6,7 +6,9 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faBookmark, faStar, faUsers, faUserPlus, faCamera, faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faBookmark, faUsers, faUserPlus, faCamera, faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import {  faStar, 
+  faEdit} from  "@fortawesome/free-regular-svg-icons";
 import Link from "next/link";
 import HomeNavbar from "../_components/Home-Navbar";
 import AnimatedBackground from "../_components/AnimatedBackground";

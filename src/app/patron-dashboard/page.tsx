@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { 
-  faStar, 
-  faEdit, 
+import {  
   faTrash, 
   faSearch,
   faMapMarkerAlt,
@@ -17,7 +15,10 @@ import {
   faTrophy,
   faTimes
 } from "@fortawesome/free-solid-svg-icons";
+import {  faStar, 
+  faEdit} from  "@fortawesome/free-regular-svg-icons";
 import AnimatedBackground from "@/app/_components/AnimatedBackground";
+import { faHeart } from "@fortawesome/free-solid-svg-icons";
 import EnhancedReviewModal from "@/app/_components/EnhancedReviewModal";
 
 // Define interfaces for the types of data we'll be working with
@@ -68,6 +69,25 @@ interface ColorScheme {
   card3: string;
   card4: string;
   accent: string;
+}
+
+interface Favorite {
+  id: string;
+  createdAt: string;
+  restaurant?: {
+    id: string;
+    title: string;
+    location: string;
+    category: string[] | string;
+  };
+  review?: {
+    id: string;
+    content: string;
+    rating: number;
+    restaurant?: {
+      title: string;
+    }
+  };
 }
 
 // SearchResults component (adapted from the provided one)
@@ -145,6 +165,10 @@ export default function PatronDashboard(): JSX.Element {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<{id: string, name: string} | null>(null);
 
+  const [favourites, setfavourites] = useState<Favorite[]>([]);
+  const [isLoadingfavourites, setIsLoadingfavourites] = useState<boolean>(true);
+  const [favouritesError, setfavouritesError] = useState<string | null>(null);
+
   // Color scheme for UI elements
   const colorScheme: ColorScheme = {
     card1: "#fdf9f5",
@@ -154,6 +178,56 @@ export default function PatronDashboard(): JSX.Element {
     accent: "#faf2e5"
   };
 
+  const fetchfavourites = async (): Promise<void> => {
+    if (status !== "authenticated") return;
+    
+    setIsLoadingfavourites(true);
+    setfavouritesError(null);
+    
+    try {
+      const response = await fetch("/api/profile/favourites");
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch favourites");
+      }
+      
+      const data = await response.json();
+      console.log("favourites data:", data);
+      setfavourites(Array.isArray(data.favourites) ? data.favourites : []);
+    } catch (error) {
+      console.error("Error fetching favourites:", error);
+      setfavouritesError(error instanceof Error ? error.message : "Unknown error");
+      setfavourites([]);
+    } finally {
+      setIsLoadingfavourites(false);
+    }
+  };
+  const handleRemoveFavorite = async (favoriteId: string): Promise<void> => {
+    if (status !== "authenticated" || !favoriteId) return;
+    
+    if (!confirm("Are you sure you want to remove this favorite?")) return;
+    
+    try {
+      const response = await fetch(`/api/profile/favourites?id=${favoriteId}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to remove favorite");
+      }
+      
+      setfavourites(prev => prev.filter(fav => fav.id !== favoriteId));
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+      // Refresh favourites on error
+      fetchfavourites();
+    }
+  };
+  useEffect(() => {
+    if (activeTab === 'favourites' && status === "authenticated") {
+      fetchfavourites();
+    }
+  }, [activeTab, status]);
   // Handle click outside of search container
   useEffect(() => {
     function handleClickOutside(event: MouseEvent): void {
@@ -437,7 +511,7 @@ export default function PatronDashboard(): JSX.Element {
     switch(tabName) {
       case 'My Reviews':
         return colorScheme.card1;
-      case 'Favorites':
+      case 'favourites':
         return colorScheme.card2;
       case 'Recommendations':
         return colorScheme.card3;
@@ -620,13 +694,13 @@ export default function PatronDashboard(): JSX.Element {
             </button>
             <button 
               className={`py-3 px-4 font-medium rounded-lg transition-all ${
-                activeTab === 'Favorites' 
+                activeTab === 'favourites' 
                 ? 'bg-[#fad9ea] text-black' 
                 : 'text-gray-600 hover:bg-white/50'
               }`}
-              onClick={() => setActiveTab('Favorites')}
+              onClick={() => setActiveTab('favourites')}
             >
-              Favorites
+              favourites
             </button>
             <button 
               className={`py-3 px-4 font-medium rounded-lg transition-all ${
@@ -753,15 +827,97 @@ export default function PatronDashboard(): JSX.Element {
             </div>
           )}
 
-          {/* Favorites Tab Content */}
-          {activeTab === 'Favorites' && (
-            <div>
-              <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
-              
-              {/* Empty state for favorites */}
+          {/* favourites Tab Content */}
+          {activeTab === 'favourites' && (
+          <div>
+            <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
+            
+            {isLoadingfavourites ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
+              </div>
+            ) : favouritesError ? (
+              <div className="bg-red-50 p-4 rounded-xl text-red-600 mb-6">
+                <p>There was an error loading your favourites: {favouritesError}</p>
+                <p className="mt-2">Please try refreshing the page.</p>
+              </div>
+            ) : favourites.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {favourites.map((favorite, index) => (
+                  <div 
+                    key={favorite.id} 
+                    className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Icon in place of an image */}
+                      <div className="w-16 h-16 bg-[#f9ebc3] rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        <FontAwesomeIcon icon={faHeart} className="text-[#f9c3c9] text-2xl" />
+                      </div>
+                      
+                      <div className="flex-1">
+                        {favorite.restaurant ? (
+                          <>
+                            <h3 className="font-semibold">
+                              {favorite.restaurant.title || "Unknown Restaurant"}
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {Array.isArray(favorite.restaurant.category) 
+                                ? favorite.restaurant.category.join(', ') 
+                                : favorite.restaurant.category || "Restaurant"}
+                            </p>
+                            <div className="flex items-center mt-2 text-sm">
+                              <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 mr-1" />
+                              <span className="text-gray-600 truncate">
+                                {favorite.restaurant.location || "Unknown location"}
+                              </span>
+                            </div>
+                          </>
+                        ) : favorite.review ? (
+                          <>
+                            <h3 className="font-semibold">
+                              {favorite.review.restaurant?.title || "Review"}
+                            </h3>
+                            <div className="mt-1">
+                              {renderStars(favorite.review.rating || 0)}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {favorite.review.content || "No content available"}
+                            </p>
+                          </>
+                        ) : (
+                          <h3 className="font-semibold">Unknown Favorite</h3>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100">
+                      <Link 
+                        href={favorite.restaurant 
+                          ? `/patron-search?id=${favorite.restaurant.id}` 
+                          : favorite.review 
+                            ? `/review/${favorite.review.id}` 
+                            : "#"
+                        }
+                        className="text-sm text-[#d7b6f6] hover:underline"
+                      >
+                        View Details
+                      </Link>
+                      <button 
+                        onClick={() => handleRemoveFavorite(favorite.id)}
+                        className="text-sm text-gray-500 hover:text-red-500 px-2 py-1 rounded-full hover:bg-red-50"
+                      >
+                        <FontAwesomeIcon icon={faTrash} className="mr-1" />
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Empty state
               <div className="text-center py-12 bg-white/50 rounded-xl">
                 <FontAwesomeIcon icon={faStar} className="text-4xl text-gray-300 mb-4" />
-                <h3 className="text-xl font-medium text-gray-700 mb-2">No favorites yet</h3>
+                <h3 className="text-xl font-medium text-gray-700 mb-2">No favourites yet</h3>
                 <p className="text-gray-500 mb-6">Save your favorite restaurants to find them quickly!</p>
                 <Link 
                   href="/patron-search" 
@@ -770,8 +926,9 @@ export default function PatronDashboard(): JSX.Element {
                   Discover Restaurants
                 </Link>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
           {/* Recommendations Tab Content */}
           {activeTab === 'Recommendations' && (
@@ -795,12 +952,12 @@ export default function PatronDashboard(): JSX.Element {
             </div>
           )}
 
-          {/* Favorites Tab Content (has content) */}
-          {activeTab === 'Favorites' && false && (
+          {/* favourites Tab Content (has content) */}
+          {activeTab === 'favourites' && false && (
             <div>
               <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Placeholder favorites since we don't have real data */}
+                {/* Placeholder favourites since we don't have real data */}
                 {[1, 2, 3].map((_, index) => (
                   <div 
                     key={index} 

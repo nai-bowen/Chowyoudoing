@@ -1,17 +1,17 @@
 /*eslint-disable*/
 "use client";
-
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronDown, faChevronUp, faHeart as faSolidHeart, faUtensils } from "@fortawesome/free-solid-svg-icons";
+import { faHeart as faRegularHeart } from "@fortawesome/free-regular-svg-icons";
 import Image from "next/image";
 import Link from "next/link";
-import ReviewModal from '../_components/ReviewModal';
-import RequestMenuModal from "../_components/RequestMenuModal";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUtensils, faChevronUp, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import Navbar from "../_components/navbar";
+import ReviewModal from '@/app/_components/ReviewModal';
+import RequestMenuModal from "@/app/_components/RequestMenuModal";
 import AnimatedBackground from "../_components/AnimatedBackground";
-
 // Define types
 interface Patron {
   firstName: string;
@@ -89,6 +89,90 @@ function RestaurantContent(): JSX.Element {
   // Carousel state
   const [carouselStart, setCarouselStart] = useState<number>(0);
   const itemsPerPage = 3; // Number of menu items to show at once
+
+  const [favourites, setfavourites] = useState<Record<string, boolean>>({});
+  const [isSubmittingFav, setIsSubmittingFav] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchfavourites();
+    }
+  }, [status]);
+  const fetchfavourites = async (): Promise<void> => {
+    if (status !== "authenticated") return;
+    
+    try {
+      const response = await fetch("/api/profile/favourites");
+      if (!response.ok) throw new Error("Failed to fetch favourites");
+      
+      const data = await response.json();
+      const favMap: Record<string, boolean> = {};
+      
+      // Create a map of restaurant IDs for O(1) lookup
+      data.favourites.forEach((fav: any) => {
+        if (fav.restaurant) {
+          favMap[fav.restaurant.id] = true;
+        }
+      });
+      
+      setfavourites(favMap);
+    } catch (error) {
+      console.error("Error fetching favourites:", error);
+    }
+  };
+
+  const toggleFavorite = async (restaurantId: string, e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
+    e.stopPropagation(); // Prevent clicking the card underneath
+    e.preventDefault(); // Prevent navigation
+    
+    if (status !== "authenticated") {
+      alert("You must be logged in to favorite restaurants.");
+      return;
+    }   // Optimistic UI update
+    setIsSubmittingFav(prev => ({ ...prev, [restaurantId]: true }));
+    
+    const isFavorite = favourites[restaurantId];
+    
+    try {
+      if (isFavorite) {
+        // Remove from favourites
+        const response = await fetch(`/api/profile/favourites?restaurantId=${restaurantId}`, {
+          method: "DELETE",
+        });
+        
+        if (!response.ok) throw new Error("Failed to remove from favourites");
+        
+        setfavourites(prev => {
+          const updated = { ...prev };
+          delete updated[restaurantId];
+          return updated;
+        });
+      } else {
+        // Add to favourites
+        const response = await fetch("/api/profile/favourites", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ restaurantId }),
+        });
+        
+        if (!response.ok) throw new Error("Failed to add to favourites");
+        
+        setfavourites(prev => ({
+          ...prev,
+          [restaurantId]: true,
+        }));
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      // Revert the optimistic update if there's an error
+      await fetchfavourites();
+    } finally {
+      setIsSubmittingFav(prev => ({ ...prev, [restaurantId]: false }));
+    }
+  };
+
 
   // Handle search query for finding restaurants
   useEffect(() => {
@@ -543,6 +627,19 @@ function RestaurantContent(): JSX.Element {
 
           {/* Content */}
           <div className="container mx-auto relative z-10">
+          <button
+      onClick={(e) => toggleFavorite(restaurant.id, e)}
+      disabled={isSubmittingFav[restaurant.id]}
+      className="absolute top-2 right-2 p-2 rounded-full bg-white/80 hover:bg-[#f5f5f5] transition-colors z-10"
+      aria-label={favourites[restaurant.id] ? "Remove from favourites" : "Add to favourites"}
+    >
+      <FontAwesomeIcon 
+        icon={favourites[restaurant.id] ? faSolidHeart : faRegularHeart} 
+        className={favourites[restaurant.id] ? "text-[#A90D3C]" : "text-gray-400"}
+        spin={isSubmittingFav[restaurant.id]}
+        size="lg"
+      />
+    </button>
             <h1 className="text-4xl font-medium text-gray-600 mb-1">{restaurant.name}</h1>
             <p className="text-gray-700 mb-8">{restaurant.address}</p>
 
