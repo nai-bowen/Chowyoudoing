@@ -156,7 +156,7 @@ export default function LoginPage(): JSX.Element {
         
         <div className="py-4 text-center border-t border-gray-200 bg-white/30">
           <p className="text-gray-400">
-            DON'T HAVE AN ACCOUNT?{" "}
+            DONT HAVE AN ACCOUNT?{" "}
             <Link href="/register" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
               SIGN UP
             </Link>

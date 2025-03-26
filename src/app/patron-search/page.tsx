@@ -12,6 +12,8 @@ import Navbar from "../_components/navbar";
 import ReviewModal from '@/app/_components/ReviewModal';
 import RequestMenuModal from "@/app/_components/RequestMenuModal";
 import AnimatedBackground from "../_components/AnimatedBackground";
+import EnhancedReviewModal from '@/app/_components/EnhancedReviewModal';
+
 // Define types
 interface Patron {
   firstName: string;
@@ -63,7 +65,8 @@ enum ModalType {
   NONE,
   READ,
   EDIT,
-  REQUEST
+  REQUEST,
+  WRITE
 }
 
 // Create a separate component for the restaurant details
@@ -372,6 +375,13 @@ function RestaurantContent(): JSX.Element {
     setReviewUpdated(true);
     closeModal();
   };
+  
+  // Handle opening the write review modal
+  const handleOpenWriteReviewModal = (): void => {
+    if (!restaurant) return;
+    
+    setModalType(ModalType.WRITE);
+  };
 
   // Handle review deletion
   const handleReviewDelete = (reviewId: string): void => {
@@ -644,11 +654,12 @@ function RestaurantContent(): JSX.Element {
             <p className="text-gray-700 mb-8">{restaurant.address}</p>
 
             <div>
-              <Link href="/review" passHref>
-                <button className="bg-white text-[#f5b7ee] px-6 py-2 rounded-full hover:bg-[#f5b7ee] hover:text-white transition-colors font-medium border border-[#f5b7ee]">
-                  Write a Review
-                </button>
-              </Link>
+              <button 
+                onClick={handleOpenWriteReviewModal}
+                className="bg-white text-[#f5b7ee] px-6 py-2 rounded-full hover:bg-[#f5b7ee] hover:text-white transition-colors font-medium border border-[#f5b7ee]"
+              >
+                Write a Review
+              </button>
             </div>
           </div>
         </div>
@@ -786,9 +797,11 @@ function RestaurantContent(): JSX.Element {
             ) : (
               <div className="text-center py-10">
                 <p className="text-gray-500">No photos available for this restaurant.</p>
-                <Link href="/review" className="text-[#dab9f8] font-medium hover:underline block mt-2">
+                <button 
+                  onClick={handleOpenWriteReviewModal}
+                  className="text-[#dab9f8] font-medium hover:underline block mt-2">
                   Be the first to upload photos in your review!
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -851,9 +864,11 @@ function RestaurantContent(): JSX.Element {
             ) : (
               <div className="text-center py-10">
                 <p className="text-gray-500">No reviews available for this restaurant.</p>
-                <Link href="/review" className="text-[#dab9f8] font-medium hover:underline block mt-2">
+                <button
+                  onClick={handleOpenWriteReviewModal}
+                  className="text-[#dab9f8] font-medium hover:underline block mt-2">
                   Be the first to write a review!
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -888,6 +903,17 @@ function RestaurantContent(): JSX.Element {
           onClose={closeModal}
         />
       )}
+      
+      {/* Write Review Modal */}
+      {modalType === ModalType.WRITE && restaurant && (
+        <EnhancedReviewModal
+          isOpen={true}
+          onClose={closeModal}
+          restaurantId={restaurant.id}
+          restaurantName={restaurant.name}
+        />
+      )}
+
     </div>
   );
 }

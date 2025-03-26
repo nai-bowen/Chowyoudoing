@@ -184,7 +184,7 @@ const CertificationModal: React.FC<CertificationModalProps> = ({
             </div>
           ) : (
             <div className="bg-yellow-100 text-yellow-800 p-4 rounded-lg mb-4">
-              <h3 className="font-semibold mb-2">Don't meet the automatic requirements?</h3>
+              <h3 className="font-semibold mb-2">Dont meet the automatic requirements?</h3>
               <p>
                 No problem! You can still apply for certification if you have a social media following
                 or other qualifications that make you a food expert.

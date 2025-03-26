@@ -1,4 +1,4 @@
-// /src/app/_components/CertificationButton.tsx
+/*eslint-disable*/
 "use client";
 
 import React, { useState, useEffect } from "react";

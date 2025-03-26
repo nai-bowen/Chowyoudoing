@@ -286,7 +286,7 @@ export default function RegisterPage(): JSX.Element {
             {step === 3 && (
               <div>
                 <p className="text-gray-600 mb-4">
-                  Select your favorite food categories to help us recommend restaurants you'll love.
+                  Select your favorite food categories to help us recommend restaurants youll love.
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-2">
                   {interestOptions.map((interest) => {

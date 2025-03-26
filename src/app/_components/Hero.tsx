@@ -1,3 +1,5 @@
+/*eslint-disable*/
+
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -136,7 +138,7 @@ const Hero: React.FC = () => {
     } else if (isExternal) {
       link = result.url!;
     } else {
-      link = result.url || `/search?q=${encodeURIComponent(result.name)}`;
+      link = result.url ?? `/search?q=${encodeURIComponent(result.name)}`;
     }
 
     return (

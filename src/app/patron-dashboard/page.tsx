@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import EditReviewModal from "@/app/_components/EditReviewModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {  
   faTrash, 
@@ -16,9 +17,8 @@ import {
   faTimes
 } from "@fortawesome/free-solid-svg-icons";
 import {  faStar, 
-  faEdit} from  "@fortawesome/free-regular-svg-icons";
+  faEdit, faHeart} from  "@fortawesome/free-regular-svg-icons";
 import AnimatedBackground from "@/app/_components/AnimatedBackground";
-import { faHeart } from "@fortawesome/free-solid-svg-icons";
 import EnhancedReviewModal from "@/app/_components/EnhancedReviewModal";
 
 // Define interfaces for the types of data we'll be working with
@@ -165,6 +165,9 @@ export default function PatronDashboard(): JSX.Element {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<{id: string, name: string} | null>(null);
 
+  const [isEditReviewModalOpen, setIsEditReviewModalOpen] = useState<boolean>(false);
+  const [selectedReviewId, setSelectedReviewId] = useState<string>("");
+
   const [favourites, setfavourites] = useState<Favorite[]>([]);
   const [isLoadingfavourites, setIsLoadingfavourites] = useState<boolean>(true);
   const [favouritesError, setfavouritesError] = useState<string | null>(null);
@@ -177,7 +180,6 @@ export default function PatronDashboard(): JSX.Element {
     card4: "#f1eafe",
     accent: "#faf2e5"
   };
-
   const fetchfavourites = async (): Promise<void> => {
     if (status !== "authenticated") return;
     
@@ -192,8 +194,16 @@ export default function PatronDashboard(): JSX.Element {
       }
       
       const data = await response.json();
-      console.log("favourites data:", data);
-      setfavourites(Array.isArray(data.favourites) ? data.favourites : []);
+      console.log("Favourites data:", data);
+      
+      // Check if data.favorites exists (note the spelling difference!)
+      if (Array.isArray(data.favorites)) {
+        setfavourites(data.favorites);
+      } else {
+        console.error("Invalid favourites format:", data);
+        setfavourites([]);
+        setfavouritesError("Invalid response format");
+      }
     } catch (error) {
       console.error("Error fetching favourites:", error);
       setfavouritesError(error instanceof Error ? error.message : "Unknown error");
@@ -202,6 +212,7 @@ export default function PatronDashboard(): JSX.Element {
       setIsLoadingfavourites(false);
     }
   };
+
   const handleRemoveFavorite = async (favoriteId: string): Promise<void> => {
     if (status !== "authenticated" || !favoriteId) return;
     
@@ -247,6 +258,40 @@ export default function PatronDashboard(): JSX.Element {
     };
   }, []);
 
+
+  const handleEditReview = (reviewId: string): void => {
+    // Instead of navigating, open the modal
+    setSelectedReviewId(reviewId);
+    setIsEditReviewModalOpen(true);
+  };
+
+  // Add this function to handle the edit modal closing
+  const handleEditModalClose = (): void => {
+    setIsEditReviewModalOpen(false);
+    setSelectedReviewId("");
+    
+    // After closing the modal, refresh user reviews to show the updated ones
+    if (status === "authenticated" && ((session?.user as any)?.id || userData?.id)) {
+      const userId = (session?.user as any)?.id || userData?.id;
+      
+      if (userId) {
+        fetch(`/api/review?userId=${userId}`)
+          .then(response => response.json())
+          .then(data => {
+            if (Array.isArray(data.reviews)) {
+              setUserReviews(data.reviews);
+            }
+          })
+          .catch(error => console.error("Error refreshing reviews:", error));
+      }
+    }
+  };
+
+  // Add this function to handle successful edits
+  const handleEditSuccess = (): void => {
+    // This will be called after a successful edit
+    console.log("Review edited successfully");
+  };
   // Focus search input when search is opened
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
@@ -418,11 +463,6 @@ export default function PatronDashboard(): JSX.Element {
     setIsReviewModalOpen(true);
   };
 
-  // Handle review edit
-  const handleEditReview = (reviewId: string): void => {
-    // Navigate to edit review page
-    window.location.href = `/review/edit/${reviewId}`;
-  };
 
   // Handle review delete
   const handleDeleteReview = (reviewId: string): void => {
@@ -700,7 +740,7 @@ export default function PatronDashboard(): JSX.Element {
               }`}
               onClick={() => setActiveTab('favourites')}
             >
-              favourites
+              Favourites
             </button>
             <button 
               className={`py-3 px-4 font-medium rounded-lg transition-all ${
@@ -860,11 +900,7 @@ export default function PatronDashboard(): JSX.Element {
                             <h3 className="font-semibold">
                               {favorite.restaurant.title || "Unknown Restaurant"}
                             </h3>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {Array.isArray(favorite.restaurant.category) 
-                                ? favorite.restaurant.category.join(', ') 
-                                : favorite.restaurant.category || "Restaurant"}
-                            </p>
+
                             <div className="flex items-center mt-2 text-sm">
                               <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 mr-1" />
                               <span className="text-gray-600 truncate">
@@ -1111,6 +1147,16 @@ export default function PatronDashboard(): JSX.Element {
             </div>
           )}
         </div>
+
+        {/* Edit Review Modal */}
+        {isEditReviewModalOpen && (
+          <EditReviewModal
+            isOpen={isEditReviewModalOpen}
+            onClose={handleEditModalClose}
+            reviewId={selectedReviewId}
+            onSuccess={handleEditSuccess}
+          />
+        )}
         {/* Review Modal */}
         {selectedRestaurant && (
           <EnhancedReviewModal

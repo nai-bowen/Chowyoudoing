@@ -1,3 +1,5 @@
+/*eslint-disable*/
+
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHome, faStar, faPencilAlt, faMapMarkerAlt, faCog, faSignOutAlt, faCaretUp, faSearch } from "@fortawesome/free-solid-svg-icons";

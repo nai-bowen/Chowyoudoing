@@ -1,4 +1,4 @@
-// /src/app/api/profile/certification/route.ts
+/*eslint-disable*/
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";

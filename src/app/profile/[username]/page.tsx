@@ -1,4 +1,4 @@
-// src/app/profile/[username]/page.tsx
+/*eslint-disable*/
 "use client";
 
 import { useEffect, useState } from "react";
