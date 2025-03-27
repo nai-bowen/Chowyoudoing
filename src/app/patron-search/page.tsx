@@ -101,6 +101,7 @@ function RestaurantContent(): JSX.Element {
       fetchfavourites();
     }
   }, [status]);
+  
   const fetchfavourites = async (): Promise<void> => {
     if (status !== "authenticated") return;
     
@@ -381,6 +382,15 @@ function RestaurantContent(): JSX.Element {
     if (!restaurant) return;
     
     setModalType(ModalType.WRITE);
+  };
+
+  // Handle successful review submission
+  const handleReviewSuccess = (): void => {
+    console.log("Review submitted successfully, refreshing data");
+    setReviewUpdated(true);
+    
+    // Automatically switch to reviews tab after submitting a review
+    setActiveTab("reviews");
   };
 
   // Handle review deletion
@@ -911,6 +921,7 @@ function RestaurantContent(): JSX.Element {
           onClose={closeModal}
           restaurantId={restaurant.id}
           restaurantName={restaurant.name}
+          onSuccess={handleReviewSuccess}
         />
       )}
 
