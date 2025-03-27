@@ -36,7 +36,7 @@ interface Review {
   asExpected?: number;
   wouldRecommend?: number;
   valueForMoney?: number;
-  imageUrl?: string | null;
+  imageUrl?: string | undefined;
   videoUrl?: string | null;
   patron?: Patron;
   userVote?: {
@@ -916,28 +916,32 @@ function RestaurantContent(): JSX.Element {
 
       {/* Read Review Modal */}
       {modalType === ModalType.READ && selectedReview && (
-    <ReviewModal 
-    review  ={{
-      id: selectedReview.id,
-      // Ensure required properties are always defined with non-null values
-      content: selectedReview.content || selectedReview.text || "", 
-      rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
-      
-      // Include all optional properties with their original values or safe defaults
-      date: selectedReview.date,
-      upvotes: selectedReview.upvotes ?? 0,
-      asExpected: selectedReview.asExpected ?? 0,
-      wouldRecommend: selectedReview.wouldRecommend ?? 0,
-      valueForMoney: selectedReview.valueForMoney ?? 0,
-      // Explicitly handle the userVote with proper typing
+        <ReviewModal 
+          review={{
+            id: selectedReview.id,
+            // Ensure required properties are always defined with non-null values
+            content: selectedReview.content || selectedReview.text || "", 
+            rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
+            
+            // Add image URL and title (menu item name)
+            imageUrl: selectedReview.imageUrl,
+            
+            // Include all optional properties with their original values or safe defaults
+            date: selectedReview.date,
+            upvotes: selectedReview.upvotes ?? 0,
+            asExpected: selectedReview.asExpected ?? 0,
+            wouldRecommend: selectedReview.wouldRecommend ?? 0,
+            valueForMoney: selectedReview.valueForMoney ?? 0,
+            
+            // Include patron information for author display
+            patron: selectedReview.patron,
 
-
-    }}
-    isOpen={true} 
-    onClose={closeModal} 
-    onVoteUpdate={handleVoteUpdate} 
-  />
-)}
+          }}
+          isOpen={true} 
+          onClose={closeModal} 
+          onVoteUpdate={handleVoteUpdate} 
+        />
+      )}
     </div>
   );
 }
