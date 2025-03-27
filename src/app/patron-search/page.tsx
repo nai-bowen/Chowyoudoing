@@ -12,7 +12,7 @@ import Navbar from "../_components/navbar";
 import ReviewModal from '@/app/_components/ReviewModal';
 import RequestMenuModal from "@/app/_components/RequestMenuModal";
 import AnimatedBackground from "../_components/AnimatedBackground";
-import EnhancedReviewModal from '@/app/_components/EnhancedReviewModal';
+import WriteReviewModal from '@/app/_components/WriteReviewModal';
 
 // Define types
 interface Patron {
@@ -906,7 +906,7 @@ function RestaurantContent(): JSX.Element {
       
       {/* Write Review Modal */}
       {modalType === ModalType.WRITE && restaurant && (
-        <EnhancedReviewModal
+        <WriteReviewModal
           isOpen={true}
           onClose={closeModal}
           restaurantId={restaurant.id}
@@ -930,6 +930,8 @@ function RestaurantContent(): JSX.Element {
       wouldRecommend: selectedReview.wouldRecommend ?? 0,
       valueForMoney: selectedReview.valueForMoney ?? 0,
       // Explicitly handle the userVote with proper typing
+
+
     }}
     isOpen={true} 
     onClose={closeModal} 

@@ -19,10 +19,17 @@ import {
 import {  faStar, 
   faEdit, faHeart} from  "@fortawesome/free-regular-svg-icons";
 import AnimatedBackground from "@/app/_components/AnimatedBackground";
-import EnhancedReviewModal from "@/app/_components/EnhancedReviewModal";
+import WriteReviewModal from "@/app/_components/WriteReviewModal";
+import ReviewModal from '@/app/_components/ReviewModal';
+
 
 // Define interfaces for the types of data we'll be working with
 interface Review {
+  userVote: { isUpvote: boolean; } | undefined;
+  imageUrl: string | undefined;
+  valueForMoney: number;
+  asExpected: number;
+  wouldRecommend: number;
   id: string;
   title?: string;
   content?: string;
@@ -164,6 +171,7 @@ export default function PatronDashboard(): JSX.Element {
 
   // Review Modal State
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState<{id: string, name: string} | null>(null);
 
   const [isEditReviewModalOpen, setIsEditReviewModalOpen] = useState<boolean>(false);
@@ -464,7 +472,37 @@ export default function PatronDashboard(): JSX.Element {
     setIsReviewModalOpen(true);
   };
 
+  const handleViewFullReview = (review: Review): void => {
+    setSelectedReview(review);
+    setIsReviewModalOpen(true);
+  };
 
+  const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boolean | null): void => {
+    // Update the reviews list with the new upvote count
+    setUserReviews(prevReviews => 
+      prevReviews.map(review => 
+        review.id === reviewId 
+          ? { 
+              ...review, 
+              upvotes: newUpvotes, 
+              userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined 
+            } 
+          : review
+      )
+    );
+
+    setTopReviews(prevReviews => 
+      prevReviews.map(review => 
+        review.id === reviewId 
+          ? { 
+              ...review, 
+              upvotes: newUpvotes, 
+              userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined 
+            } 
+          : review
+      )
+    );
+  };
   // Handle review delete
   const handleDeleteReview = async (reviewId: string): Promise<void> => {
     // Confirmation dialog
@@ -865,12 +903,12 @@ export default function PatronDashboard(): JSX.Element {
                             {review.upvotes || 0} upvotes
                           </span>
                         </div>
-                        <Link 
-                          href={`/review/${review.id}`}
-                          className="text-sm text-[#d7b6f6] hover:underline"
-                        >
-                          View Full Review
-                        </Link>
+                        <button 
+                      onClick={() => handleViewFullReview(review)}
+                      className="text-sm text-[#d7b6f6] hover:underline"
+                    >
+                      View Full Review
+                    </button>
                       </div>
                     </div>
                   ))}
@@ -1183,13 +1221,37 @@ export default function PatronDashboard(): JSX.Element {
         )}
         {/* Review Modal */}
         {selectedRestaurant && (
-          <EnhancedReviewModal
+          <WriteReviewModal
             isOpen={isReviewModalOpen}
             onClose={handleReviewModalClose}
             restaurantId={selectedRestaurant.id}
             restaurantName={selectedRestaurant.name}
           />
         )}
+
+      {selectedReview && (
+        <ReviewModal 
+          review={{
+            id: selectedReview.id,
+            // Ensure required properties are always defined with non-null values
+            content: selectedReview.content || selectedReview.text || "", 
+            rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
+            
+            // Include all optional properties with their original values or safe defaults
+            date: selectedReview.date,
+            upvotes: selectedReview.upvotes ?? 0,
+            asExpected: selectedReview.asExpected ?? 0,
+            wouldRecommend: selectedReview.wouldRecommend ?? 0,
+            valueForMoney: selectedReview.valueForMoney ?? 0,
+            imageUrl: selectedReview.imageUrl,
+            patron: selectedReview.patron,
+            userVote: selectedReview.userVote
+          }}
+          isOpen={isReviewModalOpen} 
+          onClose={handleReviewModalClose} 
+          onVoteUpdate={handleVoteUpdate} 
+        />
+      )}
       </main>
 
       {/* Footer */}

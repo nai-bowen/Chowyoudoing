@@ -30,7 +30,7 @@ interface Patron {
 }
 
 // Updated interface to accept both naming conventions
-interface EnhancedReviewModalProps {
+interface WriteReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   // Support both naming patterns
@@ -48,7 +48,7 @@ interface EnhancedReviewModalProps {
 
 type RatingType = "rating" | "asExpected" | "wouldRecommend" | "valueForMoney";
 
-const EnhancedReviewModal: React.FC<EnhancedReviewModalProps> = ({
+const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
   isOpen,
   onClose,
   // Use restaurant props with fallback to initial props
@@ -790,4 +790,4 @@ const EnhancedReviewModal: React.FC<EnhancedReviewModalProps> = ({
   );
 };
 
-export default EnhancedReviewModal;
+export default WriteReviewModal;
