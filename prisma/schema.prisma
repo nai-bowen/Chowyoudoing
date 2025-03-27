@@ -33,7 +33,7 @@ model Patron {
     email          String    @unique
     password       String
     username       String?   @unique
-    profileImage   String?   @default("default-profile.jpg")
+    profileImage   String?   @default("default-profile.png")
     bio            String?   @default("")
     interests      String[]  @default([])  // Array of food interests
     emailVerified  DateTime?

@@ -243,7 +243,7 @@ export default function PublicProfilePage(): JSX.Element {
             <div className="flex flex-col md:flex-row">
               <div className="relative w-32 h-32 mx-auto md:mx-0">
                 <Image
-                  src={profile.profileImage || "/assets/default-profile.jpg"}
+                  src={profile.profileImage || "/assets/default-profile.png"}
                   alt="Profile"
                   fill
                   className="rounded-full object-cover"

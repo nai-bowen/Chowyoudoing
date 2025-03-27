@@ -15,6 +15,7 @@ interface FormattedReview {
   text: string;
   rating: number;
   restaurant: string;
+  restaurantId: string; // Added restaurantId field
   author: string;
   asExpected: number;
   wouldRecommend: number;
@@ -121,6 +122,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       valueForMoney: true,
       imageUrl: true,
       videoUrl: true,
+      restaurantId: true, // Explicitly select restaurantId
       patron: {
         select: {
           id: true,
@@ -194,6 +196,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         restaurant: `${review.restaurant?.title ?? "Restaurant"}${
           review.restaurant?.location ? ` - ${review.restaurant.location}` : ""
         }`,
+        restaurantId: review.restaurantId || "", // Include the restaurantId
         author: review.patron
           ? `${review.patron.firstName} ${review.patron.lastName.charAt(0)}.`
           : "Anonymous",
@@ -242,6 +245,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
+// Other handlers remain unchanged...
 // POST handler for creating reviews or handling votes
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {

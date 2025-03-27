@@ -151,7 +151,7 @@ export default function ProfilePage(): JSX.Element {
         setReviews(reviewsData.reviews || []);
 
         // Fetch favorites
-        const favoritesResponse = await fetch("/api/profile/favorites");
+        const favoritesResponse = await fetch("/api/profile/favourites");
         if (!favoritesResponse.ok) {
           const errorData = await favoritesResponse.json();
           // Only throw an error if it's not just an empty favorites list

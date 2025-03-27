@@ -1,51 +1,38 @@
 /*eslint-disable*/
-
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-
-// Create a single PrismaClient instance to be reused across requests
-// This prevents connection pool exhaustion in development
-let prisma: PrismaClient;
-
-if (process.env.NODE_ENV === 'production') {
-  prisma = new PrismaClient();
-} else {
-  // In development, prevent multiple instances during hot reloading
-  if (!(global as any).prisma) {
-    (global as any).prisma = new PrismaClient();
-  }
-  prisma = (global as any).prisma;
-}
+import { db } from "@/server/db"; // Use existing db instance
 
 // Define types for search result items
 type RestaurantResult = {
   id: string;
   name: string;
   type: "Restaurant";
-  url: string;
+  url?: string;
 };
 
 type FoodItemResult = {
   id: string;
   name: string;
   type: "Food Item";
-  restaurant: string;
-  url: string;
+  restaurant?: string;
+  restaurantId?: string; // Add restaurant ID for direct linking
+  url?: string;
 };
 
 type CategoryResult = {
   id: string;
   name: string;
   type: "Category";
-  url: string;
+  url?: string;
 };
 
 type LocationResult = {
   id: string;
   name: string;
   type: "Location";
-  restaurant: string;
-  url: string;
+  restaurant?: string;
+  url?: string;
 };
 
 type SearchResult = RestaurantResult | FoodItemResult | CategoryResult | LocationResult;
@@ -54,7 +41,7 @@ type SearchResult = RestaurantResult | FoodItemResult | CategoryResult | Locatio
 type RestaurantData = {
   id: string;
   title: string;
-  url: string;
+  url?: string;
   location?: string;
 };
 
@@ -64,24 +51,11 @@ type FoodItemData = {
   name: string;
   menuSection: {
     restaurant?: {
+      id: string;
       title: string;
-      url: string;
+      url?: string;
     } | null;
   };
-};
-
-// Type for category data with selected fields
-type CategoryData = {
-  id: string;
-  category: string;
-};
-
-// Type for the location data with selected fields
-type LocationData = {
-  id: string;
-  title: string;
-  url: string;
-  location: string;
 };
 
 // Define a generic type for result processors
@@ -114,7 +88,7 @@ export async function GET(req: Request) {
         // Only include restaurant search if the filter is enabled
         if (includeRestaurants) {
             promises.push(
-                prisma.restaurant.findMany({
+                db.restaurant.findMany({
                     where: { title: { contains: query, mode: "insensitive" } },
                     select: { id: true, title: true, url: true },
                     take: limit,
@@ -126,7 +100,7 @@ export async function GET(req: Request) {
                     id: r.id,
                     name: r.title,
                     type: "Restaurant" as const,
-                    url: `/restaurants/${r.url}`,
+                    url: r.url // Use the URL if available
                 }));
                 
             resultsProcessors.push(restaurantProcessor as ResultProcessor<unknown>);
@@ -139,7 +113,7 @@ export async function GET(req: Request) {
         // Only include meals search if the filter is enabled
         if (includeMeals) {
             promises.push(
-                prisma.menuItem.findMany({
+                db.menuItem.findMany({
                     where: { name: { contains: query, mode: "insensitive" } },
                     select: { 
                         id: true, 
@@ -147,7 +121,7 @@ export async function GET(req: Request) {
                         menuSection: { 
                             select: { 
                                 restaurant: { 
-                                    select: { title: true, url: true } 
+                                    select: { id: true, title: true, url: true } 
                                 } 
                             } 
                         } 
@@ -157,13 +131,22 @@ export async function GET(req: Request) {
             );
             
             const mealProcessor: ResultProcessor<FoodItemData> = (foodItems) =>
-                foodItems.map((f) => ({
-                    id: f.id,
-                    name: f.name,
-                    type: "Food Item" as const,
-                    restaurant: f.menuSection.restaurant?.title || "Unknown Restaurant",
-                    url: `/restaurants/${f.menuSection.restaurant?.url || ""}#${f.name.replace(/\s+/g, "-").toLowerCase()}`,
-                }));
+                foodItems.map((f) => {
+                    const restaurant = f.menuSection.restaurant;
+                    
+                    // Create a proper anchor link with the menu item name
+                    const itemAnchor = f.name.replace(/\s+/g, "-").toLowerCase();
+                    
+                    return {
+                        id: f.id,
+                        name: f.name,
+                        type: "Food Item" as const,
+                        restaurant: restaurant?.title || "Unknown Restaurant",
+                        restaurantId: restaurant?.id, // Include restaurant ID for direct linking
+                        // Return the restaurant ID as this will be used in the component
+                        url: restaurant?.id || ""
+                    };
+                });
                 
             resultsProcessors.push(mealProcessor as ResultProcessor<unknown>);
         } else {
@@ -174,19 +157,20 @@ export async function GET(req: Request) {
         // Only include categories search if the filter is enabled
         if (includeCategories) {
             promises.push(
-                prisma.menuSection.findMany({
+                db.menuSection.findMany({
                     where: { category: { contains: query, mode: "insensitive" } },
                     select: { id: true, category: true },
                     take: limit,
+                    distinct: ['category'] // Only get unique categories
                 }) as Promise<QueryResult>
             );
             
-            const categoryProcessor: ResultProcessor<CategoryData> = (categories) =>
+            const categoryProcessor: ResultProcessor<any> = (categories) =>
                 categories.map((c) => ({
                     id: c.id,
                     name: c.category,
                     type: "Category" as const,
-                    url: `/reviews?category=${encodeURIComponent(c.category)}`,
+                    url: `/patron-search?category=${encodeURIComponent(c.category)}`,
                 }));
                 
             resultsProcessors.push(categoryProcessor as ResultProcessor<unknown>);
@@ -198,22 +182,22 @@ export async function GET(req: Request) {
         // Only include locations search if the filter is enabled
         if (includeLocations) {
             promises.push(
-                prisma.restaurant.findMany({
+                db.restaurant.findMany({
                     where: { location: { contains: query, mode: "insensitive" } },
                     select: { id: true, title: true, url: true, location: true },
                     take: limit,
                 }) as Promise<QueryResult>
             );
             
-            const locationProcessor: ResultProcessor<LocationData> = (locations) =>
+            const locationProcessor: ResultProcessor<any> = (locations) =>
                 locations
-                    .filter((l): l is LocationData & { location: string } => Boolean(l.location))
+                    .filter((l) => Boolean(l.location))
                     .map((l) => ({
                         id: `loc-${l.id}`,
                         name: l.location,
                         type: "Location" as const,
                         restaurant: l.title,
-                        url: `/restaurants?location=${encodeURIComponent(l.location)}`,
+                        url: `/patron-search?location=${encodeURIComponent(l.location)}`,
                     }));
                 
             resultsProcessors.push(locationProcessor as ResultProcessor<unknown>);

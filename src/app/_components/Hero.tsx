@@ -1,9 +1,8 @@
-/*eslint-disable*/
-
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import SearchResults from './SearchResults';
 
 type SearchResult = {
   id: string;
@@ -47,8 +46,8 @@ const Hero: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
-  const resultsDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Handle scroll to control dropdown visibility
   useEffect(() => {
     const handleScroll = () => {
       if (heroRef.current) {
@@ -63,6 +62,7 @@ const Hero: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Close filter dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent): void {
       if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
@@ -74,6 +74,7 @@ const Hero: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Fetch search results
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -83,6 +84,7 @@ const Hero: React.FC = () => {
     const fetchResults = async (): Promise<void> => {
       setIsSearching(true);
       try {
+        // Build query string with filters
         let queryString = `q=${encodeURIComponent(query)}`;
         queryString += `&restaurants=${filters.restaurants}`;
         queryString += `&meals=${filters.meals}`;
@@ -123,50 +125,16 @@ const Hero: React.FC = () => {
     return Object.values(filters).filter(Boolean).length;
   };
 
-  const typeColors: Record<SearchResult["type"], string> = {
-    "Restaurant": "#f9e690",
-    "Food Item": "#f9b79f",
-    "Category": "#f4a4e0",
-    "Location": "#d7a6f2",
-  };
-
-  const renderSearchResultItem = (result: SearchResult): JSX.Element => {
-    const isExternal = result.url && result.url.startsWith("http");
-    let link: string;
-    if (result.type === "Restaurant") {
-      link = `/restaurants/${result.id}`;
-    } else if (isExternal) {
-      link = result.url!;
-    } else {
-      link = result.url ?? `/search?q=${encodeURIComponent(result.name)}`;
+  // Handle closing dropdown when a result is clicked
+  const handleResultClick = (): void => {
+    setQuery("");
+    setResults([]);
+    if (inputRef.current) {
+      inputRef.current.blur();
     }
-
-    return (
-      <Link
-        key={result.id}
-        href={link}
-        target={isExternal ? "_blank" : undefined}
-        rel={isExternal ? "noopener noreferrer" : undefined}
-        className="flex items-center px-4 py-2 hover:bg-gray-100"
-      >
-        <div className="flex-1">
-          <p className="text-gray-700 font-medium">{result.name}</p>
-          <div className="flex items-center">
-            {result.restaurant && (
-              <p className="text-sm text-gray-500">{result.restaurant}</p>
-            )}
-            <span
-              className="ml-auto text-xs px-2 py-1 rounded-full font-medium"
-              style={{ backgroundColor: typeColors[result.type], color: "#4B2B10" }}
-            >
-              {result.type}
-            </span>
-          </div>
-        </div>
-      </Link>
-    );
   };
 
+  // Memoize particles for better performance
   const memoizedParticles = useMemo(() => {
     const particleCount = typeof window !== 'undefined' && window.innerWidth < 768 ? 15 : 30;
     const newParticles: Particle[] = [];
@@ -197,6 +165,7 @@ const Hero: React.FC = () => {
     ));
   }, []);
 
+  // Memoize emoji animations for better performance
   const memoizedEmojis = useMemo(() => {
     if (typeof window !== 'undefined' && window.innerWidth <= 768) return null;
 
@@ -228,9 +197,11 @@ const Hero: React.FC = () => {
 
   return (
     <section ref={heroRef} className="relative pt-16 pb-[9.375rem] md:pt-24 md:pb-[9.375rem] bg-gradient-to-b from-[#FFF9E9] to-white overflow-x-hidden">
+      {/* Background elements */}
       <div className="absolute top-20 right-10 w-24 h-24 bg-[#FFB400]/10 rounded-full -z-10"></div>
       <div className="absolute bottom-10 left-10 w-32 h-32 bg-[#F8A5A5]/10 rounded-full -z-10"></div>
 
+      {/* Animated particles and emojis */}
       {memoizedParticles}
       {memoizedEmojis}
 
@@ -245,6 +216,7 @@ const Hero: React.FC = () => {
             Discover, rate, and recommend the best meals around you—one bite at a time.
           </p>
 
+          {/* Search bar */}
           <div className="relative w-full max-w-xl">
             <div className="relative flex items-center">
               <input
@@ -258,6 +230,8 @@ const Hero: React.FC = () => {
                 className="w-full p-4 pr-20 rounded-full shadow-md text-gray-800 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FFB400]/50 focus:border-[#FFB400]"
                 aria-label="Search"
               />
+              
+              {/* Filter button */}
               <div className="absolute right-14 top-1/2 transform -translate-y-1/2" ref={filterRef}>
                 <button
                   onClick={(e) => {
@@ -276,6 +250,8 @@ const Hero: React.FC = () => {
                     </span>
                   )}
                 </button>
+                
+                {/* Filter dropdown */}
                 {showFilters && (
                   <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg border border-gray-200 z-50">
                     <div className="p-3">
@@ -297,6 +273,8 @@ const Hero: React.FC = () => {
                   </div>
                 )}
               </div>
+              
+              {/* Search icon or loading spinner */}
               <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
                 {isSearching ? (
                   <div className="w-5 h-5 border-2 border-[#FFB400] border-t-[#F1C84B] rounded-full animate-spin"></div>
@@ -318,14 +296,14 @@ const Hero: React.FC = () => {
                 )}
               </div>
             </div>
+            
+            {/* Search results dropdown */}
             {results.length > 0 && dropdownVisible && (
-              <div
-                ref={resultsDropdownRef}
-                className="absolute left-0 mt-2 w-full bg-white shadow-lg rounded-lg border border-gray-300 z-40 overflow-y-auto"
-                style={{ maxHeight: "300px" }}
-              >
-                {results.map(renderSearchResultItem)}
-              </div>
+              <SearchResults 
+                results={results} 
+                isLoading={isSearching} 
+                onResultClick={handleResultClick}
+              />
             )}
 
             <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm text-gray-500">

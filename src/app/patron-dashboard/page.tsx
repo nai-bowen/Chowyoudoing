@@ -31,6 +31,7 @@ interface Review {
   rating?: number;
   text?: string;
   restaurant?: string;
+  restaurantId?: string; // Add this field
   author?: string;
   patron?: {
     firstName: string;
@@ -824,7 +825,12 @@ export default function PatronDashboard(): JSX.Element {
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <h3 className="font-semibold">{review.restaurant || "Restaurant Name"}</h3>
+                          <Link 
+                            href={`/patron-search?id=${review.restaurantId || ""}`}
+                            className="font-semibold hover:text-[#f3b4eb]"
+                          >
+                            {review.restaurant || "Restaurant Name"}
+                          </Link>
                           <p className="text-sm text-gray-600">
                             {new Date(review.date || Date.now()).toLocaleDateString()}
                           </p>
@@ -1185,7 +1191,7 @@ export default function PatronDashboard(): JSX.Element {
           />
         )}
       </main>
-      
+
       {/* Footer */}
       <footer className="mt-16 py-8 bg-white/20 backdrop-blur-md border-t border-gray-100">
         <div className="container mx-auto px-6">

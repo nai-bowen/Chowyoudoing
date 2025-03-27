@@ -197,7 +197,7 @@ export default function EditProfilePage(): JSX.Element {
               <div className="flex flex-col items-center">
                 <div className="relative w-32 h-32 mb-2">
                   <Image
-                    src={profileImage || "/assets/default-profile.jpg"}
+                    src={profileImage || "/assets/default-profile.png"}
                     alt="Profile"
                     fill
                     className="rounded-full object-cover"
