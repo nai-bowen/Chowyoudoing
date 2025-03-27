@@ -107,6 +107,9 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
   const [successMessage, setSuccessMessage] = useState<string>("");
   const [includeLocation, setIncludeLocation] = useState<boolean>(false);
   
+  // New state for image prompt popup
+  const [showImagePrompt, setShowImagePrompt] = useState<boolean>(false);
+  
   const location = useGeolocation();
 
   // Update character count when content changes
@@ -212,6 +215,7 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       setSuccessMessage("");
       setIsSimpleMode(true);
       setIsSubmitting(false);
+      setShowImagePrompt(false);
     }
 
     return () => {
@@ -291,7 +295,8 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
+  // Function to check if form is ready to submit but missing an image
+  const handleSubmitClick = (e: React.FormEvent): void => {
     e.preventDefault();
     
     // Validate restaurant selection
@@ -311,8 +316,20 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       return;
     }
     
+    // If no image, show prompt instead of submitting
+    if (!imageUrl) {
+      setShowImagePrompt(true);
+      return;
+    }
+    
+    // Otherwise, proceed with submission
+    handleSubmit();
+  };
+
+  const handleSubmit = async (): Promise<void> => {
     setIsSubmitting(true);
     setErrorMessage("");
+    setShowImagePrompt(false);
     
     try {
       const reviewData: {
@@ -423,6 +440,37 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
     );
   };
 
+  const handleImagePromptResponse = (addImage: boolean): void => {
+    setShowImagePrompt(false);
+    
+    if (addImage) {
+      // Focus on image upload
+      if (imageUploadRef.current) {
+        imageUploadRef.current.click();
+      }
+    } else {
+      // Submit the review without an image
+      handleSubmit();
+    }
+  };
+
+  const handleContinue = (): void => {
+    // Validate basic form fields
+    if (!selectedRestaurantId && !selectedRestaurantName) {
+      setErrorMessage("Please select a restaurant");
+      return;
+    }
+    
+    if (!content.trim() || content.length < 10) {
+      setErrorMessage("Please provide a review description (at least 10 characters)");
+      return;
+    }
+
+    // If valid, show detailed options
+    setErrorMessage("");
+    setIsSimpleMode(false);
+  };
+
   if (!isOpen) return null;
 
   // Check for authentication
@@ -487,7 +535,7 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
             Share your experience at this restaurant
           </p>
           
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmitClick}>
             {/* Restaurant Search */}
             <div className="mb-4">
               <label className="block text-gray-700 mb-2">
@@ -586,204 +634,235 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
               </div>
             </div>
             
-            {/* Toggle for Simple/Detailed Mode */}
-            <div className="mb-4">
-              <button
-                type="button"
-                onClick={() => setIsSimpleMode(!isSimpleMode)}
-                className="text-sm font-medium text-blue-600 hover:text-blue-800 focus:outline-none"
-              >
-                {isSimpleMode ? "Show More Options" : "Show Fewer Options"}
-              </button>
-            </div>
-            
-            {/* Additional Options (Hidden in Simple Mode) */}
-            {!isSimpleMode && (
-              <div className="border-t pt-4 mt-2">
-                {/* Detailed Ratings */}
-                <div className="mb-6">
-                  <h3 className="font-medium text-gray-700 mb-3">Detailed Ratings</h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Was it as expected?</label>
-                      {renderStars("asExpected", asExpected, setAsExpected)}
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Would you recommend it?</label>
-                      {renderStars("wouldRecommend", wouldRecommend, setWouldRecommend)}
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Value for money</label>
-                      {renderStars("valueForMoney", valueForMoney, setValueForMoney)}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Media Uploads */}
-                <div className="mb-6">
-                  <h3 className="font-medium text-gray-700 mb-3">Add Media</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Image Upload */}
-                    <div>
-                      <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-yellow-400 transition-colors">
-                        {!imageUrl ? (
-                          <>
-                            <div className="flex justify-center mb-2">
-                              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                                <Upload size={20} />
-                              </div>
-                            </div>
-                            <p className="text-sm text-gray-500">Upload image</p>
-                            <p className="text-xs text-gray-400">Max 7MB</p>
-                            <input 
-                              type="file"
-                              ref={imageUploadRef}
-                              accept="image/*"
-                              onChange={(e) => handleUpload(e, "image")}
-                              className="hidden"
-                              disabled={isUploading}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => imageUploadRef.current?.click()}
-                              className="mt-2 px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                              disabled={isUploading}
-                            >
-                              {isUploading ? "Uploading..." : "Select Image"}
-                            </button>
-                          </>
-                        ) : (
-                          <div className="relative">
-                            <img 
-                              src={imageUrl} 
-                              alt="Preview" 
-                              className="max-h-24 mx-auto object-contain rounded-md"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setImageUrl(null)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                              aria-label="Remove image"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Video Upload */}
-                    <div>
-                      <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-yellow-400 transition-colors">
-                        {!videoUrl ? (
-                          <>
-                            <div className="flex justify-center mb-2">
-                              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                                <Upload size={20} />
-                              </div>
-                            </div>
-                            <p className="text-sm text-gray-500">Upload video</p>
-                            <p className="text-xs text-gray-400">Max 7MB</p>
-                            <input 
-                              type="file"
-                              ref={videoUploadRef}
-                              accept="video/*"
-                              onChange={(e) => handleUpload(e, "video")}
-                              className="hidden"
-                              disabled={isUploading}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => videoUploadRef.current?.click()}
-                              className="mt-2 px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                              disabled={isUploading}
-                            >
-                              {isUploading ? "Uploading..." : "Select Video"}
-                            </button>
-                          </>
-                        ) : (
-                          <div className="relative">
-                            <video 
-                              src={videoUrl} 
-                              controls 
-                              className="max-h-24 mx-auto rounded-md"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setVideoUrl(null)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                              aria-label="Remove video"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Location Permission */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
-                    <input
-                      type="checkbox"
-                      id="include-location"
-                      checked={includeLocation}
-                      onChange={(e) => setIncludeLocation(e.target.checked)}
-                      className="w-4 h-4 text-yellow-400 rounded focus:ring-2 focus:ring-yellow-400"
-                    />
-                    <div>
-                      <label htmlFor="include-location" className="text-gray-700 font-medium cursor-pointer">
-                        Include my location
-                      </label>
-                      <p className="text-sm text-gray-500">
-                        {location.loading 
-                          ? "Getting your location..." 
-                          : location.error 
-                            ? `Location error: ${location.error}` 
-                            : location.address 
-                              ? <span className="flex items-center"><MapPin size={14} className="mr-1" /> {location.address}</span> 
-                              : "Add your location to the review"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Error/Success Messages */}
+            {/* Error Message */}
             {errorMessage && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
                 {errorMessage}
               </div>
             )}
+            
+            {/* Success Message */}
             {successMessage && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md">
                 {successMessage}
               </div>
             )}
             
-            {/* Form Actions */}
-            <div className="flex justify-end space-x-4 mt-6">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 focus:outline-none"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || content.length < 10 || isUploading || (!selectedRestaurantId && !selectedRestaurantName)}
-                className="px-6 py-2 bg-yellow-400 text-white rounded-md hover:bg-yellow-500 focus:outline-none disabled:opacity-50 transition-colors"
-              >
-                {isSubmitting ? "Submitting..." : "Submit Review"}
-              </button>
-            </div>
+            {/* Form Actions - Different based on mode */}
+            {isSimpleMode ? (
+              <div className="flex justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  disabled={!content || content.length < 10 || !selectedRestaurantName}
+                  className="px-6 py-2 bg-gradient-to-r from-[#f9c3c9] to-[#dab9f8] text-white rounded-md hover:from-[#f5b7ee] hover:to-[#c9a1f0] focus:outline-none disabled:opacity-50 transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            ) : (
+              <div>
+                {/* Additional Options (Hidden in Simple Mode) */}
+                <div className="border-t pt-4 mt-2">
+                  {/* Detailed Ratings */}
+                  <div className="mb-6">
+                    <h3 className="font-medium text-gray-700 mb-3">Detailed Ratings</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Was it as expected?</label>
+                        {renderStars("asExpected", asExpected, setAsExpected)}
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Would you recommend it?</label>
+                        {renderStars("wouldRecommend", wouldRecommend, setWouldRecommend)}
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Value for money</label>
+                        {renderStars("valueForMoney", valueForMoney, setValueForMoney)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Media Uploads */}
+                  <div className="mb-6">
+                    <h3 className="font-medium text-gray-700 mb-3">Add Media</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Image Upload */}
+                      <div>
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-yellow-400 transition-colors">
+                          {!imageUrl ? (
+                            <>
+                              <div className="flex justify-center mb-2">
+                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                                  <Upload size={20} />
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-500">Upload image</p>
+                              <p className="text-xs text-gray-400">Max 7MB</p>
+                              <input 
+                                type="file"
+                                ref={imageUploadRef}
+                                accept="image/*"
+                                onChange={(e) => handleUpload(e, "image")}
+                                className="hidden"
+                                disabled={isUploading}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => imageUploadRef.current?.click()}
+                                className="mt-2 px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                                disabled={isUploading}
+                              >
+                                {isUploading ? "Uploading..." : "Select Image"}
+                              </button>
+                            </>
+                          ) : (
+                            <div className="relative">
+                              <img 
+                                src={imageUrl} 
+                                alt="Preview" 
+                                className="max-h-24 mx-auto object-contain rounded-md"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setImageUrl(null)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                                aria-label="Remove image"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Video Upload */}
+                      <div>
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-yellow-400 transition-colors">
+                          {!videoUrl ? (
+                            <>
+                              <div className="flex justify-center mb-2">
+                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                                  <Upload size={20} />
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-500">Upload video</p>
+                              <p className="text-xs text-gray-400">Max 7MB</p>
+                              <input 
+                                type="file"
+                                ref={videoUploadRef}
+                                accept="video/*"
+                                onChange={(e) => handleUpload(e, "video")}
+                                className="hidden"
+                                disabled={isUploading}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => videoUploadRef.current?.click()}
+                                className="mt-2 px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                                disabled={isUploading}
+                              >
+                                {isUploading ? "Uploading..." : "Select Video"}
+                              </button>
+                            </>
+                          ) : (
+                            <div className="relative">
+                              <video 
+                                src={videoUrl} 
+                                controls 
+                                className="max-h-24 mx-auto rounded-md"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setVideoUrl(null)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                                aria-label="Remove video"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Location Permission */}
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
+                      <input
+                        type="checkbox"
+                        id="include-location"
+                        checked={includeLocation}
+                        onChange={(e) => setIncludeLocation(e.target.checked)}
+                        className="w-4 h-4 text-yellow-400 rounded focus:ring-2 focus:ring-yellow-400"
+                      />
+                      <div>
+                        <label htmlFor="include-location" className="text-gray-700 font-medium cursor-pointer">
+                          Include my location
+                        </label>
+                        <p className="text-sm text-gray-500">
+                          {location.loading 
+                            ? "Getting your location..." 
+                            : location.error 
+                              ? `Location error: ${location.error}` 
+                              : location.address 
+                                ? <span className="flex items-center"><MapPin size={14} className="mr-1" /> {location.address}</span> 
+                                : "Add your location to the review"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Submit Button */}
+                <div className="flex justify-end space-x-4 mt-6">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 text-gray-700 hover:text-gray-900 focus:outline-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || content.length < 10 || isUploading || (!selectedRestaurantId && !selectedRestaurantName)}
+                    className="px-6 py-2 bg-gradient-to-r from-[#f9c3c9] to-[#dab9f8] text-white rounded-md hover:from-[#f5b7ee] hover:to-[#c9a1f0] focus:outline-none disabled:opacity-50 transition-colors"
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit Review"}
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
+          
+          {/* Image Prompt Popup */}
+          {showImagePrompt && (
+            <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
+                <h2 className="text-2xl font-bold text-[#f5b7ee]">Add an Image?</h2>
+                <p className="mt-4 text-gray-600">
+                  We love reviews with images! They help other users get a better feel for the restaurant and food.
+                </p>
+                <div className="mt-6 flex justify-center space-x-4">
+                  <button 
+                    onClick={() => handleImagePromptResponse(false)}
+                    className="px-6 py-2 bg-[#f9c3c9] text-white rounded-full hover:bg-[#f5b7ee] transition"
+                  >
+                    Submit Anyway
+                  </button>
+                  <button 
+                    onClick={() => handleImagePromptResponse(true)}
+                    className="px-6 py-2 bg-[#dab9f8] text-white rounded-full hover:bg-[#c9a1f0] transition"
+                  >
+                    Add an Image
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
