@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 
-// Define item type to avoid TypeScript errors
+// Define comprehensive types
 interface MenuItem {
   id: string;
   name: string;
   price: string;
   category: string;
   description: string | null;
+  reviewCount: number;  // Add this to track number of reviews
+  reviews?: Array<{     // Optional reviews array
+    id: string;
+    content: string;
+    rating: number;
+  }>;
 }
 
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ restaurantId: string }> }
 ): Promise<NextResponse> {
-  const { restaurantId } = await context.params;  // Await in case params is a Promise
+  const { restaurantId } = await context.params;
 
   try {
-    // Find all menu sections for this restaurant
     const menuSections = await db.menuSection.findMany({
       where: { restaurantId },
       include: {
@@ -26,7 +31,15 @@ export async function GET(
             id: true,
             name: true,
             price: true,
-            description: true
+            description: true,
+            reviews: {
+              select: {
+                id: true,
+                content: true,
+                rating: true,
+                upvotes: true
+              }
+            }
           }
         }
       },
@@ -46,14 +59,16 @@ export async function GET(
         itemsByCategory[category] = [];
       }
       
-      // Process items in this section
+      // Process items in this section with reviews data
       for (const item of section.items) {
         const formattedItem: MenuItem = {
           id: item.id,
           name: item.name,
           price: item.price,
           category,
-          description: item.description
+          description: item.description,
+          reviewCount: item.reviews ? item.reviews.length : 0,
+          reviews: item.reviews
         };
 
         allItems.push(formattedItem);

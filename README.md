@@ -952,3 +952,216 @@ fyp_cyd
 └─ tsconfig.json
 
 ```
+```
+fyp_cyd
+├─ .eslintrc.cjs
+├─ next.config.js
+├─ package-lock.json
+├─ package.json
+├─ postcss.config.js
+├─ prettier.config.js
+├─ prisma
+│  ├─ migrations
+│  │  ├─ 20250116211614_rename_user_to_patron
+│  │  │  └─ migration.sql
+│  │  ├─ 20250203180657_add_restaurant_menu_models
+│  │  │  └─ migration.sql
+│  │  ├─ 20250205201227_add_interests_array
+│  │  │  └─ migration.sql
+│  │  ├─ 20250207124526_add_interest_to_menu
+│  │  │  └─ migration.sql
+│  │  ├─ 20250207125429_add_url_to_restaurant
+│  │  │  └─ migration.sql
+│  │  ├─ 20250207131132_add_reviews_and_upvotes
+│  │  │  └─ migration.sql
+│  │  ├─ 20250225175045_add_category_to_restaurant
+│  │  │  └─ migration.sql
+│  │  ├─ 20250225182424_update_restaurant_categories
+│  │  │  └─ migration.sql
+│  │  ├─ 20250226134538_add_review_fields
+│  │  │  └─ migration.sql
+│  │  ├─ 20250227161946_add_menu_item_id
+│  │  │  └─ migration.sql
+│  │  ├─ 20250303131850_add_longlat_formaps
+│  │  │  └─ migration.sql
+│  │  ├─ 20250303163442_add_votes
+│  │  │  └─ migration.sql
+│  │  ├─ 20250316151937_add_profile_features
+│  │  │  └─ migration.sql
+│  │  ├─ 20250319200314_add_certified_foodie
+│  │  │  └─ migration.sql
+│  │  ├─ 20250321145333_add_restaurateur_model
+│  │  │  └─ migration.sql
+│  │  ├─ 20250327172936_add_restaurateur_model
+│  │  │  └─ migration.sql
+│  │  └─ migration_lock.toml
+│  └─ schema.prisma
+├─ public
+│  ├─ assets
+│  │  ├─ &kith.jpg
+│  │  ├─ background_3blur.png
+│  │  ├─ background_cta.svg
+│  │  ├─ background_ssr.svg
+│  │  ├─ chickanos.jpg
+│  │  ├─ cyd_emblem.png
+│  │  ├─ cyd_fullLogo.png
+│  │  ├─ default-profile.png
+│  │  ├─ eat.png
+│  │  ├─ fast-food.png
+│  │  ├─ good-review.png
+│  │  ├─ home_layer1.svg
+│  │  ├─ home_layer2.svg
+│  │  ├─ meal.png
+│  │  ├─ popeyes.jpg
+│  │  └─ rating.png
+│  └─ favicon.ico
+├─ README.md
+├─ src
+│  ├─ app
+│  │  ├─ api
+│  │  │  ├─ auth
+│  │  │  │  ├─ login
+│  │  │  │  │  └─ route.ts
+│  │  │  │  ├─ register
+│  │  │  │  │  └─ route.ts
+│  │  │  │  ├─ restaurant-register
+│  │  │  │  │  └─ route.ts
+│  │  │  │  └─ [...nextauth]
+│  │  │  │     └─ route.ts
+│  │  │  ├─ profile
+│  │  │  │  ├─ certification
+│  │  │  │  │  └─ route.ts
+│  │  │  │  ├─ favourites
+│  │  │  │  │  └─ route.ts
+│  │  │  │  ├─ follow
+│  │  │  │  │  └─ route.ts
+│  │  │  │  ├─ patron
+│  │  │  │  │  └─ route.ts
+│  │  │  │  └─ route.ts
+│  │  │  ├─ restaurants
+│  │  │  │  └─ [restaurantId]
+│  │  │  │     ├─ menu-items
+│  │  │  │     │  └─ route.ts
+│  │  │  │     └─ route.ts
+│  │  │  ├─ review
+│  │  │  │  ├─ route.ts
+│  │  │  │  └─ [id]
+│  │  │  │     ├─ edit
+│  │  │  │     │  └─ route.ts
+│  │  │  │     └─ route.ts
+│  │  │  ├─ scraper
+│  │  │  │  └─ route.ts
+│  │  │  ├─ search
+│  │  │  │  └─ route.ts
+│  │  │  ├─ send-email
+│  │  │  │  └─ route.ts
+│  │  │  ├─ trpc
+│  │  │  │  └─ [trpc]
+│  │  │  │     └─ route.ts
+│  │  │  └─ upload
+│  │  │     └─ route.ts
+│  │  ├─ layout.tsx
+│  │  ├─ login
+│  │  │  └─ page.tsx
+│  │  ├─ middleware
+│  │  │  └─ adminAuth.ts
+│  │  ├─ page.tsx
+│  │  ├─ patron-dashboard
+│  │  │  └─ page.tsx
+│  │  ├─ patron-search
+│  │  │  └─ page.tsx
+│  │  ├─ profile
+│  │  │  ├─ edit
+│  │  │  │  └─ page.tsx
+│  │  │  ├─ follow
+│  │  │  ├─ page.tsx
+│  │  │  └─ [username]
+│  │  │     └─ page.tsx
+│  │  ├─ register
+│  │  │  ├─ page.tsx
+│  │  │  └─ restaurateur
+│  │  │     └─ page.tsx
+│  │  ├─ restaurants
+│  │  │  └─ [restaurantId]
+│  │  │     └─ page.tsx
+│  │  ├─ review
+│  │  │  ├─ edit
+│  │  │  │  └─ [id]
+│  │  │  │     └─ page.tsx
+│  │  │  └─ page.tsx
+│  │  ├─ scraper-input
+│  │  │  └─ page.tsx
+│  │  └─ _components
+│  │     ├─ AnimatedBackground.tsx
+│  │     ├─ CertificationButton.tsx
+│  │     ├─ CertificationModal.tsx
+│  │     ├─ CertifiedFoodieBadge.tsx
+│  │     ├─ EditReviewModal.tsx
+│  │     ├─ FloatingFoodEmojis.tsx
+│  │     ├─ FollowButton.tsx
+│  │     ├─ Footer.tsx
+│  │     ├─ Hero.tsx
+│  │     ├─ Home-Navbar.tsx
+│  │     ├─ Homepage.tsx
+│  │     ├─ navbar.tsx
+│  │     ├─ post.tsx
+│  │     ├─ RequestMenuModal.tsx
+│  │     ├─ RestaurantCard.tsx
+│  │     ├─ ReviewCard.tsx
+│  │     ├─ ReviewModal.tsx
+│  │     ├─ ReviewSection.tsx
+│  │     ├─ SearchResults.tsx
+│  │     ├─ SessionProvider.tsx
+│  │     ├─ SortDropdown.tsx
+│  │     ├─ ui
+│  │     │  ├─ button.tsx
+│  │     │  └─ input.tsx
+│  │     └─ WriteReviewModal.tsx
+│  ├─ env.js
+│  ├─ lib
+│  │  ├─ auth.ts
+│  │  ├─ jwt.ts
+│  │  ├─ locationService.ts
+│  │  ├─ useSortHook.ts
+│  │  └─ utils.ts
+│  ├─ server
+│  │  ├─ api
+│  │  │  ├─ menu
+│  │  │  │  └─ top.ts
+│  │  │  ├─ restaurants
+│  │  │  │  └─ location.ts
+│  │  │  ├─ reviews
+│  │  │  │  └─ route.ts
+│  │  │  ├─ root.ts
+│  │  │  ├─ routers
+│  │  │  │  └─ post.ts
+│  │  │  └─ trpc.ts
+│  │  ├─ auth
+│  │  │  ├─ config.ts
+│  │  │  ├─ custom-prisma-adapter.ts
+│  │  │  └─ index.ts
+│  │  ├─ db.ts
+│  │  └─ services
+│  │     ├─ scraper
+│  │     │  ├─ menuScraper.ts
+│  │     │  ├─ restaurantScraper.ts
+│  │     │  └─ uberEatsScraper.ts
+│  │     └─ scraperService.ts
+│  ├─ styles
+│  │  ├─ dashboard.css
+│  │  ├─ globals.css
+│  │  ├─ index.css
+│  │  ├─ location.css
+│  │  ├─ navbar.css
+│  │  └─ tailwind.css
+│  ├─ trpc
+│  │  ├─ query-client.ts
+│  │  ├─ react.tsx
+│  │  └─ server.ts
+│  └─ types
+│     └─ next-auth.d.ts
+├─ start-database.sh
+├─ tailwind.config.ts
+└─ tsconfig.json
+
+```

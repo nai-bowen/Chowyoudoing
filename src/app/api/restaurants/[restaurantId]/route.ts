@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"; 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -28,9 +28,10 @@ function extractCoordinates(locationString: string | null | undefined): { lat: n
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ restaurantId: string }> }
+  context: { params: { restaurantId: string } }
 ): Promise<NextResponse> {
-  const { restaurantId } = await context.params;
+  const { restaurantId } = context.params;
+  console.log("Restaurant API: Fetching restaurant with ID:", restaurantId);
   
   // Get current user session for user votes
   const session = await getServerSession(authOptions);
@@ -46,14 +47,15 @@ export async function GET(
             content: true,
             rating: true,
             imageUrl: true,
-            upvotes: true,    // Added upvotes field
+            upvotes: true,
             latitude: true,
             longitude: true,
-            asExpected: true, // Include other review metrics
+            asExpected: true,
             wouldRecommend: true,
             valueForMoney: true,
-            createdAt: true,   // For date information
-            patron: { select: { firstName: true, lastName: true } },
+            createdAt: true,
+            menuItemId: true, // Add this to select menuItemId
+            patron: { select: { firstName: true, lastName: true, id: true } }, // Include patron id
             // Include user vote information if user is logged in
             votes: currentUserId ? {
               where: {
@@ -67,33 +69,48 @@ export async function GET(
         },
         menuSections: {
           select: {
+            id: true,
             category: true,
-            items: { select: { id: true, name: true, description: true, price: true } }
+            items: { 
+              select: { 
+                id: true, 
+                name: true, 
+                description: true, 
+                price: true 
+              } 
+            }
           }
         }
       },
     });
     
-    if (!restaurant) return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
+    if (!restaurant) {
+      console.log("Restaurant API: Restaurant not found with ID:", restaurantId);
+      return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
+    }
+
+    console.log("Restaurant API: Found restaurant:", restaurant.title);
+    console.log("Restaurant API: Review count:", restaurant.reviews.length);
+    console.log("Restaurant API: Menu section count:", restaurant.menuSections.length);
+    
+    // Extract all menu items for simpler access
+    const menuItems = restaurant.menuSections.flatMap(section => section.items);
+    console.log("Restaurant API: Total menu items:", menuItems.length);
     
     // Safely extract coordinates from location string if it exists
     const coordinates = extractCoordinates(restaurant.location);
     
-  // Process reviews to format user votes properly
-  const formattedReviews = restaurant.reviews.map(review => {
-  // Format date
-  const date = review.createdAt ? new Date(review.createdAt).toISOString().split("T")[0] : undefined;
-  
+    // Process reviews to format user votes properly
+    const formattedReviews = restaurant.reviews.map(review => {
+      // Format date
+      const date = review.createdAt ? new Date(review.createdAt).toISOString().split("T")[0] : undefined;
+      
       // Format user vote with proper type safety
-      let userVote: { isUpvote: boolean } | undefined = undefined;
+      let userVote = null;
       
       // Type guard: Check if votes exists and has items
-      if (review.votes) {
-        // TypeScript still doesn't know if votes is an array, so we'll check that too
-        const votesArray = Array.isArray(review.votes) ? review.votes : [];
-        if (votesArray.length > 0 && votesArray[0]?.isUpvote !== undefined) {
-          userVote = { isUpvote: Boolean(votesArray[0].isUpvote) };
-        }
+      if (review.votes && Array.isArray(review.votes) && review.votes.length > 0) {
+        userVote = { isUpvote: Boolean(review.votes[0]?.isUpvote) };
       }
       
       // Make sure upvotes is a number
@@ -108,16 +125,35 @@ export async function GET(
         votes: undefined // Remove raw votes data
       };
     });
-    return NextResponse.json({
+    
+    // Process menu items to add hasReviews flag
+    const processedMenuItems = menuItems.map(item => {
+      // Check if any review references this menu item
+      const hasReviews = formattedReviews.some(review => review.menuItemId === item.id);
+      
+      return {
+        ...item,
+        hasReviews
+      };
+    });
+    
+    const responseData = {
       id: restaurant.id,
       name: restaurant.title,
       address: restaurant.location ?? "Address not available",
       reviews: formattedReviews,
-      menuItems: restaurant.menuSections.flatMap(section => section.items) || [],
+      menuItems: processedMenuItems,
       // Add coordinates as separate fields
       latitude: coordinates.lat,
       longitude: coordinates.lng
+    };
+    
+    console.log("Restaurant API: Returning response with:", {
+      reviewCount: responseData.reviews.length,
+      menuItemCount: responseData.menuItems.length
     });
+    
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error("Error fetching restaurant:", error);
     return NextResponse.json({ error: "Failed to fetch restaurant data" }, { status: 500 });
