@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAward, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faStar } from "@fortawesome/free-regular-svg-icons";
 import CertificationModal from "./CertificationModal";
 
 interface CertificationButtonProps {
@@ -115,16 +116,16 @@ const CertificationButton: React.FC<CertificationButtonProps> = ({
       <button
         onClick={fetchEligibility}
         disabled={loading}
-        className={`px-4 py-2 rounded-lg font-medium flex items-center justify-center ${
+        className={`inline-flex items-center px-4 py-2 rounded-md hover:bg-[#FFD6D9] transition ${
           isCertifiedFoodie
-            ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
-            : "bg-[#D29501] text-white hover:bg-[#b37e01]"
+            ? "bg-[#fbdade] text-yellow-800"
+            : "bg-[#fbdade] text-gray-60"
         }`}
       >
         {loading ? (
           <FontAwesomeIcon icon={faSpinner} className="mr-2 animate-spin" />
         ) : (
-          <FontAwesomeIcon icon={faAward} className="mr-2" />
+          <FontAwesomeIcon icon={faStar} className="mr-2" />
         )}
         {isCertifiedFoodie
           ? "Certified Foodie"

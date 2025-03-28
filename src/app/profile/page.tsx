@@ -12,6 +12,7 @@ import {  faStar,
 import Link from "next/link";
 import HomeNavbar from "../_components/Home-Navbar";
 import AnimatedBackground from "../_components/AnimatedBackground";
+import CertificationButton from "../_components/CertificationButton";
 
 
 // Define types for our profile data
@@ -24,6 +25,7 @@ interface Patron {
   profileImage: string | null;
   bio: string | null;
   interests: string[];
+  isCertifiedFoodie?: boolean;
   _count?: {
     followers: number;
     following: number;
@@ -72,6 +74,7 @@ export default function ProfilePage(): JSX.Element {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<boolean>(false);
   
   // Inline editing states
   const [isEditingUsername, setIsEditingUsername] = useState<boolean>(false);
@@ -80,6 +83,26 @@ export default function ProfilePage(): JSX.Element {
   const [tempUsername, setTempUsername] = useState<string>("");
   const [tempBio, setTempBio] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Default profile image path - using local asset
+  const DEFAULT_PROFILE_IMAGE = "/assets/default-profile.png";
+  
+  // Helper function to process profile image URL
+  const getValidImageUrl = (imageUrl: string | null): string => {
+    if (!imageUrl) return DEFAULT_PROFILE_IMAGE;
+    
+    // Check if the URL is the problematic default-profile.jpg without path
+    if (imageUrl === "default-profile.jpg") {
+      return DEFAULT_PROFILE_IMAGE;
+    }
+    
+    // Add leading slash if it's a relative URL without one
+    if (!imageUrl.startsWith('/') && !imageUrl.startsWith('http')) {
+      return `/${imageUrl}`;
+    }
+    
+    return imageUrl;
+  };
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -127,6 +150,7 @@ export default function ProfilePage(): JSX.Element {
           profileImage: profileData?.patron?.profileImage || profileData?.profileImage || null,
           bio: profileData?.patron?.bio || profileData?.bio || null,
           interests: profileData?.patron?.interests || profileData?.interests || [],
+          isCertifiedFoodie: profileData?.patron?.isCertifiedFoodie || profileData?.isCertifiedFoodie || false,
           _count: profileData?.patron?._count || profileData?._count || {
             followers: 0,
             following: 0,
@@ -134,6 +158,9 @@ export default function ProfilePage(): JSX.Element {
             favorites: 0
           }
         };
+        
+        // Log original profile image URL for debugging
+        console.log("Original profile image URL:", patron.profileImage);
         
         console.log("Constructed patron object:", patron);
         setProfile(patron);
@@ -208,6 +235,12 @@ export default function ProfilePage(): JSX.Element {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
+  };
+
+  // Handle image load error
+  const handleImageError = () => {
+    setImageError(true);
+    console.log("Image failed to load, using fallback");
   };
 
   // Modified to work with any API response structure
@@ -308,6 +341,7 @@ export default function ProfilePage(): JSX.Element {
         
         console.log("Constructed updated patron:", updatedPatron);
         setProfile(updatedPatron);
+        setImageError(false); // Reset image error state when new image is uploaded
         setSuccessMessage("Profile picture updated successfully!");
         
         // Clear success message after 3 seconds
@@ -523,10 +557,19 @@ export default function ProfilePage(): JSX.Element {
             </Link>
             
             {/* Certified Foodie Button */}
-            <button className="inline-flex items-center bg-[#fbdade] text-gray-60 px-4 py-2 rounded-md hover:bg-[#FFD6D9] transition">
-              <FontAwesomeIcon icon={faStar} className="mr-2" />
-              Become a Certified Foodie
-            </button>
+            {profile && (
+              <div className="inline-block">
+                <CertificationButton 
+                  patronId={profile.id}
+                  isCertifiedFoodie={profile.isCertifiedFoodie || false}
+                  onCertificationChange={() => {
+                    // Refresh profile data if certification status changes
+                    setSuccessMessage("Certification status updated!");
+                    setTimeout(() => setSuccessMessage(null), 3000);
+                  }}
+                />
+              </div>
+            )}
           </div>
           
           {profile && (
@@ -538,6 +581,12 @@ export default function ProfilePage(): JSX.Element {
                 </div>
               )}
 
+              {/* Error message */}
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                  <span className="block sm:inline">{error}</span>
+                </div>
+              )}
               
               <div className="flex flex-col md:flex-row gap-6">
             {/* Left sidebar - Profile card */}
@@ -546,18 +595,29 @@ export default function ProfilePage(): JSX.Element {
                 <div className="bg-gradient-to-r from-[#fdedf6] to-[#f1eafe] p-6 text-center">
                   <div className="relative w-32 h-32 mx-auto group cursor-pointer" onClick={handleProfilePictureClick}>
                     <div className="w-32 h-32 rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden">
-                      {profile.profileImage ? (
+                      {/* Always use getValidImageUrl to ensure proper URL formatting */}
+                      {profile.profileImage && !imageError ? (
                         <Image
-                          src={profile.profileImage}
+                          src={getValidImageUrl(profile.profileImage)}
                           alt="Profile"
                           fill
                           sizes="128px"
                           className="object-cover"
+                          onError={handleImageError}
                         />
                       ) : (
-                        <div className="flex items-center justify-center w-full h-full bg-[#fdf9f5]/50 text-gray-400 text-3xl font-bold">
-                          {profile.firstName && profile.lastName ? 
-                            `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}` : 'U'}
+                        <div className="w-full h-full relative">
+                          <Image
+                            src={DEFAULT_PROFILE_IMAGE}
+                            alt="Default Profile"
+                            fill
+                            sizes="128px"
+                            className="object-cover"
+                            onError={() => {
+                              console.error("Default image also failed to load");
+                              setImageError(true);
+                            }}
+                          />
                         </div>
                       )}
                     </div>
