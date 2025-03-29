@@ -14,14 +14,13 @@ import {
   faPlus,
   faUtensils,
   faTrophy,
-  faTimes
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import {  faStar, 
   faEdit, faHeart} from  "@fortawesome/free-regular-svg-icons";
 import AnimatedBackground from "@/app/_components/AnimatedBackground";
 import WriteReviewModal from "@/app/_components/WriteReviewModal";
 import ReviewModal from '@/app/_components/ReviewModal';
-
 
 // Define interfaces for the types of data we'll be working with
 interface Review {

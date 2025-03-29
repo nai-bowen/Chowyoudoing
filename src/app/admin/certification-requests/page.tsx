@@ -1,7 +1,7 @@
 // src/app/admin/certification-requests/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -38,6 +38,45 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
   
   const router = useRouter();
 
+  // Create a memoized fetchCertificationRequests function that depends on statusFilter
+  const fetchCertificationRequests = useCallback(async (authToken: string): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log(`Fetching requests with status filter: "${statusFilter}"`);
+      const response = await fetch(
+        `/api/admin/certification-requests?status=${statusFilter}`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+          // Add cache: 'no-store' to prevent caching issues
+          cache: 'no-store',
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem("adminToken");
+          throw new Error("Invalid admin password");
+        }
+        throw new Error(`Failed to fetch certification requests: ${response.statusText}`);
+      }
+
+      const data = await response.json() as CertificationRequest[];
+      console.log(`Received ${data.length} requests with status: "${statusFilter}"`);
+      console.log("Request statuses:", data.map(req => req.status));
+      setCertificationRequests(data);
+    } catch (err) {
+      console.error("Error fetching certification requests:", err);
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter]);
+
   // Attempt to authenticate with stored token on page load
   useEffect(() => {
     const storedToken = localStorage.getItem("adminToken");
@@ -45,7 +84,7 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
       setIsAuthenticated(true);
       fetchCertificationRequests(storedToken);
     }
-  }, []);
+  }, [fetchCertificationRequests]);
 
   // Handle login
   const handleLogin = (e: React.FormEvent): void => {
@@ -64,40 +103,6 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
     localStorage.removeItem("adminToken");
     setIsAuthenticated(false);
     setCertificationRequests([]);
-  };
-
-  // Fetch certification requests
-  const fetchCertificationRequests = async (authToken: string): Promise<void> => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(
-        `/api/admin/certification-requests?status=${statusFilter}`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setIsAuthenticated(false);
-          localStorage.removeItem("adminToken");
-          throw new Error("Invalid admin password");
-        }
-        throw new Error(`Failed to fetch certification requests: ${response.statusText}`);
-      }
-
-      const data = await response.json() as CertificationRequest[];
-      setCertificationRequests(data);
-    } catch (err) {
-      console.error("Error fetching certification requests:", err);
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Handle status update
@@ -127,6 +132,8 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
             status: newStatus,
             reviewedBy: "Admin",
           }),
+          // Add cache: 'no-store' to prevent caching issues
+          cache: 'no-store',
         }
       );
 
@@ -150,13 +157,11 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
     }
   };
 
-  // Handle filter change
+  // Handle filter change - FIXED VERSION
   const handleFilterChange = (newFilter: string): void => {
+    console.log(`Changing filter from "${statusFilter}" to "${newFilter}"`);
     setStatusFilter(newFilter);
-    const authToken = localStorage.getItem("adminToken");
-    if (authToken) {
-      fetchCertificationRequests(authToken);
-    }
+    // No need to call fetchCertificationRequests here as it will be triggered by the useEffect
   };
 
   // Format date
@@ -170,7 +175,7 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-          <h1 className="text-2xl font-bold text-center mb-6 text-[#A90D3C]">
+          <h1 className="text-2xl font-bold text-center mb-6 text-[#dab9f8]">
             Admin Authentication
           </h1>
           
@@ -190,7 +195,7 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#A90D3C] focus:border-[#A90D3C]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#dab9f8] focus:border-[#dab9f8]"
                 placeholder="Enter admin password"
                 required
               />
@@ -198,7 +203,7 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
             
             <button
               type="submit"
-              className="w-full py-2 px-4 bg-[#A90D3C] text-white rounded-md hover:bg-[#8a0a31] focus:outline-none focus:ring-2 focus:ring-[#A90D3C] focus:ring-offset-2"
+              className="w-full py-2 px-4 bg-[#dab9f8] text-white rounded-md hover:bg-[#c9a2f2] focus:outline-none focus:ring-2 focus:ring-[#dab9f8] focus:ring-offset-2"
             >
               Login
             </button>
@@ -212,7 +217,7 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-[#A90D3C]">
+          <h1 className="text-2xl font-bold text-[#dab9f8]">
             Certification Requests
           </h1>
           
@@ -299,7 +304,7 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-8 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#A90D3C]"></div>
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#dab9f8]"></div>
               <p className="mt-2 text-gray-600">Loading requests...</p>
             </div>
           ) : certificationRequests.length === 0 ? (
@@ -374,7 +379,7 @@ export default function AdminCertificationRequestsPage(): JSX.Element {
                                 href={request.socialMediaLink} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="ml-2 text-[#A90D3C] hover:underline"
+                                className="ml-2 text-[#dab9f8] hover:underline"
                               >
                                 Link
                               </a>
