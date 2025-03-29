@@ -1,7 +1,7 @@
 /*eslint-disable*/
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -15,6 +15,7 @@ import {
   faUtensils,
   faTrophy,
   faTimes,
+  faAward
 } from "@fortawesome/free-solid-svg-icons";
 import {  faStar, 
   faEdit, faHeart} from  "@fortawesome/free-regular-svg-icons";
@@ -168,6 +169,11 @@ export default function PatronDashboard(): JSX.Element {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
+  //for Certified Foodie
+  const [isCertifiedFoodie, setIsCertifiedFoodie] = useState<boolean>(false);
+  const [showCertificationNotification, setShowCertificationNotification] = useState<boolean>(false);
+  const [certificationDate, setCertificationDate] = useState<string | null>(null);
+
   // Review Modal State
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
@@ -179,6 +185,7 @@ export default function PatronDashboard(): JSX.Element {
   const [favourites, setfavourites] = useState<Favorite[]>([]);
   const [isLoadingfavourites, setIsLoadingfavourites] = useState<boolean>(true);
   const [favouritesError, setfavouritesError] = useState<string | null>(null);
+  
 
   // Color scheme for UI elements
   const colorScheme: ColorScheme = {
@@ -584,6 +591,44 @@ export default function PatronDashboard(): JSX.Element {
     );
   });
 
+  //Dismiss Cert Foodie notification
+  const dismissCertificationNotification = useCallback((): void => {
+    setShowCertificationNotification(false);
+    // Store in localStorage that this notification has been seen
+    localStorage.setItem("certificationNotificationDismissed", "true");
+  }, []);
+  useEffect(() => {
+    const checkCertificationStatus = async (): Promise<void> => {
+      if (status !== "authenticated" || !userData?.id) return;
+      
+      try {
+        const response = await fetch("/api/certification-requests");
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch certification status");
+        }
+        
+        const data = await response.json();
+        
+        if (data.isCertified) {
+          setIsCertifiedFoodie(true);
+          setCertificationDate(data.certificationDate);
+          
+          // Check if notification was previously dismissed
+          const isDismissed = localStorage.getItem("certificationNotificationDismissed");
+          if (!isDismissed) {
+            setShowCertificationNotification(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching certification status:", error);
+      }
+    };
+    
+    checkCertificationStatus();
+  }, [userData, status]);
+
+
   // Render star ratings
   const renderStars = (rating: number = 0): JSX.Element => {
     return (
@@ -695,35 +740,73 @@ export default function PatronDashboard(): JSX.Element {
             </div>
           </div>
         </div>
+        {/* Certification Notification Banner */}
+        {showCertificationNotification && (
+          <div className="bg-[#f2d36e]/30 border-l-4 border-[#f2d36e] p-4 mb-6 relative animate-fade-in">
+            <button 
+              onClick={dismissCertificationNotification}
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+            <div className="flex items-center">
+              <div className="bg-[#f2d36e] rounded-full p-2 mr-4">
+                <FontAwesomeIcon icon={faAward} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-gray-800">Congratulations! You're now a Certified Foodie!</h3>
+                <p className="text-gray-700">
+                  Your reviews will now display a special badge, giving them more credibility in the community.
+                  {certificationDate && (
+                    <span className="ml-1">Certified on {new Date(certificationDate).toLocaleDateString()}.</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
       
       {/* Main Content */}
       <main className="container mx-auto px-6 py-6">
-        {/* User Profile Section */}
-        <div className="flex items-center mb-8">
-          <div className="flex gap-4 items-center">
+      {/* User Profile Section */}
+      <div className="flex items-center mb-8">
+        <div className="flex gap-4 items-center">
+          <div className="relative">
             <div className="h-16 w-16 bg-[#f2d36e] rounded-full flex items-center justify-center">
               <p className="text-white font-bold text-2xl">
                 {userData?.name?.charAt(0) || "J"}
               </p>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">Good morning, {userData?.name?.split(' ')[0] || "John"}!</h1>
+            {isCertifiedFoodie && (
+              <div className="absolute -bottom-1 -right-1 bg-[#f2d36e] rounded-full p-1.5 border-2 border-white">
+                <FontAwesomeIcon icon={faAward} className="text-white text-xs" />
+              </div>
+            )}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Good morning, {userData?.name?.split(' ')[0] || "John"}!</h1>
+            {isCertifiedFoodie ? (
+              <p className="text-[#f2d36e] font-medium flex items-center">
+                <FontAwesomeIcon icon={faAward} className="mr-1" />
+                Certified Foodie
+              </p>
+            ) : (
               <p className="text-gray-600 flex items-center">
                 <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-500" />
                 New York, NY
               </p>
-            </div>
+            )}
           </div>
-          
-          <Link 
-            href="/profile" 
-            className="ml-auto px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
-          >
-            Edit Profile
-          </Link>
         </div>
-
+        
+        <Link 
+          href="/profile" 
+          className="ml-auto px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
+        >
+          Edit Profile
+        </Link>
+      </div>
         {/* Stats Cards - Made thinner and longer */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
           <div className="bg-[#faf2e5] rounded-xl shadow-sm p-4 h-24 flex items-center">
