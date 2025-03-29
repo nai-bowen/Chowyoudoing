@@ -542,19 +542,11 @@ export default function ProfilePage(): JSX.Element {
 
   return (
     <div className="with-navbar">
-      <HomeNavbar />
       {/* Add significant padding between navbar and content - at least 100px */}
       <div className="page-content relative pt-32"> {/* Increased padding-top */}
-        <AnimatedBackground />
         <div className="relative z-10 max-w-5xl mx-auto px-6">
           {/* Top navigation row with back button and certified foodie button */}
           <div className="flex justify-between items-center mb-8">
-            <Link href="/patron-dashboard" className="inline-flex items-center text-gray-600 hover:text-[#D29501] transition">
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-              </svg>
-              Back to Dashboard
-            </Link>
             
             {/* Certified Foodie Button */}
             {profile && (

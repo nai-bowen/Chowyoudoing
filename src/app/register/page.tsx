@@ -14,7 +14,7 @@ const interestOptions: string[] = [
   "Greek", "Caribbean", "American", "Sushi", "Sandwiches",
   "Dessert", "Vegan/Vegetarian", "Lebanese", "Mexican",
   "Burgers", "Indian", "Mediterranean", "Steak", "Breakfast",
-  "Salads", "Tacos", "Chicken", "Boba/Juice"
+  "Salads", "Tacos", "Chicken", "Boba/Juice", 
 ];
 
 interface RegisterResponse {

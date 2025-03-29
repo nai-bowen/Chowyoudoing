@@ -19,9 +19,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import {  faStar, 
   faEdit, faHeart} from  "@fortawesome/free-regular-svg-icons";
-import AnimatedBackground from "@/app/_components/AnimatedBackground";
 import WriteReviewModal from "@/app/_components/WriteReviewModal";
 import ReviewModal from '@/app/_components/ReviewModal';
+
 
 // Define interfaces for the types of data we'll be working with
 interface Review {
@@ -98,56 +98,7 @@ interface Favorite {
   };
 }
 
-// SearchResults component (adapted from the provided one)
-const SearchResults: React.FC<{
-  results: SearchResult[];
-  isLoading: boolean;
-  onSelect: (result: SearchResult) => void;
-}> = ({ results, isLoading, onSelect }) => {
-  if (isLoading) {
-    return (
-      <div className="absolute left-0 mt-2 w-full glass rounded-lg border border-white/30 z-40 overflow-hidden">
-        <div className="p-4 flex items-center justify-center">
-          <div className="flex items-center space-x-3">
-            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse"></div>
-            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  if (results.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="absolute right-0 mt-2 w-64 glass rounded-lg border border-white/30 z-40 overflow-hidden animate-fade-in bg-white shadow-xl">
-      <div className="max-h-72 overflow-y-auto">
-        {results.map((result) => (
-          <div
-            key={result.id}
-            onClick={() => onSelect(result)}
-            className="flex items-center p-4 hover:bg-white/50 transition-colors border-b border-gray-100/50 last:border-0 cursor-pointer"
-          >
-            <div className="flex-1">
-              <p className="text-gray-800 font-medium">{result.name}</p>
-              <div className="flex items-center justify-between mt-1">
-                {result.restaurant && (
-                  <p className="text-gray-500 text-sm">{result.restaurant}</p>
-                )}
-                <span className="ml-auto text-xs px-2 py-1 bg-yellow-100/50 text-yellow-700 rounded-full">
-                  {result.type}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 export default function PatronDashboard(): JSX.Element {
   const router = useRouter();
@@ -556,31 +507,7 @@ export default function PatronDashboard(): JSX.Element {
     }
   };
 
-  // Toggle search input visibility
-  const toggleSearch = (): void => {
-    setIsSearchOpen(!isSearchOpen);
-    if (!isSearchOpen) {
-      setSearchTerm("");
-      setSearchResults([]);
-    }
-  };
-
-  // Handle search input changes
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setSearchTerm(e.target.value);
-  };
-
-  // Handle search result selection
-  const handleSearchResultSelect = (result: SearchResult): void => {
-    // Navigate to the patron search page with the restaurant ID
-    router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
-    
-    // Clear the search
-    setIsSearchOpen(false);
-    setSearchTerm("");
-    setSearchResults([]);
-  };
-
+ 
   // Filter reviews based on search query
   const filteredReviews = userReviews.filter(review => {
     const searchText = searchQuery.toLowerCase();
@@ -672,100 +599,7 @@ export default function PatronDashboard(): JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-[#ffffff]">
-      {/* Background Animation */}
-      <AnimatedBackground />
-      
-      {/* Top Navigation Bar */}
-      <header className="py-4 px-6 bg-transparent">
-        <div className="container mx-auto flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center">
-            <div className="bg-[#f2d36e] rounded-full h-10 w-10 flex items-center justify-center">
-              <FontAwesomeIcon icon={faUtensils} className="text-white" />
-            </div>
-            <h1 className="ml-3 text-xl font-bold">Chow You Doing?</h1>
-          </div>
-          
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/" className="text-gray-700 hover:text-[#f3b4eb]">Home</Link>
-            <Link href="/patron-dashboard" className="text-gray-700 hover:text-[#f3b4eb]">Dashboard</Link>
-            <Link href="/top-rated" className="text-gray-700 hover:text-[#f3b4eb]">Top Rated</Link>
-            <Link href="/recent-reviews" className="text-gray-700 hover:text-[#f3b4eb]">Recent Reviews</Link>
-          </nav>
-          
-          {/* Search & Profile */}
-          <div className="flex items-center space-x-4">
-            {/* Search Button & Input */}
-            <div className="relative" ref={searchContainerRef}>
-              {isSearchOpen ? (
-                <div className="flex items-center bg-white rounded-full border border-gray-200 px-3 py-1 shadow-md">
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search restaurants..."
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    className="w-36 sm:w-48 md:w-64 p-1 border-none focus:outline-none"
-                  />
-                  <button 
-                    onClick={toggleSearch}
-                    className="ml-2 text-gray-500 hover:text-[#f3b4eb]"
-                  >
-                    <FontAwesomeIcon icon={faTimes} />
-                  </button>
-                </div>
-              ) : (
-                <button 
-                  onClick={toggleSearch} 
-                  className="text-gray-600 hover:text-[#f3b4eb] p-2"
-                >
-                  <FontAwesomeIcon icon={faSearch} />
-                </button>
-              )}
-              
-              {/* Search Results Dropdown */}
-              <SearchResults 
-                results={searchResults}
-                isLoading={isSearching}
-                onSelect={handleSearchResultSelect}
-              />
-            </div>
-            
-            <div className="h-10 w-10 bg-[#f2d36e] rounded-full flex items-center justify-center">
-              <p className="text-white font-bold">
-                {userData?.name?.charAt(0) || "J"}
-              </p>
-            </div>
-          </div>
-        </div>
-        {/* Certification Notification Banner */}
-        {showCertificationNotification && (
-          <div className="bg-[#f2d36e]/30 border-l-4 border-[#f2d36e] p-4 mb-6 relative animate-fade-in">
-            <button 
-              onClick={dismissCertificationNotification}
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-            <div className="flex items-center">
-              <div className="bg-[#f2d36e] rounded-full p-2 mr-4">
-                <FontAwesomeIcon icon={faAward} className="text-white" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-gray-800">Congratulations! You're now a Certified Foodie!</h3>
-                <p className="text-gray-700">
-                  Your reviews will now display a special badge, giving them more credibility in the community.
-                  {certificationDate && (
-                    <span className="ml-1">Certified on {new Date(certificationDate).toLocaleDateString()}.</span>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </header>
+    <div>
       
       {/* Main Content */}
       <main className="container mx-auto px-6 py-6">
@@ -1355,6 +1189,7 @@ export default function PatronDashboard(): JSX.Element {
           </div>
         </div>
       </footer>
+      
     </div>
-  );
+      );
 }

@@ -817,23 +817,7 @@ function RestaurantContent(): JSX.Element {
       
       {/* Top Navigation Bar */}
       <header className="py-4 px-6 bg-transparent">
-        <div className="container mx-auto flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center">
-            <div className="bg-[#f2d36e] rounded-full h-10 w-10 flex items-center justify-center">
-              <FontAwesomeIcon icon={faUtensils} className="text-white" />
-            </div>
-            <h1 className="ml-3 text-xl font-bold">Chow You Doing?</h1>
-          </div>
-          
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/" className="text-gray-700 hover:text-[#f3b4eb]">Home</Link>
-            <Link href="/patron-dashboard" className="text-gray-700 hover:text-[#f3b4eb]">Dashboard</Link>
-            <Link href="/top-rated" className="text-gray-700 hover:text-[#f3b4eb]">Top Rated</Link>
-            <Link href="/recent-reviews" className="text-gray-700 hover:text-[#f3b4eb]">Recent Reviews</Link>
-          </nav>
-        </div>
+
       </header>
       
       {/* Restaurant Header with Gradient - Full width with adjusted spacing */}
