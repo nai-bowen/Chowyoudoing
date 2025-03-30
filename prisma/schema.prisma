@@ -179,7 +179,8 @@ model Restaurant {
     num_reviews String
     location    String?   // Store city, country for map feature
     category    String[]  @default([]) // Store multiple categories as an array
-
+    interests   String[]  @default([])
+    
     createdAt   DateTime  @default(now())
     updatedAt   DateTime  @updatedAt
 
