@@ -100,6 +100,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     });
     
     // Fetch restaurants with proper sorting and filtering
+    // Include _count to get the review count for each restaurant
     const restaurants = await db.restaurant.findMany({
       where: whereClause,
       orderBy,

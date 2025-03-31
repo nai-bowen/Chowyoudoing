@@ -1,10 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { Star, MapPin, Filter, ThumbsUp, Sparkles, Clock } from "lucide-react";
+import { MapPin, Filter, ThumbsUp, Sparkles, Clock, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import ReviewModal from '@/app/_components/ReviewModal';
+
+// Define SearchResult interface
+interface SearchResult {
+  id: string;
+  name: string;
+  type: string;
+  url?: string;
+  restaurant?: string;
+}
 
 // Define our types
 interface Profile {
@@ -36,6 +47,9 @@ interface Restaurant {
   num_reviews?: string;
   latitude?: number | null;
   longitude?: number | null;
+  _count?: {
+    reviews: number;
+  };
 }
 
 interface Review {
@@ -52,15 +66,15 @@ interface Review {
   asExpected: number;
   wouldRecommend: number;
   valueForMoney: number;
-  imageUrl: string | null;
+  imageUrl: string | undefined;
   videoUrl: string | null;
   patron?: {
     firstName: string;
     lastName: string;
-  } | null;
+  } | undefined;
   userVote?: {
     isUpvote: boolean;
-  } | null;
+  } | undefined;
 }
 
 interface Photo {
@@ -84,11 +98,70 @@ const CARD_COLORS = {
   accent: "#faf2e5"
 };
 
+// SearchResults component
+const SearchResults: React.FC<{
+  results: SearchResult[];
+  isLoading: boolean;
+  onSelect: (result: SearchResult) => void;
+}> = ({ results, isLoading, onSelect }) => {
+  if (isLoading) {
+    return (
+      <div className="absolute left-0 right-0 mt-2 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 z-40 overflow-hidden">
+        <div className="p-4 flex items-center justify-center">
+          <div className="flex items-center space-x-3">
+            <div className="w-4 h-4 bg-[#dab9f8] rounded-full animate-pulse"></div>
+            <div className="w-4 h-4 bg-[#dab9f8] rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-4 h-4 bg-[#dab9f8] rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (results.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="absolute left-0 right-0 mt-2 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 shadow-lg z-40 overflow-hidden">
+      <div className="max-h-72 overflow-y-auto">
+        {results.map((result) => (
+          <div
+            key={result.id}
+            onClick={() => onSelect(result)}
+            className="flex items-center px-4 py-3 hover:bg-gray-100 border-b border-gray-100 last:border-0 cursor-pointer"
+          >
+            <div className="flex-1">
+              <p className="text-gray-800 font-medium">{result.name}</p>
+              <div className="flex items-center justify-between mt-1">
+                {result.restaurant && (
+                  <p className="text-gray-500 text-sm">{result.restaurant}</p>
+                )}
+                <span className="ml-auto text-xs px-2 py-1 bg-yellow-100/50 text-yellow-700 rounded-full">
+                  {result.type}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function DiscoveryPage(): JSX.Element {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [activeTab, setActiveTab] = useState<TabType>("restaurants");
   const [filter, setFilter] = useState<FilterType>("relevance");
   const [showFilterDropdown, setShowFilterDropdown] = useState<boolean>(false);
+  
+  // Search related states
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -97,6 +170,63 @@ export default function DiscoveryPage(): JSX.Element {
   
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Add state for the review modal
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
+
+  // Handle click outside of search container
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent): void {
+      if (
+        searchContainerRef.current && 
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setSearchQuery("");
+        setSearchResults([]);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Handle search query changes - fetch results
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.length >= 2) {
+        setIsSearching(true);
+        try {
+          const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&restaurants=true&meals=false&categories=false&locations=false`);
+          if (!response.ok) throw new Error("Search failed");
+          
+          const data = await response.json();
+          
+          // Transform the data to match the SearchResult interface
+          const formattedResults: SearchResult[] = (data.results || []).map((result: any) => ({
+            id: result.id,
+            name: result.name,
+            type: result.type,
+            url: `/patron-search?id=${encodeURIComponent(result.id)}`,
+            restaurant: result.restaurant
+          }));
+          
+          setSearchResults(formattedResults);
+        } catch (error) {
+          console.error("Search error:", error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   // Fetch user profile to get interests
   useEffect(() => {
@@ -178,7 +308,8 @@ export default function DiscoveryPage(): JSX.Element {
       rating: r.rating || "0",
       num_reviews: r.num_reviews || "0",
       latitude: r.latitude || null,
-      longitude: r.longitude || null
+      longitude: r.longitude || null,
+      _count: r._count || { reviews: 0 } // Make sure this is included
     }));
     
     setRestaurants(formattedRestaurants);
@@ -268,6 +399,70 @@ export default function DiscoveryPage(): JSX.Element {
     return colors[index % colors.length]!;
   };
 
+  // Handle search form submission
+  const handleSearch = (e: React.FormEvent): void => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/patron-search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  // Handle search result selection
+  const handleSearchResultSelect = (result: SearchResult): void => {
+    // Navigate to the patron search page with the restaurant ID
+    router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
+    
+    // Clear the search
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
+  // Add handler to view a review
+  const handleViewFullReview = (review: Review): void => {
+    setSelectedReview(review);
+    setIsReviewModalOpen(true);
+  };
+
+  // Add handler to close the review modal
+  const handleCloseReviewModal = (): void => {
+    setIsReviewModalOpen(false);
+    setSelectedReview(null);
+  };
+
+  // Add handler for vote updates
+  const handleVoteUpdate = (reviewId: string, newUpvotes: number, isUpvoted: boolean | null): void => {
+    // Update reviews array with new vote count
+    setReviews(prevReviews => 
+      prevReviews.map(review => 
+        review.id === reviewId 
+          ? { 
+              ...review, 
+              upvotes: newUpvotes, 
+              userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined 
+            } 
+          : review
+      )
+    );
+
+    // Also update photos array if the reviewed photo was updated
+    setPhotos(prevPhotos => 
+      prevPhotos.map(photo => 
+        photo.id === reviewId 
+          ? { ...photo, upvotes: newUpvotes } 
+          : photo
+      )
+    );
+
+    // Update the selected review if it's the one being displayed
+    if (selectedReview && selectedReview.id === reviewId) {
+      setSelectedReview({
+        ...selectedReview,
+        upvotes: newUpvotes,
+        userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined
+      });
+    }
+  };
+
   // If not authenticated, show login prompt
   if (status === "unauthenticated") {
     return (
@@ -291,15 +486,46 @@ export default function DiscoveryPage(): JSX.Element {
   return (
     <div className="with-navbar">
       <div className="page-content min-h-screen py-6 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-[#dab9f8]">Discover New Food</h1>
-            <p className="text-gray-600 mt-2">
-              Explore the most popular restaurants and read what food enthusiasts are raving about
-            </p>
-          </div>
+        {/* Hero Section with Centered Title/Subtitle */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#000000] mb-4">Discover Extraordinary Dining</h1>
+          <p className="text-gray-600 mx-auto max-w-2xl">
+            Explore the most popular restaurants and read what food enthusiasts are raving about
+          </p>
           
+          {/* Search Bar with Dropdown */}
+          <div className="mt-8 max-w-2xl mx-auto" ref={searchContainerRef}>
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                placeholder="Search by restaurant, cuisine, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                ref={searchInputRef}
+                className="w-full py-3 px-12 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#dab9f8] shadow-sm"
+              />
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center">
+                <Search size={18} className="text-gray-400" />
+              </div>
+              <button type="submit" className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                <div className="w-8 h-8 flex items-center justify-center bg-[#dab9f8] rounded-full hover:bg-[#c9a6e7] transition-colors">
+                  <Search size={14} className="text-white" />
+                </div>
+              </button>
+              
+              {/* Search Results Dropdown */}
+              {(searchResults.length > 0 || isSearching) && (
+                <SearchResults 
+                  results={searchResults}
+                  isLoading={isSearching}
+                  onSelect={handleSearchResultSelect}
+                />
+              )}
+            </form>
+          </div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto">
           {/* Tab Navigation */}
           <div className="flex justify-between items-center mb-6">
             <div className="flex border-b border-gray-200">
@@ -401,7 +627,7 @@ export default function DiscoveryPage(): JSX.Element {
                   {restaurants.length > 0 ? (
                     restaurants.map((restaurant, index) => (
                       <Link
-                        href={`/restaurants/${restaurant.id}`}
+                        href={`/patron-search?id=${restaurant.id}`}
                         key={restaurant.id}
                         className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden"
                       >
@@ -411,7 +637,7 @@ export default function DiscoveryPage(): JSX.Element {
                           </div>
                         </div>
                         <div className="p-4">
-                          <h3 className="font-semibold text-lg">{restaurant.name}</h3>
+                          <h3 className="font-semibold text-lg hover:text-[#dab9f8]">{restaurant.name}</h3>
                           
                           {/* Restaurant location displayed on a separate line */}
                           <div className="flex items-start gap-1.5 text-sm text-gray-500 mt-1 mb-2">
@@ -419,22 +645,15 @@ export default function DiscoveryPage(): JSX.Element {
                             <span className="line-clamp-1">{restaurant.address}</span>
                           </div>
                           
-                          <div className="flex items-center gap-1 mt-3">
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  size={16}
-                                  className={
-                                    star <= Number(restaurant.rating?.charAt(0) || 0)
-                                      ? "text-[#FFB400] fill-[#FFB400]"
-                                      : "text-gray-300"
-                                  }
-                                />
-                              ))}
-                            </div>
-                            <span className="text-sm text-gray-500 ml-1">
-                              ({restaurant.num_reviews || "0"})
+                          {/* Has Reviews indicator (replaces star rating) */}
+                          <div className="flex items-center mt-3">
+                            <span 
+                              className={`inline-block rounded-full w-2 h-2 ${
+                                (restaurant._count?.reviews || 0) > 0 ? 'bg-green-500' : 'bg-red-500'
+                              } mr-2`}
+                            ></span>
+                            <span className="text-sm text-gray-600">
+                              {(restaurant._count?.reviews || 0) > 0 ? 'Has Reviews' : 'No Reviews'}
                             </span>
                           </div>
                           
@@ -466,26 +685,27 @@ export default function DiscoveryPage(): JSX.Element {
                     reviews.map((review) => (
                       <div 
                         key={review.id} 
-                        className="bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
+                        className="bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
+                        onClick={() => handleViewFullReview(review)}
                       >
                         <div className="flex justify-between items-start mb-4">
                           <Link
-                            href={`/restaurants/${review.restaurantId}`}
+                            href={`/patron-search?id=${review.restaurantId}`}
                             className="text-lg font-medium text-[#dab9f8] hover:underline"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             {review.restaurant}
                           </Link>
                           <div className="flex">
                             {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
+                              <div 
                                 key={star}
-                                size={16}
-                                className={
+                                className={`w-4 h-4 ${
                                   star <= review.rating
                                     ? "text-[#FFB400] fill-[#FFB400]"
                                     : "text-gray-300"
-                                }
-                              />
+                                }`}
+                              >★</div>
                             ))}
                           </div>
                         </div>
@@ -530,7 +750,32 @@ export default function DiscoveryPage(): JSX.Element {
                     photos.map((photo) => (
                       <div 
                         key={photo.id} 
-                        className="group relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all"
+                        className="group relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer"
+                        onClick={() => {
+                          // Find the full review data for this photo
+                          const review = reviews.find(r => r.id === photo.id);
+                          if (review) {
+                            handleViewFullReview(review);
+                          } else {
+                            // If we don't have the full review data, construct a minimal review object
+                            handleViewFullReview({
+                              id: photo.id,
+                              title: photo.restaurantName,
+                              date: undefined,
+                              upvotes: photo.upvotes,
+                              content: "",
+                              rating: 0,
+                              restaurant: photo.restaurantName,
+                              restaurantId: photo.restaurantId,
+                              author: "",
+                              asExpected: 0,
+                              wouldRecommend: 0,
+                              valueForMoney: 0,
+                              imageUrl: photo.imageUrl,
+                              videoUrl: null
+                            });
+                          }
+                        }}
                       >
                         <Image
                           src={photo.imageUrl}
@@ -540,8 +785,9 @@ export default function DiscoveryPage(): JSX.Element {
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
                           <Link
-                            href={`/restaurants/${photo.restaurantId}`}
+                            href={`/patron-search?id=${photo.restaurantId}`}
                             className="text-white text-sm font-medium truncate hover:underline"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             {photo.restaurantName}
                           </Link>
@@ -563,6 +809,28 @@ export default function DiscoveryPage(): JSX.Element {
           )}
         </div>
       </div>
+
+      {/* Review Modal */}
+      {selectedReview && (
+        <ReviewModal 
+          review={{
+            id: selectedReview.id,
+            content: selectedReview.content || selectedReview.text || "", 
+            rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
+            date: selectedReview.date,
+            upvotes: selectedReview.upvotes ?? 0,
+            asExpected: selectedReview.asExpected ?? 0,
+            wouldRecommend: selectedReview.wouldRecommend ?? 0,
+            valueForMoney: selectedReview.valueForMoney ?? 0,
+            imageUrl: selectedReview.imageUrl,
+            patron: selectedReview.patron,
+            userVote: selectedReview.userVote
+          }}
+          isOpen={isReviewModalOpen} 
+          onClose={handleCloseReviewModal} 
+          onVoteUpdate={handleVoteUpdate} 
+        />
+      )}
     </div>
   );
 }
