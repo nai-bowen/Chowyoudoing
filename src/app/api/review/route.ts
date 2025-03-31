@@ -79,24 +79,61 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const restaurantId = url.searchParams.get("restaurantId");
     const menuItemId = url.searchParams.get("menuItemId");
     const includeLocation = url.searchParams.get("includeLocation") === "true";
+    const hasImage = url.searchParams.get("hasImage") === "true";
+    const orderBy = url.searchParams.get("orderBy") || ""; // Custom sorting field
+    const orderDir = url.searchParams.get("orderDir") || "desc"; // Direction of sorting
+    const interestsParam = url.searchParams.getAll("interests"); // Get all interests
+    const minRating = Number(url.searchParams.get("minRating")) || 0; // Minimum rating filter
+    const strictInterests = url.searchParams.get("strictInterests") === "true"; // Whether to strictly filter by interests
     
-    // Query conditions for prisma
-    const whereClause: Prisma.ReviewWhereInput = {};
+    // Log received parameters for debugging
+    console.log("Reviews API: Query parameters", {
+      limit, page, userId, restaurantId, menuItemId, includeLocation, 
+      hasImage, orderBy, orderDir, interests: interestsParam, minRating,
+      strictInterests
+    });
+    
+    // Base query conditions for prisma
+    const baseWhereClause: Prisma.ReviewWhereInput = {};
     
     // Add filters to the where clause
     if (userId) {
       console.log(`Reviews API: Fetching reviews for specific user ID: ${userId}`);
-      whereClause.patronId = userId;
+      baseWhereClause.patronId = userId;
     }
     
     if (restaurantId) {
       console.log(`Reviews API: Filtering by restaurant ID: ${restaurantId}`);
-      whereClause.restaurantId = restaurantId;
+      baseWhereClause.restaurantId = restaurantId;
     }
     
     if (menuItemId) {
       console.log(`Reviews API: Filtering by menu item ID: ${menuItemId}`);
-      whereClause.menuItemId = menuItemId;
+      baseWhereClause.menuItemId = menuItemId;
+    }
+    
+    // Filter for minimum rating if provided
+    if (minRating > 0) {
+      console.log(`Reviews API: Filtering for minimum rating: ${minRating}`);
+      baseWhereClause.rating = {
+        gte: minRating
+      };
+    }
+    
+    // Filter for reviews with images if requested
+    if (hasImage) {
+      console.log("Reviews API: Filtering for reviews with images");
+      baseWhereClause.imageUrl = {
+        not: null
+      };
+      // Add a second condition to ensure it's not an empty string
+      baseWhereClause.AND = [
+        {
+          imageUrl: {
+            not: ""
+          }
+        }
+      ];
     }
     
     // If no specific filters, check if we want current user's reviews
@@ -106,7 +143,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       // If userReviews=true in query and we have a session, get the current user's reviews
       if (userFilter && currentUserId) {
         console.log(`Reviews API: Fetching reviews for current user: ${currentUserId}`);
-        whereClause.patronId = currentUserId;
+        baseWhereClause.patronId = currentUserId;
       }
     }
     
@@ -134,7 +171,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         select: {
           id: true,
           title: true,
-          location: true
+          location: true,
+          category: true, // Include category to match interests
+          interests: true // Include interests to match user interests
         }
       },
       menuItem: {
@@ -163,21 +202,146 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       selectFields.longitude = true;
     }
     
-    console.log(`Reviews API: Executing query with: where=${JSON.stringify(whereClause)}, limit=${limit}, page=${page}, skip=${skip}`);
+    // Process interests filter - if interests are specified, get reviews for restaurants with matching interests
+    let interests: string[] = interestsParam;
     
-    // Fetch reviews with the specified filters
-    const reviews = await db.review.findMany({
-      where: whereClause,
-      select: selectFields,
-      orderBy: Object.keys(whereClause).length > 0 
-        ? { createdAt: 'desc' } // User/specific reviews sorted by date
-        : { upvotes: 'desc' },  // General reviews sorted by popularity
-      take: limit,
-      skip: skip
-    });
+    // If no interests were provided in query, try to get user interests from their profile
+    if (interests.length === 0 && currentUserId) {
+      try {
+        // Attempt to fetch user interests from their profile
+        const patron = await db.patron.findUnique({
+          where: { id: currentUserId },
+          select: { interests: true }
+        });
+        
+        if (patron && patron.interests && patron.interests.length > 0) {
+          interests = patron.interests;
+          console.log("Reviews API: Retrieved user interests:", interests);
+        }
+      } catch (error) {
+        console.error("Error fetching user interests:", error);
+      }
+    }
     
-    console.log(`Reviews API: Found ${reviews.length} reviews`);
-
+    // Create a copy of the base where clause
+    let whereClause: Prisma.ReviewWhereInput = { ...baseWhereClause };
+    
+    // Apply interests filter if we have interests to filter by
+    if (interests.length > 0) {
+      console.log("Reviews API: Applying interests filter with:", interests);
+      
+      // We need to fetch restaurants that match user interests
+      // Either by explicit interests or by categories that overlap with interests
+      whereClause.OR = [
+        {
+          restaurant: {
+            interests: {
+              hasSome: interests
+            }
+          }
+        },
+        {
+          restaurant: {
+            category: {
+              hasSome: interests
+            }
+          }
+        }
+      ];
+    }
+    
+    // Determine sorting method
+    const sortOptions: Prisma.ReviewOrderByWithRelationInput = {};
+    
+    if (orderBy === "createdAt") {
+      // Sort by creation date
+      sortOptions.createdAt = orderDir as Prisma.SortOrder;
+      console.log(`Reviews API: Sorting by creation date ${orderDir}`);
+    } else if (orderBy === "rating") {
+      // Sort by rating
+      sortOptions.rating = orderDir as Prisma.SortOrder;
+      console.log(`Reviews API: Sorting by rating ${orderDir}`);
+    } else if (orderBy === "upvotes") {
+      // Sort by popularity (upvotes)
+      sortOptions.upvotes = orderDir as Prisma.SortOrder;
+      console.log(`Reviews API: Sorting by upvotes ${orderDir}`);
+    } else {
+      // Default sorting - depends on the query type
+      if (Object.keys(whereClause).length > 0) {
+        // For filtered reviews, default to newest first
+        sortOptions.createdAt = 'desc';
+        console.log("Reviews API: Using default sort by createdAt desc for filtered reviews");
+      } else {
+        // For general reviews, default to most popular
+        sortOptions.upvotes = 'desc';
+        console.log("Reviews API: Using default sort by upvotes desc for general reviews");
+      }
+    }
+    
+    console.log("Reviews API: Executing query with filters and sorting");
+    
+    // Final result array
+    let reviews: any[] = [];
+    
+    // Fetch reviews that match interests first
+    if (interests.length > 0) {
+      // First try to get reviews that match interests
+      const interestMatchedReviews = await db.review.findMany({
+        where: whereClause,
+        select: selectFields,
+        orderBy: sortOptions,
+        take: limit,
+        skip: skip
+      });
+      
+      console.log(`Reviews API: Found ${interestMatchedReviews.length} reviews matching interests`);
+      
+      reviews = interestMatchedReviews;
+      
+      // If we don't have enough reviews and not using strict interest matching, 
+      // fetch additional random reviews to fill the limit
+      if (!strictInterests && interestMatchedReviews.length < limit) {
+        const remainingLimit = limit - interestMatchedReviews.length;
+        console.log(`Reviews API: Fetching ${remainingLimit} additional random reviews to fill limit`);
+        
+        // Get already fetched review IDs to exclude them
+        const existingIds = interestMatchedReviews.map(review => review.id);
+        
+        // Create a where clause for random reviews that excludes already fetched ones
+        // and still respects the base filters (hasImage, rating, etc.)
+        const randomWhereClause: Prisma.ReviewWhereInput = {
+          ...baseWhereClause,
+          id: {
+            notIn: existingIds
+          }
+        };
+        
+        // Fetch random reviews to fill the gap
+        const randomReviews = await db.review.findMany({
+          where: randomWhereClause,
+          select: selectFields,
+          orderBy: sortOptions,
+          take: remainingLimit
+        });
+        
+        console.log(`Reviews API: Found ${randomReviews.length} additional random reviews`);
+        
+        // Combine interest-matched reviews with random ones
+        reviews = [...interestMatchedReviews, ...randomReviews];
+      }
+    } else {
+      // If no interests specified, just use the base query
+      reviews = await db.review.findMany({
+        where: baseWhereClause,
+        select: selectFields,
+        orderBy: sortOptions,
+        take: limit,
+        skip: skip
+      });
+      
+      console.log(`Reviews API: Found ${reviews.length} reviews with base filters`);
+    }
+    
     const formattedReviews = reviews.map((review) => {
       // Ensure `createdAt` is always treated as a Date
       const createdAt: Date = review.createdAt ?? new Date(); // Default to current date
@@ -235,7 +399,32 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       count: formattedReviews.length
     });
     
-    return NextResponse.json({ reviews: formattedReviews });
+    // Get total count for pagination
+    // For interests-based queries with fallback, calculating total count is more complex
+    let totalCount: number;
+    
+    if (interests.length > 0 && !strictInterests) {
+      // For non-strict interest matching, count all reviews that match the base criteria
+      totalCount = await db.review.count({
+        where: baseWhereClause
+      });
+    } else {
+      // For strict interest matching or no interests, count with the full where clause
+      totalCount = await db.review.count({
+        where: whereClause
+      });
+    }
+    
+    // Return formatted reviews with pagination info
+    return NextResponse.json({
+      reviews: formattedReviews,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    });
   } catch (error) {
     console.error("Reviews API: Error fetching reviews:", error);
     return NextResponse.json({ 
@@ -245,7 +434,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// Other handlers remain unchanged...
 // POST handler for creating reviews or handling votes
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
