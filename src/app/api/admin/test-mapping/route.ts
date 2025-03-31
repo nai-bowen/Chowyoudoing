@@ -2,7 +2,9 @@
 // Run with: npx ts-node src/scripts/testCategoryMappings.ts
 
 import { enhanceCategory, enhanceInterest, getEmbeddings, cosineSimilarity } from '@/utils/embeddingUtils';
-import { PREDEFINED_INTERESTS } from '@/utils/categoryMappingService';
+
+import { PREDEFINED_INTERESTS } from "@/utils/categoryMappingService.client";
+
 
 // Sample categories to test (can add your own)
 const SAMPLE_CATEGORIES = [

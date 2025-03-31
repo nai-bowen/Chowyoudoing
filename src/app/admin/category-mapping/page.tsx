@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { PREDEFINED_INTERESTS } from "@/utils/categoryMappingService";
+import { PREDEFINED_INTERESTS } from "@/utils/categoryMappingService.client";
 
+// Rest of your component remains the same...
 interface CategoryMapping {
   category: string;
   interests: string[];
@@ -306,7 +307,7 @@ export default function CategoryMappingPage(): JSX.Element {
   if (loading) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">OpenAI Category to Interest Mapper</h1>
+        <h1 className="text-2xl font-bold mb-4">Transformer Category to Interest Mapper</h1>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
         </div>
@@ -316,7 +317,7 @@ export default function CategoryMappingPage(): JSX.Element {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">OpenAI Category to Interest Mapper</h1>
+      <h1 className="text-2xl font-bold mb-4">Transformer Category to Interest Mapper</h1>
       
       {message && (
         <div className={`px-4 py-3 rounded relative mb-4 ${
