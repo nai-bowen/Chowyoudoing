@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 
 // Define interfaces for our data
 interface FormattedReview {
+  patronId: string;
   id: string;
   title: string;
   date: string|undefined;
@@ -25,6 +26,7 @@ interface FormattedReview {
   latitude?: number | null;
   longitude?: number | null;
   patron?: {
+    id:string;
     firstName: string;
     lastName: string;
   } | null;
@@ -357,9 +359,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         content: review.content,
         text: review.content,
         rating: review.rating,
-        restaurant: `${review.restaurant?.title ?? "Restaurant"}${
-          review.restaurant?.location ? ` - ${review.restaurant.location}` : ""
-        }`,
+        restaurant: `${review.restaurant?.title ?? "Restaurant"}${review.restaurant?.location ? ` - ${review.restaurant.location}` : ""}`,
         restaurantId: review.restaurantId || "", // Include the restaurantId
         author: review.patron
           ? `${review.patron.firstName} ${review.patron.lastName.charAt(0)}.`
@@ -369,19 +369,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         valueForMoney: review.valueForMoney ?? 0,
         imageUrl: review.imageUrl ?? null,
         videoUrl: review.videoUrl ?? null,
+        patronId: review.patronId,
       };
     
       if (includeLocation && review.latitude !== undefined && review.longitude !== undefined) {
         formattedReview.latitude = review.latitude;
         formattedReview.longitude = review.longitude;
       }
-    
       if (review.patron) {
-        formattedReview.patron = {
-          firstName: review.patron.firstName,
-          lastName: review.patron.lastName,
-        };
+        formattedReview.patron = review.patron
+        ? {
+            id: review.patron.id,
+            firstName: review.patron.firstName,
+            lastName: review.patron.lastName,
+          }
+        : undefined;
+      
+      formattedReview.patronId = review.patron?.id || review.patronId;
+      
       }
+      
       
       // Include the user's vote if available
       if (currentUserId && review.votes?.length) {

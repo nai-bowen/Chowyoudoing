@@ -1,184 +1,88 @@
-/*eslint-disable*/
+// src/app/api/profile/follow/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/server/db";
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
-  try {
-    // Get the session to check if a user is logged in
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-    // Fetch the favorites with related data
-    const favorites = await db.favorite.findMany({
-      where: {
-        patronId: session.user.id
-      },
-      select: {
-        id: true,
-        createdAt: true,
-        restaurant: {
-          select: {
-            id: true,
-            title: true,
-            location: true,
-            category: true
-          }
-        },
-        review: {
-          select: {
-            id: true,
-            content: true,
-            rating: true,
-            restaurant: {
-              select: {
-                title: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
-    
-    return NextResponse.json({ favorites });
-  } catch (error) {
-    console.error("Error fetching favorites:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch favorites" },
-      { status: 500 }
-    );
-  }
-}
-
+// POST - Follow a user
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    // Get the session to check if a user is logged in
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    // Parse request body
     const body = await req.json();
-    const { restaurantId, reviewId } = body;
+    const { targetPatronId } = body;
     
-    // Validate input - must have either restaurantId or reviewId
-    if (!restaurantId && !reviewId) {
-      return NextResponse.json(
-        { error: "Either restaurantId or reviewId is required" },
-        { status: 400 }
-      );
+    if (!targetPatronId) {
+      return NextResponse.json({ error: "Target user ID is required" }, { status: 400 });
     }
     
-    // Check if this item is already favorited
-    const existingFavorite = await db.favorite.findFirst({
+    // Check if target user exists
+    const targetPatron = await db.patron.findUnique({
+      where: { id: targetPatronId }
+    });
+    
+    if (!targetPatron) {
+      return NextResponse.json({ error: "Target user not found" }, { status: 404 });
+    }
+    
+    // Check if already following
+    const existingFollow = await db.follow.findFirst({
       where: {
-        patronId: session.user.id,
-        ...(restaurantId ? { restaurantId } : { reviewId })
+        followerId: session.user.id,
+        followingId: targetPatronId
       }
     });
     
-    // If already favorited, return success with existing data
-    if (existingFavorite) {
-      return NextResponse.json({ 
-        favorite: existingFavorite,
-        message: "Item already in favorites"
-      });
+    if (existingFollow) {
+      return NextResponse.json({ message: "Already following this user", isFollowing: true });
     }
     
-    // Create new favorite
-    const favorite = await db.favorite.create({
+    // Create follow relationship
+    await db.follow.create({
       data: {
-        patron: {
-          connect: { id: session.user.id }
-        },
-        ...(restaurantId ? { restaurant: { connect: { id: restaurantId } } } : {}),
-        ...(reviewId ? { review: { connect: { id: reviewId } } } : {})
+        follower: { connect: { id: session.user.id } },
+        following: { connect: { id: targetPatronId } }
       }
     });
     
-    return NextResponse.json({ 
-      favorite,
-      message: "Item added to favorites" 
-    });
+    return NextResponse.json({ message: "Successfully followed user", isFollowing: true });
   } catch (error) {
-    console.error("Error adding to favorites:", error);
-    return NextResponse.json(
-      { error: "Failed to add to favorites" },
-      { status: 500 }
-    );
+    console.error("Error following user:", error);
+    return NextResponse.json({ error: "Failed to follow user" }, { status: 500 });
   }
 }
 
+// DELETE - Unfollow a user
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   try {
-    // Get the session to check if a user is logged in
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    // Get favorite ID from URL params
     const url = new URL(req.url);
-    const favoriteId = url.searchParams.get("id");
-    const restaurantId = url.searchParams.get("restaurantId");
-    const reviewId = url.searchParams.get("reviewId");
+    const targetPatronId = url.searchParams.get("targetPatronId");
     
-    if (!favoriteId && !restaurantId && !reviewId) {
-      return NextResponse.json(
-        { error: "Either favoriteId, restaurantId, or reviewId is required" },
-        { status: 400 }
-      );
+    if (!targetPatronId) {
+      return NextResponse.json({ error: "Target user ID is required" }, { status: 400 });
     }
     
-    // Delete by ID or by content reference
-    if (favoriteId) {
-      // First check if the favorite belongs to the user
-      const favorite = await db.favorite.findFirst({
-        where: {
-          id: favoriteId,
-          patronId: session.user.id
-        }
-      });
-      
-      if (!favorite) {
-        return NextResponse.json(
-          { error: "Favorite not found or not authorized" },
-          { status: 404 }
-        );
+    // Delete follow relationship
+    await db.follow.deleteMany({
+      where: {
+        followerId: session.user.id,
+        followingId: targetPatronId
       }
-      
-      await db.favorite.delete({
-        where: { id: favoriteId }
-      });
-    } else {
-      // Delete by content reference
-      await db.favorite.deleteMany({
-        where: {
-          patronId: session.user.id,
-          ...(restaurantId ? { restaurantId } : {}),
-          ...(reviewId ? { reviewId } : {})
-        }
-      });
-    }
-    
-    return NextResponse.json({ 
-      message: "Item removed from favorites" 
     });
+    
+    return NextResponse.json({ message: "Successfully unfollowed user", isFollowing: false });
   } catch (error) {
-    console.error("Error removing from favorites:", error);
-    return NextResponse.json(
-      { error: "Failed to remove from favorites" },
-      { status: 500 }
-    );
+    console.error("Error unfollowing user:", error);
+    return NextResponse.json({ error: "Failed to unfollow user" }, { status: 500 });
   }
 }

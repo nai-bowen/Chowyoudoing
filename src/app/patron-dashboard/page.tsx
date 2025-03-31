@@ -21,6 +21,8 @@ import {  faStar,
   faEdit, faHeart} from  "@fortawesome/free-regular-svg-icons";
 import WriteReviewModal from "@/app/_components/WriteReviewModal";
 import ReviewModal from '@/app/_components/ReviewModal';
+import FollowingList from "@/app/_components/FollowingList";
+
 
 
 // Define interfaces for the types of data we'll be working with
@@ -38,9 +40,10 @@ interface Review {
   rating?: number;
   text?: string;
   restaurant?: string;
-  restaurantId?: string; // Add this field
-  author?: string;
+  restaurantId?: string; 
+  patronId: string;  
   patron?: {
+    id:string;
     firstName: string;
     lastName: string;
   };
@@ -717,6 +720,16 @@ export default function PatronDashboard(): JSX.Element {
             </button>
             <button 
               className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                activeTab === 'Following' 
+                ? 'bg-[#d7b6f6] text-black' 
+                : 'text-gray-600 hover:bg-white/50'
+              }`}
+              onClick={() => setActiveTab('Following')}
+            >
+              Following
+            </button>
+            <button 
+              className={`py-3 px-4 font-medium rounded-lg transition-all ${
                 activeTab === 'Recommendations' 
                 ? 'bg-[#f7d1f9] text-black' 
                 : 'text-gray-600 hover:bg-white/50'
@@ -725,6 +738,7 @@ export default function PatronDashboard(): JSX.Element {
             >
               Recommendations
             </button>
+
           </div>
         </div>
   
@@ -1013,6 +1027,12 @@ export default function PatronDashboard(): JSX.Element {
               </div>
             </div>
           )}
+
+          {activeTab === 'Following' && (
+            <div>
+              <FollowingList />
+            </div>
+          )}
   
           {/* Recommendations Tab Content (has content) */}
           {activeTab === 'Recommendations' && false && (
@@ -1081,7 +1101,7 @@ export default function PatronDashboard(): JSX.Element {
                         </p>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-500">
-                            - {review.patron?.firstName || review.author || "Anonymous"}
+                            - {review.patron?.firstName || review.patronId || "Anonymous"}
                           </span>
                           <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
                             {review.upvotes || 0} upvotes
@@ -1149,11 +1169,8 @@ export default function PatronDashboard(): JSX.Element {
         <ReviewModal 
           review={{
             id: selectedReview.id,
-            // Ensure required properties are always defined with non-null values
             content: selectedReview.content || selectedReview.text || "", 
             rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
-            
-            // Include all optional properties with their original values or safe defaults
             date: selectedReview.date,
             upvotes: selectedReview.upvotes ?? 0,
             asExpected: selectedReview.asExpected ?? 0,
@@ -1161,6 +1178,7 @@ export default function PatronDashboard(): JSX.Element {
             valueForMoney: selectedReview.valueForMoney ?? 0,
             imageUrl: selectedReview.imageUrl,
             patron: selectedReview.patron,
+            patronId: selectedReview.patronId,  // Add this
             userVote: selectedReview.userVote
           }}
           isOpen={isReviewModalOpen} 

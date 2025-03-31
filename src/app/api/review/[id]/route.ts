@@ -79,6 +79,7 @@ export async function GET(
       restaurantId: review.restaurantId,
       menuItemId: review.menuItemId,
       menuItemName: review.menuItem?.name,
+      patronId: review.patron.id,
       patron: review.patron ? {
         id: review.patron.id,
         firstName: review.patron.firstName,

@@ -68,7 +68,9 @@ interface Review {
   valueForMoney: number;
   imageUrl: string | undefined;
   videoUrl: string | null;
+  patronId: string;  // Add this
   patron?: {
+    id: string;
     firstName: string;
     lastName: string;
   } | undefined;
@@ -772,7 +774,8 @@ export default function DiscoveryPage(): JSX.Element {
                               wouldRecommend: 0,
                               valueForMoney: 0,
                               imageUrl: photo.imageUrl,
-                              videoUrl: null
+                              videoUrl: null,
+                              patronId: ""
                             });
                           }
                         }}
@@ -812,25 +815,34 @@ export default function DiscoveryPage(): JSX.Element {
 
       {/* Review Modal */}
       {selectedReview && (
-        <ReviewModal 
-          review={{
-            id: selectedReview.id,
-            content: selectedReview.content || selectedReview.text || "", 
-            rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
-            date: selectedReview.date,
-            upvotes: selectedReview.upvotes ?? 0,
-            asExpected: selectedReview.asExpected ?? 0,
-            wouldRecommend: selectedReview.wouldRecommend ?? 0,
-            valueForMoney: selectedReview.valueForMoney ?? 0,
-            imageUrl: selectedReview.imageUrl,
-            patron: selectedReview.patron,
-            userVote: selectedReview.userVote
-          }}
-          isOpen={isReviewModalOpen} 
-          onClose={handleCloseReviewModal} 
-          onVoteUpdate={handleVoteUpdate} 
-        />
-      )}
+      <ReviewModal 
+        review={{
+          id: selectedReview.id,
+          content: selectedReview.content || selectedReview.text || "", 
+          rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
+          date: selectedReview.date,
+          upvotes: selectedReview.upvotes ?? 0,
+          asExpected: selectedReview.asExpected ?? 0,
+          wouldRecommend: selectedReview.wouldRecommend ?? 0,
+          valueForMoney: selectedReview.valueForMoney ?? 0,
+          imageUrl: selectedReview.imageUrl,
+          patron: selectedReview.patron
+            ? {
+                id: selectedReview.patron.id,
+                firstName: selectedReview.patron.firstName,
+                lastName: selectedReview.patron.lastName
+              }
+            : undefined,
+          patronId: selectedReview.patronId ?? selectedReview.patron?.id, 
+          userVote: selectedReview.userVote
+        }}
+        isOpen={isReviewModalOpen} 
+        onClose={handleCloseReviewModal} 
+        onVoteUpdate={handleVoteUpdate} 
+      />
+    )}
+
+
     </div>
   );
 }

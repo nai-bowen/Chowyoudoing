@@ -5,18 +5,27 @@ import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useGeolocation } from "../../lib/locationService";
 import { X, ChevronUp, ChevronDown, Image as ImageIcon } from "lucide-react";
+import PatronProfileModal from "./PatronProfileModal";
 
 interface Patron {
+  id: string;
   firstName: string;
   lastName: string;
 }
 
+// In ReviewModal.tsx
 interface Review {
   id?: string;
   content: string;
   rating: number;
   imageUrl?: string;
-  patron?: Patron;
+  patron?: {
+    id: string; // This is where it actually is
+    firstName: string;
+    lastName: string;
+  };
+  // patronId might not be directly on the review object
+  patronId?: string;
   reviewStandards?: string;
   date?: string;
   asExpected?: number;
@@ -54,7 +63,8 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   const [voteCount, setVoteCount] = useState<number>(0);
   const [isVoting, setIsVoting] = useState<boolean>(false);
   const [voteError, setVoteError] = useState<string>("");
-  
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+
   // Handle vote state and count initialization for read mode
   useEffect(() => {
     if (isReadMode) { 
@@ -80,7 +90,26 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
       }
     }
   }, [isReadMode, props]); 
-
+  
+  useEffect(() => {
+    if (isReadMode) {
+      const readProps = props as ReadReviewModalProps;
+      console.log("Review object:", readProps.review);
+      console.log("Patron data:", readProps.review.patron);
+      console.log("PatronId sources:", {
+        directPatronId: readProps.review.patronId,
+        nestedPatronId: readProps.review.patron?.id
+      });
+    }
+  }, [props, isReadMode]);
+  
+  // Add this to debug when profile modal state changes
+  useEffect(() => {
+    console.log("Profile modal state changed:", {
+      isOpen: isProfileModalOpen,
+      review: (props as ReadReviewModalProps).review
+    });
+  }, [isProfileModalOpen, props]);
   // Handle voting for a review - IMMEDIATE UI UPDATE APPROACH
   const handleVote = async (isUpvote: boolean): Promise<void> => {
     if (!isReadMode) return;
@@ -261,8 +290,22 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
             <div className="mb-6 p-4 bg-gray-50 rounded-md">
               <p className="text-lg italic text-gray-700 mb-4">"{review.content}"</p>
               <p className="text-right font-medium text-gray-700">
-                - {review.patron?.firstName || "Anonymous"} {review.patron?.lastName || ""}
-              </p>
+              - {review.patron ? (
+                // Always make the name clickable for testing
+                <button 
+                  onClick={() => {
+                    const profileId = review.patron?.id || review.patronId;
+                    console.log("Clicking patron name, patronId:", profileId);
+                    setIsProfileModalOpen(true);
+                  }}
+                  className="hover:underline hover:text-[#8A0B31] transition-colors cursor-pointer"
+                >
+                  {review.patron.firstName || "Anonymous"} {review.patron.lastName || ""}
+                </button>
+              ) : (
+                <span className="text-gray-700">Anonymous</span>
+              )}
+            </p>
             </div>
 
             {/* Vote buttons - using the local state value directly */}
@@ -363,12 +406,22 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
             </div>
           </div>
         </div>
+       {/* This should check both possible locations */}
+    {(review.patron?.id || review.patronId) && isProfileModalOpen && (
+      <PatronProfileModal
+        patronId={review.patron?.id || review.patronId!}
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
+    )}
       </div>
+      
     );
   }
 
   // This component only handles read mode now
   return null;
 };
+
 
 export default ReviewModal;

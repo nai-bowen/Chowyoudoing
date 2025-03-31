@@ -63,7 +63,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Sum total upvotes from user's reviews
     const reviews = await db.review.findMany({
       where: { patronId },
-      select: { upvotes: true }
+      select: { patronId: true, upvotes: true }
     });
     
     // Ensure upvotes is always a number, defaulting to 0 if null/undefined
@@ -154,7 +154,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Sum total upvotes from user's reviews
     const reviews = await db.review.findMany({
       where: { patronId },
-      select: { upvotes: true }
+      select: { patronId: true, 
+        upvotes: true }
     });
     
     const upvoteCount = reviews.reduce((sum, review) => 
