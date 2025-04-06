@@ -13,6 +13,7 @@ import {
   faSignOutAlt,
   faExchangeAlt
 } from "@fortawesome/free-solid-svg-icons";
+import ProfileImage from "./ProfileImage";
 
 // Define SearchResult interface
 interface SearchResult {
@@ -27,6 +28,19 @@ interface SearchResult {
 interface PatronNavProps {
   className?: string;
 }
+
+interface ProfileData {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  username: string | null;
+  profileImage: string | null;
+  bio: string | null;
+  interests: string[];
+}
+
+// Then replace the Profile Dropdown section with this code:
 
 // SearchResults component
 const SearchResults: React.FC<{
@@ -102,6 +116,40 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState<boolean>(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   
+  
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProfileData = async (): Promise<void> => {
+      // Only fetch if user is authenticated
+      if (status !== "authenticated") return;
+
+      setIsLoadingProfile(true);
+      setProfileError(null);
+      
+      try {
+        const response = await fetch("/api/profile");
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch profile: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log("Profile data fetched:", data);
+        setProfileData(data);
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+        setProfileError(error instanceof Error ? error.message : "Unknown error");
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+    
+    fetchProfileData();
+  }, [status]); // Only re-fetch when auth status changes
+
   // Brand colors for hover effects
   const colorScheme = {
     card1: "#fdf9f5",
@@ -339,48 +387,72 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
               onSelect={handleSearchResultSelect}
             />
           </div>
+
+
+       {/* Profile Dropdown */}
+        <div className="relative" ref={profileDropdownRef}>
+          <button 
+            onClick={toggleProfileDropdown}
+            className="overflow-hidden"
+          >
+            {isLoadingProfile ? (
+              // Show a loading indicator while fetching profile
+              <div className="h-10 w-10 bg-[#f2d36e] rounded-full flex items-center justify-center animate-pulse">
+                <span className="text-white text-xs">...</span>
+              </div>
+            ) : (
+              <ProfileImage
+                profileImage={profileData?.profileImage || null}
+                name={profileData ? `${profileData.firstName} ${profileData.lastName}` : (session?.user?.name || "User")}
+                size={40}
+              />
+            )}
+          </button>
           
-          {/* Profile Dropdown */}
-          <div className="relative" ref={profileDropdownRef}>
-            <button 
-              onClick={toggleProfileDropdown}
-              className="h-10 w-10 bg-[#f2d36e] rounded-full flex items-center justify-center"
-            >
-              <p className="text-white font-bold">
-                {session?.user?.name?.charAt(0) || "J"}
-              </p>
-            </button>
-            
-            {/* Dropdown Menu */}
-            {isProfileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-2">
-                  {session?.user?.name && (
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="font-medium">{session.user.name}</p>
-                      <p className="text-sm text-gray-500">{session.user.email}</p>
-                    </div>
-                  )}
-                  <div className="py-1">
-                    <button 
-                      onClick={() => router.push('/login')}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-[#f1eafe] rounded transition-colors flex items-center"
-                    >
-                      <FontAwesomeIcon icon={faExchangeAlt} className="mr-2 text-gray-500" />
-                      Switch Account
-                    </button>
-                    <button 
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-[#fdedf6] rounded transition-colors flex items-center"
-                    >
-                      <FontAwesomeIcon icon={faSignOutAlt} className="mr-2 text-gray-500" />
-                      Logout
-                    </button>
+          {/* Dropdown Menu */}
+          {isProfileDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 z-50">
+              <div className="p-2">
+                {profileData ? (
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="font-medium">{`${profileData.firstName} ${profileData.lastName}`}</p>
+                    <p className="text-sm text-gray-500">{profileData.email}</p>
                   </div>
+                ) : session?.user?.name ? (
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="font-medium">{session.user.name}</p>
+                    <p className="text-sm text-gray-500">{session.user.email}</p>
+                  </div>
+                ) : null}
+                <div className="py-1">
+                  <Link 
+                    href="/profile" 
+                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-[#fdedf6] rounded transition-colors flex items-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Profile
+                  </Link>
+                  <button 
+                    onClick={() => router.push('/login')}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-[#f1eafe] rounded transition-colors flex items-center"
+                  >
+                    <FontAwesomeIcon icon={faExchangeAlt} className="mr-2 text-gray-500" />
+                    Switch Account
+                  </button>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-[#fdedf6] rounded transition-colors flex items-center"
+                  >
+                    <FontAwesomeIcon icon={faSignOutAlt} className="mr-2 text-gray-500" />
+                    Logout
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
           
           {/* Mobile Menu Button */}
           <button 

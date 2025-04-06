@@ -22,6 +22,8 @@ import {  faStar,
 import WriteReviewModal from "@/app/_components/WriteReviewModal";
 import ReviewModal from '@/app/_components/ReviewModal';
 import FollowingList from "@/app/_components/FollowingList";
+import Image from "next/image";
+import ProfileImage from "@/app/_components/ProfileImage";
 
 
 
@@ -71,6 +73,8 @@ interface UserData {
   name: string;
   email: string;
   id: string;
+  profileImage?: string | null;
+
 }
 
 // Define a type for the color scheme
@@ -141,6 +145,34 @@ export default function PatronDashboard(): JSX.Element {
   const [favouritesError, setfavouritesError] = useState<string | null>(null);
   
 
+  //get profile photo 
+  // Helper function to process profile image URL
+  const getValidImageUrl = (imageUrl: string | null): string => {
+    if (!imageUrl) return "/assets/default-profile.png";
+    
+    // Check if the URL is the problematic default-profile.jpg without path
+    if (imageUrl === "default-profile.jpg") {
+      return "/assets/default-profile.png";
+    }
+    
+    // Add leading slash if it's a relative URL without one
+    if (!imageUrl.startsWith('/') && !imageUrl.startsWith('http')) {
+      return `/${imageUrl}`;
+    }
+    
+    return imageUrl;
+  };
+
+  // Add this state for handling image errors
+  const [imageError, setImageError] = useState<boolean>(false);
+
+  // Handle image load error
+  const handleImageError = (): void => {
+    setImageError(true);
+    console.log("Image failed to load, using fallback");
+  };
+
+  
   // Color scheme for UI elements
   const colorScheme: ColorScheme = {
     card1: "#fdf9f5",
@@ -270,38 +302,62 @@ export default function PatronDashboard(): JSX.Element {
 
   // Fetch user data when session is available
   useEffect(() => {
-    const fetchUserData = async (): Promise<void> => {
-      if (status === "authenticated" && session?.user) {
+
+  const fetchUserData = async (): Promise<void> => {
+    if (status === "authenticated" && session?.user) {
+      try {
+        console.log("Session user data:", session.user);
+        
+        // Try to fetch from profile API first, which has more complete data
         try {
-          // If user data is directly available in the session
-          if (session.user.name && session.user.email) {
-            setUserData({
-              name: session.user.name,
-              email: session.user.email,
-              id: (session.user as any).id || ""
-            });
-          } else {
-            // If we need to fetch additional user data from the server
-            const response = await fetch("/api/user/profile");
-            if (!response.ok) {
-              throw new Error("Failed to fetch user data");
-            }
+          const response = await fetch("/api/profile");
+          if (response.ok) {
             const data = await response.json();
-            setUserData(data.user);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          // Fallback to session data if available
-          if (session.user.name) {
+            console.log("Profile data from API:", data);
+            
             setUserData({
-              name: session.user.name,
-              email: session.user.email as string,
-              id: (session.user as any).id || ""
+              name: `${data.firstName} ${data.lastName}`.trim(),
+              email: data.email,
+              id: data.id,
+              profileImage: data.profileImage
             });
+            return; // Exit early if successful
           }
+        } catch (apiError) {
+          console.error("Error fetching from profile API:", apiError);
+          // Continue to fallback
+        }
+        
+        // Fallback to session data
+        setUserData({
+          name: session.user.name || "",
+          email: session.user.email || "",
+          id: (session.user as any).id || "",
+          profileImage: (session.user as any).profileImage || null
+        });
+        
+        console.log("User data set from session:", {
+          name: session.user.name,
+          email: session.user.email,
+          id: (session.user as any).id,
+          profileImage: (session.user as any).profileImage
+        });
+        
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        
+        // Last resort fallback
+        if (session.user.name) {
+          setUserData({
+            name: session.user.name,
+            email: session.user.email as string,
+            id: (session.user as any).id || "",
+            profileImage: null // Ensure this is explicitly set
+          });
         }
       }
-    };
+    }
+  };
 
     fetchUserData();
   }, [session, status]);
@@ -608,42 +664,43 @@ export default function PatronDashboard(): JSX.Element {
       <main className="container mx-auto px-6 py-6">
       {/* User Profile Section */}
       <div className="flex items-center mb-8">
-        <div className="flex gap-4 items-center">
-          <div className="relative">
-            <div className="h-16 w-16 bg-[#f2d36e] rounded-full flex items-center justify-center">
-              <p className="text-white font-bold text-2xl">
-                {userData?.name?.charAt(0) || "J"}
-              </p>
+      <div className="flex gap-4 items-center">
+        <div className="relative">
+          <ProfileImage
+            profileImage={userData?.profileImage}
+            name={userData?.name}
+            size={64}
+          />
+          {isCertifiedFoodie && (
+            <div className="absolute -bottom-1 -right-1 bg-[#f2d36e] rounded-full p-1.5 border-2 border-white">
+              <FontAwesomeIcon icon={faAward} className="text-white text-xs" />
             </div>
-            {isCertifiedFoodie && (
-              <div className="absolute -bottom-1 -right-1 bg-[#f2d36e] rounded-full p-1.5 border-2 border-white">
-                <FontAwesomeIcon icon={faAward} className="text-white text-xs" />
-              </div>
-            )}
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Good morning, {userData?.name?.split(' ')[0] || "John"}!</h1>
-            {isCertifiedFoodie ? (
-              <p className="text-[#f2d36e] font-medium flex items-center">
-                <FontAwesomeIcon icon={faAward} className="mr-1" />
-                Certified Foodie
-              </p>
-            ) : (
-              <p className="text-gray-600 flex items-center">
-                <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-500" />
-                New York, NY
-              </p>
-            )}
-          </div>
+          )}
         </div>
-        
-        <Link 
-          href="/profile" 
-          className="ml-auto px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
-        >
-          Edit Profile
-        </Link>
+        <div>
+          <h1 className="text-2xl font-bold">Good morning, {userData?.name?.split(' ')[0] || "John"}!</h1>
+          {isCertifiedFoodie ? (
+            <p className="text-[#f2d36e] font-medium flex items-center">
+              <FontAwesomeIcon icon={faAward} className="mr-1" />
+              Certified Foodie
+            </p>
+          ) : (
+            <p className="text-gray-600 flex items-center">
+              <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-500" />
+              New York, NY
+            </p>
+          )}
+        </div>
       </div>
+      
+      <Link 
+        href="/profile" 
+        className="ml-auto px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
+      >
+        Edit Profile
+      </Link>
+    </div>
+        
         {/* Stats Cards - Made thinner and longer */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
           <div className="bg-[#faf2e5] rounded-xl shadow-sm p-4 h-24 flex items-center">
@@ -727,16 +784,6 @@ export default function PatronDashboard(): JSX.Element {
               onClick={() => setActiveTab('Following')}
             >
               Following
-            </button>
-            <button 
-              className={`py-3 px-4 font-medium rounded-lg transition-all ${
-                activeTab === 'Recommendations' 
-                ? 'bg-[#f7d1f9] text-black' 
-                : 'text-gray-600 hover:bg-white/50'
-              }`}
-              onClick={() => setActiveTab('Recommendations')}
-            >
-              Recommendations
             </button>
 
           </div>
@@ -958,27 +1005,6 @@ export default function PatronDashboard(): JSX.Element {
           </div>
         )}
 
-          {/* Recommendations Tab Content */}
-          {activeTab === 'Recommendations' && (
-            <div>
-              <h2 className="text-xl font-bold mb-6">Recommended For You</h2>
-              
-              {/* Empty state for recommendations */}
-              <div className="text-center py-12 bg-white/50 rounded-xl">
-                <FontAwesomeIcon icon={faUtensils} className="text-4xl text-gray-300 mb-4" />
-                <h3 className="text-xl font-medium text-gray-700 mb-2">No recommendations yet</h3>
-                <p className="text-gray-500 mb-6">
-                  Write reviews and browse restaurants to get personalized recommendations!
-                </p>
-                <Link 
-                  href="/patron-search" 
-                  className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
-                >
-                  Explore Restaurants
-                </Link>
-              </div>
-            </div>
-          )}
 
           {/* favourites Tab Content (has content) */}
           {activeTab === 'favourites' && false && (
@@ -1034,116 +1060,6 @@ export default function PatronDashboard(): JSX.Element {
             </div>
           )}
   
-          {/* Recommendations Tab Content (has content) */}
-          {activeTab === 'Recommendations' && false && (
-            <div>
-              <h2 className="text-xl font-bold mb-6">Recommended For You</h2>
-              
-              <div className="mb-8">
-                <h3 className="text-lg font-medium mb-4">Based on your taste preferences</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Sample recommended restaurants */}
-                  {[1, 2, 3].map((_, index) => (
-                    <div 
-                      key={index} 
-                      className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index + 3)}`}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
-                          <img 
-                            src={`/restaurant${index + 4}.jpg`} 
-                            alt="Restaurant" 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = "https://via.placeholder.com/80";
-                            }} 
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">
-                            {["Little Italy", "Sushi Harmony", "Burger Junction"][index]}
-                          </h3>
-                          <div className="flex text-yellow-400 text-sm mt-1">
-                            {"★★★★★".slice(0, 4 + (index % 2))}
-                            <span className="text-gray-300">{"★".repeat(5 - (4 + (index % 2)))}</span>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {["Italian, Pasta", "Japanese, Sushi", "American, Burgers"][index]}
-                          </p>
-                          <div className="flex items-center mt-2 text-xs">
-                            <span className="bg-[#f2d36e]/30 text-[#D29501] px-2 py-0.5 rounded-full">
-                              {["97% match", "94% match", "91% match"][index]}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-medium mb-4">Popular in your area</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {topReviews.length > 0 ? (
-                    topReviews.map((review, index) => (
-                      <div 
-                        key={review.id} 
-                        className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
-                      >
-                        <h3 className="font-semibold">{review.restaurant || "Restaurant Name"}</h3>
-                        <div className="flex text-yellow-400 text-sm mt-1 mb-2">
-                          {renderStars(review.rating || 0)}
-                        </div>
-                        <p className="text-gray-700 text-sm mb-3 line-clamp-3 italic">
-                          "{review.content || review.text || "No review content"}"
-                        </p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-500">
-                            - {review.patron?.firstName || review.patronId || "Anonymous"}
-                          </span>
-                          <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
-                            {review.upvotes || 0} upvotes
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    // Placeholder top reviews
-                    [1, 2, 3].map((_, index) => (
-                      <div 
-                        key={index} 
-                        className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
-                      >
-                        <h3 className="font-semibold">
-                          {["Delicious Bistro", "Ocean Flavors", "Veggie Delight"][index]}
-                        </h3>
-                        <div className="flex text-yellow-400 text-sm mt-1 mb-2">
-                          {"★★★★★".slice(0, 4 + (index % 2))}
-                        </div>
-                        <p className="text-gray-700 text-sm mb-3 line-clamp-3 italic">
-                          "{[
-                            "The food was absolutely incredible! The flavors were perfect and service was top-notch.",
-                            "Best seafood I've had in years. Fresh and perfectly cooked.",
-                            "Amazing vegetarian options with creative dishes that don't feel like an afterthought."
-                          ][index]}"
-                        </p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-500">
-                            - {["Sarah J.", "Michael T.", "Jessica K."][index]}
-                          </span>
-                          <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-600">
-                            {[42, 38, 29][index]} upvotes
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Edit Review Modal */}

@@ -31,14 +31,14 @@ export const authConfig: NextAuthOptions = {
       
     }),
   ],
-  adapter: CustomPrismaAdapter,  // ✅ Use custom adapter to map `Patron` instead of `User`
+  adapter: CustomPrismaAdapter,  
   callbacks: {
     async session({ session, token }) {
       return {
         ...session,
         user: {
           ...session.user,
-          id: token.sub,  // ✅ Use token.sub for OAuth-based users like Google
+          id: token.sub,  
         },
       };
     },
