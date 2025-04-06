@@ -24,6 +24,7 @@ type Review = {
   text?: string;
   patron?: Patron;
   date?: string;
+  isAnonymous: boolean;
 };
 
 type MenuItem = {
@@ -244,6 +245,8 @@ function RestaurantContent(): JSX.Element {
       </div>
     );
   };
+
+  
 
   // Loading state
   if (loading) return (
@@ -519,8 +522,14 @@ function RestaurantContent(): JSX.Element {
                         )}
                       </div>
                       <div className="text-sm font-medium text-[#f5b7ee]">
-                        {review.patron?.firstName || "Anonymous"} {review.patron?.lastName?.charAt(0) || ""}
-                      </div>
+                      {review.isAnonymous ? (
+                        "Anonymous"
+                      ) : (
+                        <>
+                          {review.patron?.firstName || "Anonymous"} {review.patron?.lastName?.charAt(0) || ""}
+                        </>
+                      )}
+                    </div>
                     </div>
                     
                     <div className="mt-4 flex gap-4 relative z-10">

@@ -5,7 +5,6 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/server/db";
 import { Prisma } from "@prisma/client";
 
-// Define interfaces for our data
 interface FormattedReview {
   patronId: string;
   id: string;
@@ -16,7 +15,7 @@ interface FormattedReview {
   text: string;
   rating: number;
   restaurant: string;
-  restaurantId: string; // Added restaurantId field
+  restaurantId: string;
   author: string;
   asExpected: number;
   wouldRecommend: number;
@@ -25,8 +24,9 @@ interface FormattedReview {
   videoUrl: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  isAnonymous: boolean; // Add this field
   patron?: {
-    id:string;
+    id: string;
     firstName: string;
     lastName: string;
   } | null;
@@ -34,7 +34,6 @@ interface FormattedReview {
     isUpvote: boolean;
   } | null;
 }
-
 interface ReviewStandards {
   asExpected?: number;
   wouldRecommend?: number;
@@ -56,6 +55,7 @@ interface ReviewRequestBody {
   asExpected?: number;
   wouldRecommend?: number;
   valueForMoney?: number;
+  isAnonymous?: boolean; // Add this field
 }
 
 interface VoteRequestBody {
@@ -161,7 +161,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       valueForMoney: true,
       imageUrl: true,
       videoUrl: true,
-      restaurantId: true, // Explicitly select restaurantId
+      restaurantId: true, 
+      isAnonymous: true,
       patron: {
         select: {
           id: true,
@@ -344,26 +345,31 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       console.log(`Reviews API: Found ${reviews.length} reviews with base filters`);
     }
     
+// Update the formatted reviews mapping in your GET handler:
+
     const formattedReviews = reviews.map((review) => {
       // Ensure `createdAt` is always treated as a Date
       const createdAt: Date = review.createdAt ?? new Date(); // Default to current date
       
       // Ensure upvotes is a number, default to 0 if null/undefined
       const upvotesValue: number = typeof review.upvotes === 'number' ? review.upvotes : 0;
-    
+
       const formattedReview: FormattedReview = {
         id: review.id,
         title: review.menuItem?.name ?? review.restaurant?.title ?? "Review",
-        date: createdAt.toISOString().split("T")[0], // ✅ Directly convert Date to string
+        date: createdAt.toISOString().split("T")[0], // Convert Date to string
         upvotes: upvotesValue,
         content: review.content,
         text: review.content,
         rating: review.rating,
         restaurant: `${review.restaurant?.title ?? "Restaurant"}${review.restaurant?.location ? ` - ${review.restaurant.location}` : ""}`,
         restaurantId: review.restaurantId || "", // Include the restaurantId
-        author: review.patron
-          ? `${review.patron.firstName} ${review.patron.lastName.charAt(0)}.`
-          : "Anonymous",
+        isAnonymous: review.isAnonymous ?? false, // Include anonymous flag with default
+        author: (review.isAnonymous) 
+          ? "Anonymous" 
+          : (review.patron
+              ? `${review.patron.firstName} ${review.patron.lastName.charAt(0)}.`
+              : "Anonymous"),
         asExpected: review.asExpected ?? 0,
         wouldRecommend: review.wouldRecommend ?? 0,
         valueForMoney: review.valueForMoney ?? 0,
@@ -371,24 +377,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         videoUrl: review.videoUrl ?? null,
         patronId: review.patronId,
       };
-    
+
       if (includeLocation && review.latitude !== undefined && review.longitude !== undefined) {
         formattedReview.latitude = review.latitude;
         formattedReview.longitude = review.longitude;
       }
-      if (review.patron) {
+      
+      // Only include patron data if not anonymous
+      if (!review.isAnonymous && review.patron) {
         formattedReview.patron = review.patron
-        ? {
-            id: review.patron.id,
-            firstName: review.patron.firstName,
-            lastName: review.patron.lastName,
-          }
-        : undefined;
-      
-      formattedReview.patronId = review.patron?.id || review.patronId;
-      
+          ? {
+              id: review.patron.id,
+              firstName: review.patron.firstName,
+              lastName: review.patron.lastName,
+            }
+          : undefined;
       }
       
+      formattedReview.patronId = review.patron?.id || review.patronId;
       
       // Include the user's vote if available
       if (currentUserId && review.votes?.length) {
@@ -398,7 +404,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       } else {
         formattedReview.userVote = null;
       }
-    
+
       return formattedReview;
     });
     
@@ -467,7 +473,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return handleVote(body as VoteRequestBody, session.user.id);
     }
     
-    // Otherwise, process as a normal review creation
     const reviewBody = body as ReviewRequestBody;
     console.log("Review API: Request body received", {
       hasRestaurantId: !!reviewBody.restaurantId,
@@ -475,9 +480,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       hasMenuItem: !!reviewBody.menuItem,
       hasMenuItemId: !!reviewBody.menuItemId,
       contentLength: reviewBody.content?.length,
-      hasLocation: !!reviewBody.latitude && !!reviewBody.longitude
+      hasLocation: !!reviewBody.latitude && !!reviewBody.longitude,
+      isAnonymous: !!reviewBody.isAnonymous // Log anonymous flag
     });
-    
+
     // Support both the original and new API formats
     const restaurantId = reviewBody.restaurantId;
     const restaurant = reviewBody.restaurant;
@@ -489,6 +495,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const videoUrl = reviewBody.videoUrl;
     const latitude = reviewBody.latitude;
     const longitude = reviewBody.longitude;
+    const isAnonymous = reviewBody.isAnonymous || false; // Default to false
     
     // Get the standards from either format
     const standards: ReviewStandards = reviewBody.standards || {
@@ -588,6 +595,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       asExpected: asExpectedRating,
       wouldRecommend: wouldRecommendRating,
       valueForMoney: valueForMoneyRating,
+      isAnonymous: isAnonymous, // Add the anonymous flag to the review data
       
       // Connect to patron
       patron: {
@@ -599,7 +607,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         connect: { id: restaurantRecord.id }
       },
     };
-    
     // Add location data if provided (these fields exist in the Review model)
     if (latitude !== undefined && longitude !== undefined) {
       reviewData.latitude = latitude;

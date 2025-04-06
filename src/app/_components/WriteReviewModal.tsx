@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, Upload, MapPin, Star, Search } from "lucide-react";
+import { X, Upload, MapPin, Star, Search, EyeOff } from "lucide-react";
 import { useGeolocation } from "../../lib/locationService";
 import { useSession } from "next-auth/react";
 
@@ -99,6 +99,9 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isSimpleMode, setIsSimpleMode] = useState<boolean>(true); // Toggle between simple and detailed view
+  
+  // New state for anonymous reviews
+  const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
   
   // Processing states
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -211,6 +214,7 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       setImageUrl(null);
       setVideoUrl(null);
       setIncludeLocation(false);
+      setIsAnonymous(false); // Reset anonymous flag
       setErrorMessage("");
       setSuccessMessage("");
       setIsSimpleMode(true);
@@ -346,12 +350,14 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
         videoUrl?: string;
         latitude?: number;
         longitude?: number;
+        isAnonymous: boolean; // Add the anonymous field
       } = {
         content,
         rating,
         asExpected,
         wouldRecommend,
-        valueForMoney
+        valueForMoney,
+        isAnonymous // Include anonymity preference
       };
       
       // Add restaurant info (prefer ID if available)
@@ -632,6 +638,25 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                 ) : characterCount}</span>
                 <span>/500 characters</span>
               </div>
+            </div>
+            
+            {/* Anonymous Review Option */}
+            <div className="mb-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  className="w-4 h-4 text-yellow-500 rounded focus:ring-2 focus:ring-yellow-400"
+                />
+                <span className="flex items-center gap-1.5 text-gray-700">
+                  <EyeOff size={16} className="text-gray-500" />
+                  Post anonymously
+                </span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1 ml-6">
+                Your name won't be displayed with this review
+              </p>
             </div>
             
             {/* Error Message */}

@@ -263,6 +263,7 @@ model Review {
     valueForMoney   Int     @default(0)
     latitude        Float?  @default(0)// Added for location services
     longitude       Float?  @default(0)// Added for location services
+    isAnonymous     Boolean @default(false) // New field for anonymous reviews
 
     // Optional relation to a specific menu item
     menuItem    MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)

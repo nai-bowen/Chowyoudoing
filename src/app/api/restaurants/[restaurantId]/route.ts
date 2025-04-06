@@ -54,8 +54,9 @@ export async function GET(
             wouldRecommend: true,
             valueForMoney: true,
             createdAt: true,
-            menuItemId: true, // Add this to select menuItemId
-            patron: { select: { firstName: true, lastName: true, id: true } }, // Include patron id
+            menuItemId: true,
+            isAnonymous: true, // Add this line to select the isAnonymous field
+            patron: { select: { firstName: true, lastName: true, id: true } },
             // Include user vote information if user is logged in
             votes: currentUserId ? {
               where: {

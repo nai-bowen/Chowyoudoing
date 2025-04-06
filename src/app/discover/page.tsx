@@ -68,7 +68,8 @@ interface Review {
   valueForMoney: number;
   imageUrl: string | undefined;
   videoUrl: string | null;
-  patronId: string;  // Add this
+  patronId: string; 
+  isAnonymous: boolean;
   patron?: {
     id: string;
     firstName: string;
@@ -205,7 +206,20 @@ export default function DiscoveryPage(): JSX.Element {
           if (!response.ok) throw new Error("Search failed");
           
           const data = await response.json();
+
+          const sanitizedReviews = (data.reviews || []).map((review: Review) => {
+            if (review.isAnonymous) {
+              return {
+                ...review,
+                author: "Anonymous",
+                patron: undefined
+              };
+            }
+            return review;
+          });
           
+          setReviews(sanitizedReviews);
+                    
           // Transform the data to match the SearchResult interface
           const formattedResults: SearchResult[] = (data.results || []).map((result: any) => ({
             id: result.id,
@@ -336,12 +350,31 @@ export default function DiscoveryPage(): JSX.Element {
     
     // Set strictInterests to false to always get enough results
     queryParams.append("strictInterests", "false");
-    
+
     const response = await fetch(`/api/review?${queryParams.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch reviews");
     
     const data = await response.json();
-    setReviews(data.reviews || []);
+    
+    // Process reviews to force anonymous handling
+    const processedReviews = (data.reviews || []).map((review: any) => {
+      // Convert to our Review type
+      const newReview: Review = {
+        ...review,
+        isAnonymous: Boolean(review.isAnonymous), // Force to boolean
+      };
+      
+      // If anonymous, remove patron data and set author to Anonymous
+      if (newReview.isAnonymous) {
+        newReview.author = "Anonymous";
+        newReview.patron = undefined;
+      }
+      
+      return newReview;
+    });
+    
+    console.log("Processed reviews:", processedReviews);
+    setReviews(processedReviews);
   };
 
   const fetchPhotos = async (): Promise<void> => {
@@ -726,8 +759,10 @@ export default function DiscoveryPage(): JSX.Element {
                         <p className="mb-4 text-gray-700">{review.content}</p>
                         
                         <div className="flex justify-between items-center">
-                          <div className="text-sm text-gray-500">
-                            <span className="font-medium">{review.author}</span>
+                        <div className="text-sm text-gray-500">
+                            <span className="font-medium">
+                              {review.isAnonymous === true ? "Anonymous" : review.author}
+                            </span>
                             {review.date && <span> • {review.date}</span>}
                           </div>
                           <div className="flex items-center text-sm text-gray-500">
@@ -775,7 +810,8 @@ export default function DiscoveryPage(): JSX.Element {
                               valueForMoney: 0,
                               imageUrl: photo.imageUrl,
                               videoUrl: null,
-                              patronId: ""
+                              patronId: "",
+                              isAnonymous: false
                             });
                           }
                         }}
@@ -815,32 +851,33 @@ export default function DiscoveryPage(): JSX.Element {
 
       {/* Review Modal */}
       {selectedReview && (
-      <ReviewModal 
-        review={{
-          id: selectedReview.id,
-          content: selectedReview.content || selectedReview.text || "", 
-          rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
-          date: selectedReview.date,
-          upvotes: selectedReview.upvotes ?? 0,
-          asExpected: selectedReview.asExpected ?? 0,
-          wouldRecommend: selectedReview.wouldRecommend ?? 0,
-          valueForMoney: selectedReview.valueForMoney ?? 0,
-          imageUrl: selectedReview.imageUrl,
-          patron: selectedReview.patron
-            ? {
-                id: selectedReview.patron.id,
-                firstName: selectedReview.patron.firstName,
-                lastName: selectedReview.patron.lastName
-              }
-            : undefined,
-          patronId: selectedReview.patronId ?? selectedReview.patron?.id, 
-          userVote: selectedReview.userVote
-        }}
-        isOpen={isReviewModalOpen} 
-        onClose={handleCloseReviewModal} 
-        onVoteUpdate={handleVoteUpdate} 
-      />
-    )}
+        <ReviewModal 
+          review={{
+            id: selectedReview.id,
+            content: selectedReview.content || selectedReview.text || "", 
+            rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
+            date: selectedReview.date,
+            upvotes: selectedReview.upvotes ?? 0,
+            asExpected: selectedReview.asExpected ?? 0,
+            wouldRecommend: selectedReview.wouldRecommend ?? 0,
+            valueForMoney: selectedReview.valueForMoney ?? 0,
+            imageUrl: selectedReview.imageUrl,
+            patron: selectedReview.patron
+              ? {
+                  id: selectedReview.patron.id,
+                  firstName: selectedReview.patron.firstName,
+                  lastName: selectedReview.patron.lastName
+                }
+              : undefined,
+            patronId: selectedReview.patronId ?? selectedReview.patron?.id,
+            isAnonymous: selectedReview.isAnonymous ?? false, // Add this line
+            userVote: selectedReview.userVote
+          }}
+          isOpen={isReviewModalOpen} 
+          onClose={handleCloseReviewModal} 
+          onVoteUpdate={handleVoteUpdate} 
+        />
+      )}
 
 
     </div>

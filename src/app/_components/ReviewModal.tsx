@@ -32,6 +32,7 @@ interface Review {
   wouldRecommend?: number;
   valueForMoney?: number;
   upvotes?: number;
+  isAnonymous?: boolean; 
   userVote?: {
     isUpvote: boolean;
   };
@@ -290,22 +291,28 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
             <div className="mb-6 p-4 bg-gray-50 rounded-md">
               <p className="text-lg italic text-gray-700 mb-4">"{review.content}"</p>
               <p className="text-right font-medium text-gray-700">
-              - {review.patron ? (
-                // Always make the name clickable for testing
-                <button 
-                  onClick={() => {
-                    const profileId = review.patron?.id || review.patronId;
-                    console.log("Clicking patron name, patronId:", profileId);
-                    setIsProfileModalOpen(true);
-                  }}
-                  className="hover:underline hover:text-[#8A0B31] transition-colors cursor-pointer"
-                >
-                  {review.patron.firstName || "Anonymous"} {review.patron.lastName || ""}
-                </button>
-              ) : (
-                <span className="text-gray-700">Anonymous</span>
-              )}
-            </p>
+                {review.isAnonymous ? (
+                  // For anonymous reviews, just show "Anonymous" text
+                  <span className="text-gray-700">Anonymous</span>
+                ) : (
+                  // For non-anonymous reviews, make the name clickable
+                  review.patron ? (
+                    <button 
+                      onClick={() => {
+                        const profileId = review.patron?.id || review.patronId;
+                        console.log("Clicking patron name, patronId:", profileId);
+                        setIsProfileModalOpen(true);
+                      }}
+                      className="hover:underline hover:text-[#8A0B31] transition-colors cursor-pointer"
+                    >
+                      {review.patron.firstName || "Anonymous"} {review.patron.lastName ? review.patron.lastName.charAt(0) + '.' : ''}
+                    </button>
+                  ) : (
+                    // Fallback if patron data is missing but review is not anonymous
+                    <span className="text-gray-700">Anonymous</span>
+                  )
+                )}
+              </p>
             </div>
 
             {/* Vote buttons - using the local state value directly */}
@@ -407,7 +414,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
           </div>
         </div>
        {/* This should check both possible locations */}
-    {(review.patron?.id || review.patronId) && isProfileModalOpen && (
+       {!review.isAnonymous && (review.patron?.id || review.patronId) && isProfileModalOpen && (
       <PatronProfileModal
         patronId={review.patron?.id || review.patronId!}
         isOpen={isProfileModalOpen}

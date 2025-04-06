@@ -40,6 +40,7 @@ interface Review {
   videoUrl?: string | null;
   patron?: Patron;
   menuItemId?: string;
+  isAnonymous?: boolean;
   userVote?: {
     isUpvote: boolean;
   } | null;
@@ -1205,7 +1206,7 @@ function RestaurantContent(): JSX.Element {
                           {/* Blob decoration for review card */}
                           <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#f9ebc3]/10 rounded-full"></div>
                           
-                          {/* Menu Item Name - Added this section */}
+                          {/* Menu Item Name*/}
                           {menuItem && (
                             <div className="mb-3 px-2 py-1 bg-[#f8bff1]/10 rounded-md inline-block">
                               <span className="text-sm font-medium text-[#dab9f8]">Review for: {menuItem.name}</span>
@@ -1220,8 +1221,10 @@ function RestaurantContent(): JSX.Element {
                               )}
                             </div>
                             <div className="text-sm font-medium text-[#f5b7ee]">
-                              {review.patron?.firstName || review.author || "Anonymous"} {review.patron?.lastName?.charAt(0) || ""}
-                            </div>
+                            {review.isAnonymous 
+                              ? "Anonymous" 
+                              : `${review.patron?.firstName || review.author || "Anonymous"} ${review.patron?.lastName?.charAt(0) || ""}`}
+                          </div>
                           </div>
                           
                           <div className="mt-4 flex gap-4 relative z-10">
@@ -1323,6 +1326,7 @@ function RestaurantContent(): JSX.Element {
       )}
 
       {/* Read Review Modal */}
+      {/* Read Review Modal */}
       {modalType === ModalType.READ && selectedReview && (
         <ReviewModal 
           review={{
@@ -1347,9 +1351,18 @@ function RestaurantContent(): JSX.Element {
             valueForMoney: selectedReview.valueForMoney ?? 0,
             
             // Include patron information for author display
-            patron: selectedReview.patron,
+            patron: selectedReview.patron?.id
+            ? {
+                id: selectedReview.patron.id,
+                firstName: selectedReview.patron.firstName,
+                lastName: selectedReview.patron.lastName,
+              }
+            : undefined,
+                      
+            // Add isAnonymous property
+            isAnonymous: selectedReview.isAnonymous ?? false,
             
-            // Remove menuItemId property as it's not in the Review interface
+            // Keep track of user's vote
           }}
           isOpen={true} 
           onClose={closeModal} 
