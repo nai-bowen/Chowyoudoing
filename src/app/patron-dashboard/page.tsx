@@ -15,7 +15,9 @@ import {
   faUtensils,
   faTrophy,
   faTimes,
-  faAward
+  faAward,
+  faThumbsUp,
+  faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import {  faStar, 
   faEdit, faHeart} from  "@fortawesome/free-regular-svg-icons";
@@ -24,7 +26,7 @@ import ReviewModal from '@/app/_components/ReviewModal';
 import FollowingList from "@/app/_components/FollowingList";
 import Image from "next/image";
 import ProfileImage from "@/app/_components/ProfileImage";
-
+import StatCard from '@/app/_components/StatCard';
 
 
 // Define interfaces for the types of data we'll be working with
@@ -143,8 +145,13 @@ export default function PatronDashboard(): JSX.Element {
   const [favourites, setfavourites] = useState<Favorite[]>([]);
   const [isLoadingfavourites, setIsLoadingfavourites] = useState<boolean>(true);
   const [favouritesError, setfavouritesError] = useState<string | null>(null);
-  
+  const [followerCount, setFollowerCount] = useState<number>(0);
+  const [isLoadingFollowers, setIsLoadingFollowers] = useState<boolean>(true);
 
+  
+  const calculateTotalUpvotes = (): number => {
+    return userReviews.reduce((total, review) => total + (review.upvotes || 0), 0);
+  };
   //get profile photo 
   // Helper function to process profile image URL
   const getValidImageUrl = (imageUrl: string | null): string => {
@@ -163,6 +170,43 @@ export default function PatronDashboard(): JSX.Element {
     return imageUrl;
   };
 
+
+  useEffect(() => {
+    const fetchProfileData = async (): Promise<void> => {
+      if (status !== "authenticated") {
+        setIsLoadingFollowers(false);
+        return;
+      }
+      
+      setIsLoadingFollowers(true);
+      
+      try {
+        // Use the existing profile API endpoint
+        const response = await fetch("/api/profile");
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch profile data");
+        }
+        
+        const data = await response.json();
+        console.log("Profile data response:", data);
+        
+        // Extract follower count from the response
+        if (data && data._count && typeof data._count.followers === 'number') {
+          setFollowerCount(data._count.followers);
+        } else {
+          setFollowerCount(0);
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+        setFollowerCount(0);
+      } finally {
+        setIsLoadingFollowers(false);
+      }
+    };
+    
+    fetchProfileData();
+  }, [status]);
   // Add this state for handling image errors
   const [imageError, setImageError] = useState<boolean>(false);
 
@@ -172,6 +216,18 @@ export default function PatronDashboard(): JSX.Element {
     console.log("Image failed to load, using fallback");
   };
 
+  const getTimeBasedGreeting = (): string => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning,";
+    if (hour < 18) return "Good Afternoon,";
+    return "Good Evening,";
+  };
+  
+  const capitalizeFirstLetter = (string: string | undefined): string => {
+    if (!string) return "User"; // Default fallback
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+  
   
   // Color scheme for UI elements
   const colorScheme: ColorScheme = {
@@ -266,7 +322,7 @@ export default function PatronDashboard(): JSX.Element {
     setIsEditReviewModalOpen(true);
   };
 
-  // Add this function to handle the edit modal closing
+  // function to handle the edit modal closing
   const handleEditModalClose = (): void => {
     setIsEditReviewModalOpen(false);
     setSelectedReviewId("");
@@ -288,7 +344,7 @@ export default function PatronDashboard(): JSX.Element {
     }
   };
 
-  // Add this function to handle successful edits
+  // function to handle successful edits
   const handleEditSuccess = (): void => {
     // This will be called after a successful edit
     console.log("Review edited successfully");
@@ -678,8 +734,11 @@ export default function PatronDashboard(): JSX.Element {
           )}
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Good morning, {userData?.name?.split(' ')[0] || "John"}!</h1>
-          {isCertifiedFoodie ? (
+        <h1 className="text-2xl font-bold">
+              {getTimeBasedGreeting()} {capitalizeFirstLetter(userData?.name?.split(' ')[0] || "User")}!
+            </h1> 
+                     
+            {isCertifiedFoodie ? (
             <p className="text-[#f2d36e] font-medium flex items-center">
               <FontAwesomeIcon icon={faAward} className="mr-1" />
               Certified Foodie
@@ -687,7 +746,7 @@ export default function PatronDashboard(): JSX.Element {
           ) : (
             <p className="text-gray-600 flex items-center">
               <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-500" />
-              New York, NY
+              Food Explorer
             </p>
           )}
         </div>
@@ -703,53 +762,41 @@ export default function PatronDashboard(): JSX.Element {
         
         {/* Stats Cards - Made thinner and longer */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-          <div className="bg-[#faf2e5] rounded-xl shadow-sm p-4 h-24 flex items-center">
-            <div className="flex items-center gap-4">
-              <div className="bg-[#f2d36e] rounded-full w-14 h-14 flex items-center justify-center">
-                <FontAwesomeIcon icon={faStar} className="text-xl text-[#faf2e5]" />
-              </div>
-              <div>
-                <h3 className="text-gray-600 text-sm">Reviews</h3>
-                <p className="text-2xl font-bold">{userReviews.length || 24}</p>
-              </div>
-            </div>
-          </div>
+          <StatCard 
+            bgColor="bg-[#faf2e5]"
+            iconBgColor="bg-[#f2d36e]"
+            icon={faStar}
+            title="Reviews"
+            value={userReviews.length}
+            isLoading={isLoadingUserReviews}
+          />
           
-          <div className="bg-[#fdedf6] rounded-xl shadow-sm p-4 h-24 flex items-center">
-            <div className="flex items-center gap-4">
-              <div className="bg-[#f9c3c9] rounded-full w-14 h-14 flex items-center justify-center">
-                <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xl text-[#fdedf6]" />
-              </div>
-              <div>
-                <h3 className="text-gray-600 text-sm">Restaurants Visited</h3>
-                <p className="text-2xl font-bold">42</p>
-              </div>
-            </div>
-          </div>
+          <StatCard 
+            bgColor="bg-[#fdedf6]"
+            iconBgColor="bg-[#f9c3c9]"
+            icon={faThumbsUp}
+            title="Upvotes"
+            value={calculateTotalUpvotes()}
+            isLoading={isLoadingUserReviews}
+          />
           
-          <div className="bg-[#fbe9fc] rounded-xl shadow-sm p-4 h-24 flex items-center">
-            <div className="flex items-center gap-4">
-              <div className="bg-[#f5b7ee] rounded-full w-14 h-14 flex items-center justify-center">
-                <FontAwesomeIcon icon={faUtensils} className="text-xl text-[#fbe9fc]" />
-              </div>
-              <div>
-                <h3 className="text-gray-600 text-sm">Trending</h3>
-                <p className="text-2xl font-bold">Italian</p>
-              </div>
-            </div>
-          </div>
+          <StatCard 
+            bgColor="bg-[#fbe9fc]"
+            iconBgColor="bg-[#f5b7ee]"
+            icon={faUsers}
+            title="Followers"
+            value={followerCount}
+            isLoading={isLoadingFollowers}
+          />
           
-          <div className="bg-[#f1eafe] rounded-xl shadow-sm p-4 h-24 flex items-center">
-            <div className="flex items-center gap-4">
-              <div className="bg-[#dab9f8] rounded-full w-14 h-14 flex items-center justify-center">
-                <FontAwesomeIcon icon={faTrophy} className="text-xl text-[#f1eafe]" />
-              </div>
-              <div>
-                <h3 className="text-gray-600 text-sm">Achievements</h3>
-                <p className="text-2xl font-bold">8</p>
-              </div>
-            </div>
-          </div>
+          <StatCard 
+            bgColor="bg-[#f1eafe]"
+            iconBgColor="bg-[#dab9f8]"
+            icon={faUtensils}
+            title="Trending"
+            value="Italian"
+            isLoading={false}
+          />
         </div>
 
         {/* Tabs - Moved to left, smaller and different colors */}
