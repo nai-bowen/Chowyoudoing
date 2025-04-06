@@ -14,6 +14,8 @@ import {
   faExchangeAlt
 } from "@fortawesome/free-solid-svg-icons";
 import ProfileImage from "./ProfileImage";
+import RequestMenuModal from "@/app/_components/RequestMenuModal";
+import { faClipboardList } from "@fortawesome/free-solid-svg-icons";
 
 // Define SearchResult interface
 interface SearchResult {
@@ -120,6 +122,7 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async (): Promise<void> => {
@@ -231,13 +234,23 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
           const data = await response.json();
           
           // Transform the data to match the SearchResult interface
-          const formattedResults: SearchResult[] = (data.results || []).map((result: any) => ({
-            id: result.id,
-            name: result.name,
-            type: result.type,
-            url: `/patron-search?q=${encodeURIComponent(result.name)}`,
-            restaurant: result.restaurant
-          }));
+          const formattedResults: SearchResult[] = [
+            ...((data.results || []).map((result: any) => ({
+              id: result.id,
+              name: result.name,
+              type: result.type,
+              url: `/patron-search?q=${encodeURIComponent(result.name)}`,
+              restaurant: result.restaurant
+            }))),
+            {
+              id: 'request-menu',
+              name: 'Request a menu',
+              type: 'Action',
+              url: '#request-menu',
+              restaurant: undefined
+            }
+          ];
+          
           
           setSearchResults(formattedResults);
         } catch (error) {
@@ -263,6 +276,12 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
     }
   };
 
+  useEffect(() => {
+    const openRequestModal = () => setIsRequestModalOpen(true);
+    window.addEventListener("open-request-menu-modal", openRequestModal);
+    return () => window.removeEventListener("open-request-menu-modal", openRequestModal);
+  }, []);
+
   // Handle search input changes
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchTerm(e.target.value);
@@ -270,10 +289,13 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
 
   // Handle search result selection
   const handleSearchResultSelect = (result: SearchResult): void => {
-    // Navigate to the patron search page with the restaurant ID
+    if (result.id === 'request-menu') {
+      const event = new CustomEvent("open-request-menu-modal");
+      window.dispatchEvent(event);
+      return;
+    }
+  
     router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
-    
-    // Clear the search
     setIsSearchOpen(false);
     setSearchTerm("");
     setSearchResults([]);
@@ -314,6 +336,7 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
   };
   
   return (
+    <>
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 px-6 ${
       isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm' : 'bg-transparent'
     } ${className}`}>
@@ -354,6 +377,15 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
         <div className="flex items-center space-x-4">
           {/* Search Button & Input */}
           <div className="relative" ref={searchContainerRef}>
+            {/* Request Menu Icon */}
+          <button
+            onClick={() => setIsRequestModalOpen(true)}
+            className="text-gray-600 hover:text-[#f3b4eb] p-2"
+            title="Request a Menu"
+          >
+            <FontAwesomeIcon icon={faClipboardList} />
+          </button>
+
             {isSearchOpen ? (
               <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-full border border-gray-200 px-3 py-1 shadow-md">
                 <input
@@ -537,7 +569,14 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
         </div>
       </div>
     </header>
+    <RequestMenuModal 
+      isOpen={isRequestModalOpen} 
+      onClose={() => setIsRequestModalOpen(false)} 
+    />
+
+    </>
   );
 };
 
 export default PatronNav;
+

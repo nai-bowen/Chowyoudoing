@@ -7,6 +7,7 @@ import Link from "next/link";
 import { MapPin, Filter, ThumbsUp, Sparkles, Clock, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ReviewModal from '@/app/_components/ReviewModal';
+import RequestMenuModal from "../_components/RequestMenuModal";
 
 // Define SearchResult interface
 interface SearchResult {
@@ -178,6 +179,9 @@ export default function DiscoveryPage(): JSX.Element {
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
 
+  //State for Request Menu
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+
   // Handle click outside of search container
   useEffect(() => {
     function handleClickOutside(event: MouseEvent): void {
@@ -220,14 +224,22 @@ export default function DiscoveryPage(): JSX.Element {
           
           setReviews(sanitizedReviews);
                     
-          // Transform the data to match the SearchResult interface
-          const formattedResults: SearchResult[] = (data.results || []).map((result: any) => ({
-            id: result.id,
-            name: result.name,
-            type: result.type,
-            url: `/patron-search?id=${encodeURIComponent(result.id)}`,
-            restaurant: result.restaurant
-          }));
+          const formattedResults: SearchResult[] = [
+            ...(data.results || []).map((result: any) => ({
+              id: result.id,
+              name: result.name,
+              type: result.type,
+              url: `/patron-search?id=${encodeURIComponent(result.id)}`,
+              restaurant: result.restaurant
+            })),
+            {
+              id: 'request-menu',
+              name: 'Request a Menu',
+              type: 'Action',
+              url: '#request-menu',
+              restaurant: undefined
+            }
+          ];
           
           setSearchResults(formattedResults);
         } catch (error) {
@@ -444,13 +456,24 @@ export default function DiscoveryPage(): JSX.Element {
 
   // Handle search result selection
   const handleSearchResultSelect = (result: SearchResult): void => {
-    // Navigate to the patron search page with the restaurant ID
+    if (result.id === "request-menu") {
+      const event = new CustomEvent("open-request-menu-modal");
+      window.dispatchEvent(event);
+      return;
+    }
+  
     router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
-    
-    // Clear the search
     setSearchQuery("");
     setSearchResults([]);
   };
+  
+
+  useEffect(() => {
+    const openRequestModal = () => setIsRequestModalOpen(true);
+    window.addEventListener("open-request-menu-modal", openRequestModal);
+    return () => window.removeEventListener("open-request-menu-modal", openRequestModal);
+  }, []);
+  
 
   // Add handler to view a review
   const handleViewFullReview = (review: Review): void => {
@@ -878,6 +901,15 @@ export default function DiscoveryPage(): JSX.Element {
           onVoteUpdate={handleVoteUpdate} 
         />
       )}
+
+
+    {/* Request Menu Modal */}
+
+    <RequestMenuModal 
+      isOpen={isRequestModalOpen} 
+      onClose={() => setIsRequestModalOpen(false)} 
+    />
+
 
 
     </div>
