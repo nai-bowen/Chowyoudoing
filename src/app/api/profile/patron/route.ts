@@ -98,7 +98,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         interests: true,
         _count: {
           select: {
-            reviews: true
+            reviews: true,
+            followers: true,  
+            following: true 
           }
         }
       }

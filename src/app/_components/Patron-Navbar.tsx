@@ -377,14 +377,7 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
         <div className="flex items-center space-x-4">
           {/* Search Button & Input */}
           <div className="relative" ref={searchContainerRef}>
-            {/* Request Menu Icon */}
-          <button
-            onClick={() => setIsRequestModalOpen(true)}
-            className="text-gray-600 hover:text-[#f3b4eb] p-2"
-            title="Request a Menu"
-          >
-            <FontAwesomeIcon icon={faClipboardList} />
-          </button>
+
 
             {isSearchOpen ? (
               <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-full border border-gray-200 px-3 py-1 shadow-md">
@@ -419,7 +412,14 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
               onSelect={handleSearchResultSelect}
             />
           </div>
-
+            {/* Request Menu Icon */}
+            <button
+            onClick={() => setIsRequestModalOpen(true)}
+            className="text-gray-600 hover:text-[#f3b4eb] p-2"
+            title="Request a Menu"
+          >
+            <FontAwesomeIcon icon={faClipboardList} />
+          </button>
 
        {/* Profile Dropdown */}
         <div className="relative" ref={profileDropdownRef}>

@@ -50,8 +50,8 @@ model Patron {
     
     // New relations
     favorites     Favorite[]
-    followers     Follow[]    @relation("follower")
-    following     Follow[]    @relation("following")
+  followers     Follow[]    @relation("following")
+  following     Follow[]    @relation("follower")  
 }
 
 // New model for foodie certification requests
