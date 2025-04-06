@@ -1,0 +1,19 @@
+{
+    "crons": [
+      {
+        "path": "/api/cron/update-trending",
+        "schedule": "0 */12 * * *"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/api/cron/update-trending",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    ]
+  }

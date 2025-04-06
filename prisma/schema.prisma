@@ -307,3 +307,16 @@ model UserVotes {
     // Each user can only vote once per review
     @@unique([userId, reviewId])
 }
+
+model TrendingCategory {
+  id              String    @id @default(cuid())
+  category        String    // The trending category name
+  count           Int       // How many times this category appeared
+  score           Float     // Calculated score (combines recency and popularity)
+  lastUpdated     DateTime  @default(now())
+  isActive        Boolean   @default(true)  // Whether this is the current trending category
+  reviewIds       String[]  // IDs of reviews that contributed to this trend
+  reviewCount     Int       // Total number of reviews analyzed
+  
+  @@index([isActive, lastUpdated])
+}

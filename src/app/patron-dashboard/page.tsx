@@ -107,6 +107,19 @@ interface Favorite {
   };
 }
 
+interface TrendingData {
+  trending: {
+    category: string;
+    count: number;
+    score: number;
+    lastUpdated: string;
+    reviewCount: number;
+  } | null;
+  recentCategories: Array<{
+    category: string;
+    count: number;
+  }>;
+}
 
 
 export default function PatronDashboard(): JSX.Element {
@@ -148,7 +161,10 @@ export default function PatronDashboard(): JSX.Element {
   const [followerCount, setFollowerCount] = useState<number>(0);
   const [isLoadingFollowers, setIsLoadingFollowers] = useState<boolean>(true);
 
-  
+  const [trendingData, setTrendingData] = useState<TrendingData | null>(null);
+const [isLoadingTrending, setIsLoadingTrending] = useState<boolean>(true);
+const [trendingError, setTrendingError] = useState<string | null>(null);
+
   const calculateTotalUpvotes = (): number => {
     return userReviews.reduce((total, review) => total + (review.upvotes || 0), 0);
   };
@@ -207,7 +223,33 @@ export default function PatronDashboard(): JSX.Element {
     
     fetchProfileData();
   }, [status]);
-  // Add this state for handling image errors
+
+  useEffect(() => {
+    const fetchTrendingData = async (): Promise<void> => {
+      setIsLoadingTrending(true);
+      setTrendingError(null);
+      
+      try {
+        const response = await fetch("/api/trending");
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch trending data");
+        }
+        
+        const data = await response.json() as TrendingData;
+        setTrendingData(data);
+      } catch (error) {
+        console.error("Error fetching trending data:", error);
+        setTrendingError(error instanceof Error ? error.message : "Unknown error");
+      } finally {
+        setIsLoadingTrending(false);
+      }
+    };
+    
+    fetchTrendingData();
+  }, []);
+  
+
   const [imageError, setImageError] = useState<boolean>(false);
 
   // Handle image load error
@@ -794,8 +836,8 @@ export default function PatronDashboard(): JSX.Element {
             iconBgColor="bg-[#dab9f8]"
             icon={faUtensils}
             title="Trending"
-            value="Italian"
-            isLoading={false}
+            value={trendingData?.trending?.category || "No trends yet"}
+            isLoading={isLoadingTrending}
           />
         </div>
 
