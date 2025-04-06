@@ -18,7 +18,7 @@ interface Review {
   id?: string;
   content: string;
   rating: number;
-  imageUrl?: string;
+  imageUrl?: string | null;
   patron?: {
     id: string; // This is where it actually is
     firstName: string;

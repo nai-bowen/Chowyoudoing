@@ -786,7 +786,16 @@ export default function DiscoveryPage(): JSX.Element {
                             <span className="font-medium">
                               {review.isAnonymous === true ? "Anonymous" : review.author}
                             </span>
-                            {review.date && <span> • {review.date}</span>}
+                            {review.date && (
+                              <span>
+                                •{" "}
+                                {new Date(review.date).toLocaleDateString("en-GB", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "2-digit"
+                                })}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center text-sm text-gray-500">
                             <ThumbsUp size={14} className="mr-1" />
