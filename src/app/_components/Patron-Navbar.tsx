@@ -11,20 +11,12 @@ import {
   faBars,
   faUtensils,
   faSignOutAlt,
-  faExchangeAlt
+  faExchangeAlt,
+  faClipboardList 
 } from "@fortawesome/free-solid-svg-icons";
 import ProfileImage from "./ProfileImage";
 import RequestMenuModal from "@/app/_components/RequestMenuModal";
-import { faClipboardList } from "@fortawesome/free-solid-svg-icons";
-
-// Define SearchResult interface
-interface SearchResult {
-  id: string;
-  name: string;
-  type: string;
-  url: string;
-  restaurant?: string;
-}
+import SearchResults, { SearchResult } from "./SearchResults"; // Import the SearchResults component
 
 // Define the props for the component
 interface PatronNavProps {
@@ -41,59 +33,6 @@ interface ProfileData {
   bio: string | null;
   interests: string[];
 }
-
-// Then replace the Profile Dropdown section with this code:
-
-// SearchResults component
-const SearchResults: React.FC<{
-  results: SearchResult[];
-  isLoading: boolean;
-  onSelect: (result: SearchResult) => void;
-}> = ({ results, isLoading, onSelect }) => {
-  if (isLoading) {
-    return (
-      <div className="absolute right-0 mt-2 w-full glass rounded-lg border border-white/30 z-40 overflow-hidden">
-        <div className="p-4 flex items-center justify-center">
-          <div className="flex items-center space-x-3">
-            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse"></div>
-            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-4 h-4 bg-yellow-200 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (results.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="absolute right-0 mt-2 w-64 glass rounded-lg border border-white/30 z-40 overflow-hidden animate-fade-in bg-white/90 backdrop-blur-sm shadow-xl">
-      <div className="max-h-72 overflow-y-auto">
-        {results.map((result) => (
-          <div
-            key={result.id}
-            onClick={() => onSelect(result)}
-            className="flex items-center p-4 hover:bg-white/50 transition-colors border-b border-gray-100/50 last:border-0 cursor-pointer"
-          >
-            <div className="flex-1">
-              <p className="text-gray-800 font-medium">{result.name}</p>
-              <div className="flex items-center justify-between mt-1">
-                {result.restaurant && (
-                  <p className="text-gray-500 text-sm">{result.restaurant}</p>
-                )}
-                <span className="ml-auto text-xs px-2 py-1 bg-yellow-100/50 text-yellow-700 rounded-full">
-                  {result.type}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
   const router = useRouter();
@@ -118,11 +57,10 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState<boolean>(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   
-  
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchProfileData = async (): Promise<void> => {
@@ -228,7 +166,8 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
       if (searchTerm.length >= 2) {
         setIsSearching(true);
         try {
-          const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerm)}&restaurants=true&meals=false&categories=false&locations=false`);
+          // Changed meals=false to meals=true to include meal results in search
+          const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerm)}&restaurants=true&meals=true&categories=false&locations=false`);
           if (!response.ok) throw new Error("Search failed");
           
           const data = await response.json();
@@ -239,18 +178,18 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
               id: result.id,
               name: result.name,
               type: result.type,
-              url: `/patron-search?q=${encodeURIComponent(result.name)}`,
-              restaurant: result.restaurant
+              url: result.url || `/patron-search?q=${encodeURIComponent(result.name)}`,
+              restaurant: result.restaurant,
+              restaurantId: result.restaurantId // Make sure this is included for Food Items
             }))),
             {
               id: 'request-menu',
               name: 'Request a menu',
-              type: 'Action',
+              type: 'Action' as any,
               url: '#request-menu',
               restaurant: undefined
             }
           ];
-          
           
           setSearchResults(formattedResults);
         } catch (error) {
@@ -290,12 +229,20 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
   // Handle search result selection
   const handleSearchResultSelect = (result: SearchResult): void => {
     if (result.id === 'request-menu') {
-      const event = new CustomEvent("open-request-menu-modal");
-      window.dispatchEvent(event);
+      setIsRequestModalOpen(true);
+      setIsSearchOpen(false);
       return;
     }
-  
-    router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
+    
+    // Special handling for Food Items - route to patron-search with their restaurantId
+    if (result.type === "Food Item" && result.restaurantId) {
+      const itemAnchor = result.name.replace(/\s+/g, "-").toLowerCase();
+      router.push(`/patron-search/${result.restaurantId}#${itemAnchor}`);
+    } else {
+      // For all other result types, route to patron-search with id parameter
+      router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
+    }
+    
     setIsSearchOpen(false);
     setSearchTerm("");
     setSearchResults([]);
@@ -377,14 +324,12 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
         <div className="flex items-center space-x-4">
           {/* Search Button & Input */}
           <div className="relative" ref={searchContainerRef}>
-
-
             {isSearchOpen ? (
               <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-full border border-gray-200 px-3 py-1 shadow-md">
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search restaurants..."
+                  placeholder="Search restaurants or meals..."
                   value={searchTerm}
                   onChange={handleSearchChange}
                   className="w-36 sm:w-48 md:w-64 p-1 border-none focus:outline-none bg-transparent"
@@ -406,14 +351,17 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
             )}
             
             {/* Search Results Dropdown */}
-            <SearchResults 
-              results={searchResults}
-              isLoading={isSearching}
-              onSelect={handleSearchResultSelect}
-            />
+            {isSearchOpen && (
+              <SearchResults 
+                results={searchResults}
+                isLoading={isSearching}
+                onResultClick={() => setIsSearchOpen(false)}
+              />
+            )}
           </div>
-            {/* Request Menu Icon */}
-            <button
+          
+          {/* Request Menu Icon */}
+          <button
             onClick={() => setIsRequestModalOpen(true)}
             className="text-gray-600 hover:text-[#f3b4eb] p-2"
             title="Request a Menu"
@@ -421,70 +369,70 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
             <FontAwesomeIcon icon={faClipboardList} />
           </button>
 
-       {/* Profile Dropdown */}
-        <div className="relative" ref={profileDropdownRef}>
-          <button 
-            onClick={toggleProfileDropdown}
-            className="overflow-hidden"
-          >
-            {isLoadingProfile ? (
-              // Show a loading indicator while fetching profile
-              <div className="h-10 w-10 bg-[#f2d36e] rounded-full flex items-center justify-center animate-pulse">
-                <span className="text-white text-xs">...</span>
-              </div>
-            ) : (
-              <ProfileImage
-                profileImage={profileData?.profileImage || null}
-                name={profileData ? `${profileData.firstName} ${profileData.lastName}` : (session?.user?.name || "User")}
-                size={40}
-              />
-            )}
-          </button>
-          
-          {/* Dropdown Menu */}
-          {isProfileDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 z-50">
-              <div className="p-2">
-                {profileData ? (
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="font-medium">{`${profileData.firstName} ${profileData.lastName}`}</p>
-                    <p className="text-sm text-gray-500">{profileData.email}</p>
+          {/* Profile Dropdown */}
+          <div className="relative" ref={profileDropdownRef}>
+            <button 
+              onClick={toggleProfileDropdown}
+              className="overflow-hidden"
+            >
+              {isLoadingProfile ? (
+                // Show a loading indicator while fetching profile
+                <div className="h-10 w-10 bg-[#f2d36e] rounded-full flex items-center justify-center animate-pulse">
+                  <span className="text-white text-xs">...</span>
+                </div>
+              ) : (
+                <ProfileImage
+                  profileImage={profileData?.profileImage || null}
+                  name={profileData ? `${profileData.firstName} ${profileData.lastName}` : (session?.user?.name || "User")}
+                  size={40}
+                />
+              )}
+            </button>
+            
+            {/* Dropdown Menu */}
+            {isProfileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="p-2">
+                  {profileData ? (
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="font-medium">{`${profileData.firstName} ${profileData.lastName}`}</p>
+                      <p className="text-sm text-gray-500">{profileData.email}</p>
+                    </div>
+                  ) : session?.user?.name ? (
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="font-medium">{session.user.name}</p>
+                      <p className="text-sm text-gray-500">{session.user.email}</p>
+                    </div>
+                  ) : null}
+                  <div className="py-1">
+                    <Link 
+                      href="/profile" 
+                      className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-[#fdedf6] rounded transition-colors flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Profile
+                    </Link>
+                    <button 
+                      onClick={() => router.push('/login')}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-[#f1eafe] rounded transition-colors flex items-center"
+                    >
+                      <FontAwesomeIcon icon={faExchangeAlt} className="mr-2 text-gray-500" />
+                      Switch Account
+                    </button>
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-[#fdedf6] rounded transition-colors flex items-center"
+                    >
+                      <FontAwesomeIcon icon={faSignOutAlt} className="mr-2 text-gray-500" />
+                      Logout
+                    </button>
                   </div>
-                ) : session?.user?.name ? (
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="font-medium">{session.user.name}</p>
-                    <p className="text-sm text-gray-500">{session.user.email}</p>
-                  </div>
-                ) : null}
-                <div className="py-1">
-                  <Link 
-                    href="/profile" 
-                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-[#fdedf6] rounded transition-colors flex items-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Profile
-                  </Link>
-                  <button 
-                    onClick={() => router.push('/login')}
-                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-[#f1eafe] rounded transition-colors flex items-center"
-                  >
-                    <FontAwesomeIcon icon={faExchangeAlt} className="mr-2 text-gray-500" />
-                    Switch Account
-                  </button>
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-[#fdedf6] rounded transition-colors flex items-center"
-                  >
-                    <FontAwesomeIcon icon={faSignOutAlt} className="mr-2 text-gray-500" />
-                    Logout
-                  </button>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
           
           {/* Mobile Menu Button */}
           <button 
@@ -573,10 +521,8 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
       isOpen={isRequestModalOpen} 
       onClose={() => setIsRequestModalOpen(false)} 
     />
-
     </>
   );
 };
 
 export default PatronNav;
-

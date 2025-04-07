@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 
 // Define the SearchResult type
-type SearchResult = {
+export type SearchResult = {
   id: string;
   name: string;
   type: "Restaurant" | "Food Item" | "Category" | "Location";
@@ -60,20 +60,17 @@ const SearchResults: React.FC<SearchResultsProps> = ({
           // Determine the correct link based on result type
           let href: string;
           
-          // Handle different result types
-          if (result.type === "Restaurant") {
-            href = `/restaurants/${result.id}`;
-          } else if (result.type === "Food Item") {
-            // For Food Items, link to the restaurant page with an anchor to the item
+          if (result.id === 'request-menu') {
+            href = '#request-menu';
+          } else if (result.type === "Food Item" && result.restaurantId) {
+            // For Food Items, link to patron-search with their restaurantId and an anchor
             const itemAnchor = result.name.replace(/\s+/g, "-").toLowerCase();
-            // Use the restaurantId property if available, otherwise fall back to url or id
-            const restaurantId = result.restaurantId || result.url || result.id;
-            href = `/restaurants/${restaurantId}#${itemAnchor}`;
+            href = `/patron-search?id=${encodeURIComponent(result.restaurantId)}`;
           } else {
-            // For other types, use the URL provided or fallback to search
-            href = result.url || `/patron-search?q=${encodeURIComponent(result.name)}`;
+            // For all other result types, link to patron-search with id parameter
+            href = `/patron-search?id=${encodeURIComponent(result.id)}`;
           }
-
+            
           return (
             <Link
               key={result.id}

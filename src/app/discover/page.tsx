@@ -16,6 +16,7 @@ interface SearchResult {
   type: string;
   url?: string;
   restaurant?: string;
+  restaurantId?: string; // Added restaurantId field for Food Items
 }
 
 // Define our types
@@ -126,6 +127,15 @@ const SearchResults: React.FC<{
     return null;
   }
 
+  // Define colors for each result type
+  const typeColors: Record<string, string> = {
+    "Restaurant": "#f9e690",
+    "Food Item": "#f9b79f",
+    "Category": "#f4a4e0",
+    "Location": "#d7a6f2",
+    "Action": "#e2e8f0"
+  };
+
   return (
     <div className="absolute left-0 right-0 mt-2 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 shadow-lg z-40 overflow-hidden">
       <div className="max-h-72 overflow-y-auto">
@@ -141,7 +151,13 @@ const SearchResults: React.FC<{
                 {result.restaurant && (
                   <p className="text-gray-500 text-sm">{result.restaurant}</p>
                 )}
-                <span className="ml-auto text-xs px-2 py-1 bg-yellow-100/50 text-yellow-700 rounded-full">
+                <span
+                  className="ml-auto text-xs px-2 py-1 rounded-full font-medium"
+                  style={{ 
+                    backgroundColor: typeColors[result.type] || "#e2e8f0", 
+                    color: "#4B2B10" 
+                  }}
+                >
                   {result.type}
                 </span>
               </div>
@@ -206,7 +222,8 @@ export default function DiscoveryPage(): JSX.Element {
       if (searchQuery.length >= 2) {
         setIsSearching(true);
         try {
-          const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&restaurants=true&meals=false&categories=false&locations=false`);
+          // Changed meals=false to meals=true to include meal results in search
+          const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&restaurants=true&meals=true&categories=false&locations=false`);
           if (!response.ok) throw new Error("Search failed");
           
           const data = await response.json();
@@ -230,7 +247,8 @@ export default function DiscoveryPage(): JSX.Element {
               name: result.name,
               type: result.type,
               url: `/patron-search?id=${encodeURIComponent(result.id)}`,
-              restaurant: result.restaurant
+              restaurant: result.restaurant,
+              restaurantId: result.restaurantId // Include the restaurantId for Food Items
             })),
             {
               id: 'request-menu',
@@ -457,12 +475,21 @@ export default function DiscoveryPage(): JSX.Element {
   // Handle search result selection
   const handleSearchResultSelect = (result: SearchResult): void => {
     if (result.id === "request-menu") {
-      const event = new CustomEvent("open-request-menu-modal");
-      window.dispatchEvent(event);
+      setIsRequestModalOpen(true);
+      setSearchQuery("");
+      setSearchResults([]);
       return;
     }
-  
-    router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
+    
+    // Special handling for Food Items - route to patron-search with their restaurantId
+    if (result.type === "Food Item" && result.restaurantId) {
+      const itemAnchor = result.name.replace(/\s+/g, "-").toLowerCase();
+      router.push(`/patron-search?id=${encodeURIComponent(result.restaurantId)}`);
+    } else {
+      // For all other result types, route to patron-search with id parameter
+      router.push(`/patron-search?id=${encodeURIComponent(result.id)}`);
+    }
+    
     setSearchQuery("");
     setSearchResults([]);
   };
@@ -556,7 +583,7 @@ export default function DiscoveryPage(): JSX.Element {
             <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
-                placeholder="Search by restaurant, cuisine, or location..."
+                placeholder="Search by restaurant, cuisine, or meal..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 ref={searchInputRef}
@@ -902,7 +929,7 @@ export default function DiscoveryPage(): JSX.Element {
                 }
               : undefined,
             patronId: selectedReview.patronId ?? selectedReview.patron?.id,
-            isAnonymous: selectedReview.isAnonymous ?? false, // Add this line
+            isAnonymous: selectedReview.isAnonymous ?? false,
             userVote: selectedReview.userVote
           }}
           isOpen={isReviewModalOpen} 
@@ -911,16 +938,11 @@ export default function DiscoveryPage(): JSX.Element {
         />
       )}
 
-
-    {/* Request Menu Modal */}
-
-    <RequestMenuModal 
-      isOpen={isRequestModalOpen} 
-      onClose={() => setIsRequestModalOpen(false)} 
-    />
-
-
-
+      {/* Request Menu Modal */}
+      <RequestMenuModal 
+        isOpen={isRequestModalOpen} 
+        onClose={() => setIsRequestModalOpen(false)} 
+      />
     </div>
   );
 }
