@@ -6,6 +6,8 @@ import Image from "next/image";
 import { useGeolocation } from "../../lib/locationService";
 import { X, ChevronUp, ChevronDown, Image as ImageIcon } from "lucide-react";
 import PatronProfileModal from "./PatronProfileModal";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCertificate } from "@fortawesome/free-solid-svg-icons";
 
 interface Patron {
   id: string;
@@ -66,6 +68,8 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   const [voteError, setVoteError] = useState<string>("");
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
 
+  const [isReviewerCertified, setIsReviewerCertified] = useState<boolean>(false);
+
   // Handle vote state and count initialization for read mode
   useEffect(() => {
     if (isReadMode) { 
@@ -101,6 +105,22 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
         directPatronId: readProps.review.patronId,
         nestedPatronId: readProps.review.patron?.id
       });
+    }
+  }, [props, isReadMode]);
+
+  useEffect(() => {
+    if (isReadMode) {
+      const readProps = props as ReadReviewModalProps;
+      const { review } = readProps;
+      
+      // Check if any property might indicate certified status
+      const certified = 
+        (review.patron && 'isCertifiedFoodie' in review.patron && review.patron.isCertifiedFoodie) ||
+        (review.patron && 'certified' in review.patron && review.patron.certified) ||
+        ('reviewerIsCertified' in review && review.reviewerIsCertified);
+      
+      setIsReviewerCertified(!!certified);
+      console.log("Setting reviewer certified status:", certified);
     }
   }, [props, isReadMode]);
   
@@ -298,15 +318,21 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
                   // For non-anonymous reviews, make the name clickable
                   review.patron ? (
                     <button 
-                      onClick={() => {
-                        const profileId = review.patron?.id || review.patronId;
-                        console.log("Clicking patron name, patronId:", profileId);
-                        setIsProfileModalOpen(true);
-                      }}
-                      className="hover:underline hover:text-[#8A0B31] transition-colors cursor-pointer"
-                    >
-                      {review.patron.firstName || "Anonymous"} {review.patron.lastName ? review.patron.lastName.charAt(0) + '.' : ''}
-                    </button>
+                    onClick={() => {
+                      const profileId = review.patron?.id || review.patronId;
+                      console.log("Clicking patron name, patronId:", profileId);
+                      console.log("Reviewer certified status:", isReviewerCertified);
+                      setIsProfileModalOpen(true);
+                    }}
+                    className="hover:underline hover:text-[#8A0B31] transition-colors cursor-pointer"
+                  >
+                    {review.patron.firstName || "Anonymous"} {review.patron.lastName ? review.patron.lastName.charAt(0) + '.' : ''}
+                    {isReviewerCertified && (
+                      <span className="ml-1 text-[#f2d36e]" title="Certified Foodie">
+                        <FontAwesomeIcon icon={faCertificate} size="sm" />
+                      </span>
+                    )}
+                  </button>
                   ) : (
                     // Fallback if patron data is missing but review is not anonymous
                     <span className="text-gray-700">Anonymous</span>
@@ -415,12 +441,13 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
         </div>
        {/* This should check both possible locations */}
        {!review.isAnonymous && (review.patron?.id || review.patronId) && isProfileModalOpen && (
-      <PatronProfileModal
-        patronId={review.patron?.id || review.patronId!}
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-      />
-    )}
+        <PatronProfileModal
+          patronId={review.patron?.id || review.patronId!}
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          isCertifiedFoodie={isReviewerCertified}  // Explicitly pass the certified status
+        />
+      )}
       </div>
       
     );
