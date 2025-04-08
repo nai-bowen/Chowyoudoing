@@ -12,12 +12,13 @@ import ReviewModal from '@/app/_components/ReviewModal';
 import RequestMenuModal from "@/app/_components/RequestMenuModal";
 import AnimatedBackground from "../_components/AnimatedBackground";
 import WriteReviewModal from '@/app/_components/WriteReviewModal';
-
+import CertifiedFoodieBadge from "@/app/_components/CertifiedFoodieBadge";
 // Define types
 interface Patron {
   firstName: string;
   lastName: string;
   id?: string;
+  isCertifiedFoodie?: boolean; 
 }
 
 interface Review {
@@ -41,6 +42,7 @@ interface Review {
   patron?: Patron;
   menuItemId?: string;
   isAnonymous?: boolean;
+  isCertifiedFoodie?: boolean;
   userVote?: {
     isUpvote: boolean;
   } | null;
@@ -71,6 +73,13 @@ enum ModalType {
   REQUEST,
   WRITE
 }
+
+// Helper function to check if a review is from a certified foodie
+const isCertifiedFoodieReview = (review: Review): boolean => {
+  // Check both the direct flag and the patron's flag
+  return !!review.isCertifiedFoodie || 
+         !!(review.patron && review.patron.isCertifiedFoodie);
+};
 
 // Create a separate component for the restaurant details
 function RestaurantContent(): JSX.Element {
@@ -1220,11 +1229,16 @@ function RestaurantContent(): JSX.Element {
                                 <span className="ml-2 text-sm text-gray-500">{review.date}</span>
                               )}
                             </div>
-                            <div className="text-sm font-medium text-[#f5b7ee]">
-                            {review.isAnonymous 
-                              ? "Anonymous" 
-                              : `${review.patron?.firstName || review.author || "Anonymous"} ${review.patron?.lastName?.charAt(0) || ""}`}
-                          </div>
+                            <div className="text-sm font-medium text-[#f5b7ee] flex items-center gap-2">
+                              {review.isAnonymous 
+                                ? "Anonymous" 
+                                : `${review.patron?.firstName || review.author || "Anonymous"} ${review.patron?.lastName?.charAt(0) || ""}`}
+                              
+                              {/* Certified Foodie Badge */}
+                              {!review.isAnonymous && isCertifiedFoodieReview(review) && (
+                                <CertifiedFoodieBadge size="sm" showText={true} />
+                              )}
+                            </div>
                           </div>
                           
                           <div className="mt-4 flex gap-4 relative z-10">
@@ -1325,7 +1339,6 @@ function RestaurantContent(): JSX.Element {
         />
       )}
 
-      {/* Read Review Modal */}
       {/* Read Review Modal */}
       {modalType === ModalType.READ && selectedReview && (
         <ReviewModal 

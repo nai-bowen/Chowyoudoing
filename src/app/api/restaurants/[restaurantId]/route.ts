@@ -56,8 +56,14 @@ export async function GET(
             createdAt: true,
             menuItemId: true,
             isAnonymous: true, // Add this line to select the isAnonymous field
-            patron: { select: { firstName: true, lastName: true, id: true } },
-            // Include user vote information if user is logged in
+            patron: { 
+              select: { 
+                firstName: true, 
+                lastName: true, 
+                id: true,
+                isCertifiedFoodie: true  // Add this line
+              } 
+            },            // Include user vote information if user is logged in
             votes: currentUserId ? {
               where: {
                 userId: currentUserId

@@ -24,11 +24,13 @@ interface FormattedReview {
   videoUrl: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  isAnonymous: boolean; // Add this field
+  isAnonymous: boolean; 
+  isCertifiedFoodie?: boolean;
   patron?: {
     id: string;
     firstName: string;
     lastName: string;
+    isCertifiedFoodie?: boolean;
   } | null;
   userVote?: {
     isUpvote: boolean;
@@ -167,7 +169,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         select: {
           id: true,
           firstName: true,
-          lastName: true
+          lastName: true,
+          isCertifiedFoodie: true
         }
       },
       restaurant: {
@@ -385,13 +388,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       
       // Only include patron data if not anonymous
       if (!review.isAnonymous && review.patron) {
-        formattedReview.patron = review.patron
-          ? {
-              id: review.patron.id,
-              firstName: review.patron.firstName,
-              lastName: review.patron.lastName,
-            }
-          : undefined;
+        formattedReview.patron = {
+          id: review.patron.id,
+          firstName: review.patron.firstName,
+          lastName: review.patron.lastName,
+          isCertifiedFoodie: review.patron.isCertifiedFoodie === true,
+        };
+        
+        if (review.patron.isCertifiedFoodie === true) {
+          formattedReview.isCertifiedFoodie = true;
+        }
       }
       
       formattedReview.patronId = review.patron?.id || review.patronId;

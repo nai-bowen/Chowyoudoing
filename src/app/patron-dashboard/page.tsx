@@ -162,12 +162,29 @@ export default function PatronDashboard(): JSX.Element {
   const [isLoadingFollowers, setIsLoadingFollowers] = useState<boolean>(true);
 
   const [trendingData, setTrendingData] = useState<TrendingData | null>(null);
-const [isLoadingTrending, setIsLoadingTrending] = useState<boolean>(true);
-const [trendingError, setTrendingError] = useState<string | null>(null);
+  const [isLoadingTrending, setIsLoadingTrending] = useState<boolean>(true);
+  const [trendingError, setTrendingError] = useState<string | null>(null);
 
+  const [isOverallLoaded, setIsOverallLoaded] = useState<boolean>(false);
+  const [loadingTimedOut, setLoadingTimedOut] = useState<boolean>(false);
+  //get upvotes across all reviews 
   const calculateTotalUpvotes = (): number => {
     return userReviews.reduce((total, review) => total + (review.upvotes || 0), 0);
   };
+  //Js transition for page - staggered loading  
+  const [animationComplete, setAnimationComplete] = useState<boolean>(false);
+  const [sectionsLoaded, setSectionsLoaded] = useState<{
+    profile: boolean;
+    stats: boolean;
+    tabs: boolean;
+    content: boolean;
+  }>({
+    profile: false,
+    stats: false,
+    tabs: false,
+    content: false
+  });
+
   //get profile photo 
   // Helper function to process profile image URL
   const getValidImageUrl = (imageUrl: string | null): string => {
@@ -186,7 +203,7 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
     return imageUrl;
   };
 
-
+  //Fetching Profiles
   useEffect(() => {
     const fetchProfileData = async (): Promise<void> => {
       if (status !== "authenticated") {
@@ -224,6 +241,7 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
     fetchProfileData();
   }, [status]);
 
+   //Fetching Trends
   useEffect(() => {
     const fetchTrendingData = async (): Promise<void> => {
       setIsLoadingTrending(true);
@@ -249,6 +267,7 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
     fetchTrendingData();
   }, []);
   
+  //Loading images 
 
   const [imageError, setImageError] = useState<boolean>(false);
 
@@ -755,132 +774,236 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
     return colors[index % colors.length] || "bg-[#faf2e8]";
   };
 
-  return (
-    <div>
+  //effect to animate sections in sequence
+  useEffect(() => {
+    if (isOverallLoaded) {
+      // Start staggered animation sequence
+      const profileTimer = setTimeout(() => setSectionsLoaded(prev => ({ ...prev, profile: true })), 100);
+      const statsTimer = setTimeout(() => setSectionsLoaded(prev => ({ ...prev, stats: true })), 200);
+      const tabsTimer = setTimeout(() => setSectionsLoaded(prev => ({ ...prev, tabs: true })), 300);
+      const contentTimer = setTimeout(() => setSectionsLoaded(prev => ({ ...prev, content: true })), 400);
       
-      {/* Main Content */}
-      <main className="container mx-auto px-6 py-6">
-      {/* User Profile Section */}
-      <div className="flex items-center mb-8">
-      <div className="flex gap-4 items-center">
-        <div className="relative">
-          <ProfileImage
-            profileImage={userData?.profileImage}
-            name={userData?.name}
-            size={64}
-          />
-          {isCertifiedFoodie && (
-            <div className="absolute -bottom-1 -right-1 bg-[#f2d36e] rounded-full p-1.5 border-2 border-white">
-              <FontAwesomeIcon icon={faAward} className="text-white text-xs" />
-            </div>
-          )}
-        </div>
-        <div>
-        <h1 className="text-2xl font-bold">
-              {getTimeBasedGreeting()} {capitalizeFirstLetter(userData?.name?.split(' ')[0] || "User")}!
-            </h1> 
-                     
-            {isCertifiedFoodie ? (
-            <p className="text-[#f2d36e] font-medium flex items-center">
-              <FontAwesomeIcon icon={faAward} className="mr-1" />
-              Certified Foodie
-            </p>
-          ) : (
-            <p className="text-gray-600 flex items-center">
-              <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-500" />
-              Food Explorer
-            </p>
-          )}
-        </div>
-      </div>
+      // Set animation complete after all sections have loaded
+      const completeTimer = setTimeout(() => setAnimationComplete(true), 900);
       
-      <Link 
-        href="/profile" 
-        className="ml-auto px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
+      return () => {
+        clearTimeout(profileTimer);
+        clearTimeout(statsTimer);
+        clearTimeout(tabsTimer);
+        clearTimeout(contentTimer);
+        clearTimeout(completeTimer);
+      };
+    }
+  }, [isOverallLoaded]);
+  // effect to track when all content has loaded
+  useEffect(() => {
+    // Only track overall loading once we're authenticated
+  // Only track overall loading once we're authenticated
+  if (status === "authenticated") {
+    // Initialize favorites loading to false if not on favorites tab
+    if (activeTab !== 'favourites' && isLoadingfavourites) {
+      setIsLoadingfavourites(false);
+    }
+    
+    const allLoaded = !isLoading && 
+                    !isLoadingUserReviews && 
+                    !isLoadingFollowers && 
+                    !isLoadingTrending &&
+                    (activeTab !== 'favourites' || !isLoadingfavourites);
+    
+    if (allLoaded) {
+      // Small delay to ensure everything is really ready
+      const timer = setTimeout(() => {
+        setIsOverallLoaded(true);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }
+  }, [isLoading, isLoadingUserReviews, isLoadingfavourites, isLoadingFollowers, isLoadingTrending, status, activeTab]);
+
+  // Add this effect for the 10-second timeout
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (status === "loading") {
+      timeoutId = setTimeout(() => {
+        setLoadingTimedOut(true);
+      }, 10000); // 10 seconds
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [status]);
+
+  // Add this authentication prompt component
+  const AuthenticationPrompt = (): JSX.Element => (
+    <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+      <h2 className="text-2xl font-bold mb-4">Sign In to Access Your Dashboard</h2>
+      <p className="text-gray-600 mb-8">Please sign in to see personalised recommendations based on your interests.</p>
+      <Link
+        href="/login"
+        className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
       >
-        Edit Profile
+        Sign In
       </Link>
     </div>
+  );
+
+  // Show auth prompt for unauthenticated users or if auth loading times out
+if (status === "unauthenticated" || (status === "loading" && loadingTimedOut)) {
+  return <AuthenticationPrompt />;
+}
+
+// Show loading spinner while still loading
+if (status === "loading" || (status === "authenticated" && !isOverallLoaded)) {
+  return (
+    <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#f2d36e]"></div>
+    </div>
+  );
+}
+
+return (
+  // Main container (initially invisible)
+  <div className={`transition-all duration-700 ease-out ${isOverallLoaded ? 'opacity-100' : 'opacity-0'}`}>
+    <div>
+      <main className="container mx-auto px-6 py-6 overflow-hidden">
+        {/* User Profile Section with animation */}
+        <div className={`transform transition-all duration-700 ease-out mb-8 ${
+          sectionsLoaded.profile ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+        }`}>
+          <div className="flex items-center">
+            <div className="flex gap-4 items-center">
+              <div className="relative">
+                <ProfileImage
+                  profileImage={userData?.profileImage}
+                  name={userData?.name}
+                  size={64}
+                />
+                {isCertifiedFoodie && (
+                  <div className="absolute -bottom-1 -right-1 bg-[#f2d36e] rounded-full p-1.5 border-2 border-white">
+                    <FontAwesomeIcon icon={faAward} className="text-white text-xs" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {getTimeBasedGreeting()} {capitalizeFirstLetter(userData?.name?.split(' ')[0] || "User")}!
+                </h1> 
+                         
+                {isCertifiedFoodie ? (
+                  <p className="text-[#f2d36e] font-medium flex items-center">
+                    <FontAwesomeIcon icon={faAward} className="mr-1" />
+                    Certified Foodie
+                  </p>
+                ) : (
+                  <p className="text-gray-600 flex items-center">
+                    <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-500" />
+                    Food Explorer
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <Link 
+              href="/profile" 
+              className="ml-auto px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
+            >
+              Edit Profile
+            </Link>
+          </div>
+        </div>
         
-        {/* Stats Cards - Made thinner and longer */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-          <StatCard 
-            bgColor="bg-[#faf2e5]"
-            iconBgColor="bg-[#f2d36e]"
-            icon={faStar}
-            title="Reviews"
-            value={userReviews.length}
-            isLoading={isLoadingUserReviews}
-          />
-          
-          <StatCard 
-            bgColor="bg-[#fdedf6]"
-            iconBgColor="bg-[#f9c3c9]"
-            icon={faThumbsUp}
-            title="Upvotes"
-            value={calculateTotalUpvotes()}
-            isLoading={isLoadingUserReviews}
-          />
-          
-          <StatCard 
-            bgColor="bg-[#fbe9fc]"
-            iconBgColor="bg-[#f5b7ee]"
-            icon={faUsers}
-            title="Followers"
-            value={followerCount}
-            isLoading={isLoadingFollowers}
-          />
-          
-          <StatCard 
-            bgColor="bg-[#f1eafe]"
-            iconBgColor="bg-[#dab9f8]"
-            icon={faUtensils}
-            title="Trending"
-            value={trendingData?.trending?.category || "No trends yet"}
-            isLoading={isLoadingTrending}
-          />
+        {/* Stats Cards with animation */}
+        <div className={`transform transition-all duration-700 ease-out mb-10 ${
+          sectionsLoaded.stats ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+        }`}>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <StatCard 
+              bgColor="bg-[#faf2e5]"
+              iconBgColor="bg-[#f2d36e]"
+              icon={faStar}
+              title="Reviews"
+              value={userReviews.length}
+              isLoading={isLoadingUserReviews}
+            />
+            
+            <StatCard 
+              bgColor="bg-[#fdedf6]"
+              iconBgColor="bg-[#f9c3c9]"
+              icon={faThumbsUp}
+              title="Upvotes"
+              value={calculateTotalUpvotes()}
+              isLoading={isLoadingUserReviews}
+            />
+            
+            <StatCard 
+              bgColor="bg-[#fbe9fc]"
+              iconBgColor="bg-[#f5b7ee]"
+              icon={faUsers}
+              title="Followers"
+              value={followerCount}
+              isLoading={isLoadingFollowers}
+            />
+            
+            <StatCard 
+              bgColor="bg-[#f1eafe]"
+              iconBgColor="bg-[#dab9f8]"
+              icon={faUtensils}
+              title="Trending"
+              value={trendingData?.trending?.category || "No trends yet"}
+              isLoading={isLoadingTrending}
+            />
+          </div>
         </div>
 
-        {/* Tabs - Moved to left, smaller and different colors */}
-        <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-sm p-1 mb-8 max-w-md">
-          <div className="flex">
-            <button 
-              className={`py-3 px-4 font-medium rounded-lg transition-all ${
-                activeTab === 'My Reviews' 
-                ? 'bg-[#faf2e8] text-black' 
-                : 'text-gray-600 hover:bg-white/50'
-              }`}
-              onClick={() => setActiveTab('My Reviews')}
-            >
-              My Reviews
-            </button>
-            <button 
-              className={`py-3 px-4 font-medium rounded-lg transition-all ${
-                activeTab === 'favourites' 
-                ? 'bg-[#fad9ea] text-black' 
-                : 'text-gray-600 hover:bg-white/50'
-              }`}
-              onClick={() => setActiveTab('favourites')}
-            >
-              Favourites
-            </button>
-            <button 
-              className={`py-3 px-4 font-medium rounded-lg transition-all ${
-                activeTab === 'Following' 
-                ? 'bg-[#d7b6f6] text-black' 
-                : 'text-gray-600 hover:bg-white/50'
-              }`}
-              onClick={() => setActiveTab('Following')}
-            >
-              Following
-            </button>
-
+        {/* Tabs with animation */}
+        <div className={`transform transition-all duration-700 ease-out mb-8 ${
+          sectionsLoaded.tabs ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+        }`}>
+          <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-sm p-1 max-w-md">
+            <div className="flex">
+              <button 
+                className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                  activeTab === 'My Reviews' 
+                  ? 'bg-[#faf2e8] text-black' 
+                  : 'text-gray-600 hover:bg-white/50'
+                }`}
+                onClick={() => setActiveTab('My Reviews')}
+              >
+                My Reviews
+              </button>
+              <button 
+                className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                  activeTab === 'favourites' 
+                  ? 'bg-[#fad9ea] text-black' 
+                  : 'text-gray-600 hover:bg-white/50'
+                }`}
+                onClick={() => setActiveTab('favourites')}
+              >
+                Favourites
+              </button>
+              <button 
+                className={`py-3 px-4 font-medium rounded-lg transition-all ${
+                  activeTab === 'Following' 
+                  ? 'bg-[#d7b6f6] text-black' 
+                  : 'text-gray-600 hover:bg-white/50'
+                }`}
+                onClick={() => setActiveTab('Following')}
+              >
+                Following
+              </button>
+            </div>
           </div>
         </div>
   
-        {/* Search Bar - Only visible in My Reviews tab */}
+        {/* Search Bar */}
         {activeTab === 'My Reviews' && (
-          <div className="mb-6 max-w-md relative">
+          <div className={`transform transition-all duration-700 ease-out mb-6 max-w-md relative ${
+            sectionsLoaded.tabs ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+          }`}>
             <input
               type="text"
               placeholder="Search your reviews..."
@@ -895,8 +1018,10 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
           </div>
         )}
   
-        {/* Content Area - Different based on active tab */}
-        <div className="relative z-10">
+        {/* Content Area with animation */}
+        <div className={`transform transition-all duration-700 ease-out relative z-10 ${
+          sectionsLoaded.content ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+        }`}>
           {/* My Reviews Tab Content */}
           {activeTab === 'My Reviews' && (
             <div>
@@ -970,11 +1095,11 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
                           </span>
                         </div>
                         <button 
-                      onClick={() => handleViewFullReview(review)}
-                      className="text-sm text-[#d7b6f6] hover:underline"
-                    >
-                      View Full Review
-                    </button>
+                          onClick={() => handleViewFullReview(review)}
+                          className="text-sm text-[#d7b6f6] hover:underline"
+                        >
+                          View Full Review
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -995,160 +1120,113 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
             </div>
           )}
 
-          {/* favourites Tab Content */}
+          {/* Favourites Tab Content */}
           {activeTab === 'favourites' && (
-          <div>
-            <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
-            
-            {isLoadingfavourites ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
-              </div>
-            ) : favouritesError ? (
-              <div className="bg-red-50 p-4 rounded-xl text-red-600 mb-6">
-                <p>There was an error loading your favourites: {favouritesError}</p>
-                <p className="mt-2">Please try refreshing the page.</p>
-              </div>
-            ) : favourites.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {favourites.map((favorite, index) => (
-                  <div 
-                    key={favorite.id} 
-                    className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Icon in place of an image */}
-                      <div className="w-16 h-16 bg-[#f9ebc3] rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
-                        <FontAwesomeIcon icon={faHeart} className="text-[#f9c3c9] text-2xl" />
+            <div>
+              <h2 className="text-xl font-bold mb-6">Your Favourite Restaurants</h2>
+              
+              {isLoadingfavourites ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
+                </div>
+              ) : favouritesError ? (
+                <div className="bg-red-50 p-4 rounded-xl text-red-600 mb-6">
+                  <p>There was an error loading your favourites: {favouritesError}</p>
+                  <p className="mt-2">Please try refreshing the page.</p>
+                </div>
+              ) : favourites.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {favourites.map((favorite, index) => (
+                    <div 
+                      key={favorite.id} 
+                      className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Icon in place of an image */}
+                        <div className="w-16 h-16 bg-[#f9ebc3] rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          <FontAwesomeIcon icon={faHeart} className="text-[#f9c3c9] text-2xl" />
+                        </div>
+                        
+                        <div className="flex-1 overflow-hidden">
+                          {favorite.restaurant ? (
+                            <>
+                              <h3 className="font-semibold">
+                                {favorite.restaurant.title || "Unknown Restaurant"}
+                              </h3>
+
+                              <div className="flex items-center mt-2 text-sm overflow-hidden">
+                                <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 mr-1 flex-shrink-0" />
+                                <div className="overflow-hidden">
+                                  <p className="text-gray-600 truncate w-full">
+                                    {favorite.restaurant.location || "Unknown location"}
+                                  </p>
+                                </div>
+                              </div>
+                            </>
+                          ) : favorite.review ? (
+                            <>
+                              <h3 className="font-semibold">
+                                {favorite.review.restaurant?.title || "Review"}
+                              </h3>
+                              <div className="mt-1">
+                                {renderStars(favorite.review.rating || 0)}
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                {favorite.review.content || "No content available"}
+                              </p>
+                            </>
+                          ) : (
+                            <h3 className="font-semibold">Unknown Favorite</h3>
+                          )}
+                        </div>
                       </div>
                       
-                      <div className="flex-1">
-                        {favorite.restaurant ? (
-                          <>
-                            <h3 className="font-semibold">
-                              {favorite.restaurant.title || "Unknown Restaurant"}
-                            </h3>
-
-                            <div className="flex items-center mt-2 text-sm">
-                              <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 mr-1" />
-                              <span className="text-gray-600 truncate">
-                                {favorite.restaurant.location || "Unknown location"}
-                              </span>
-                            </div>
-                          </>
-                        ) : favorite.review ? (
-                          <>
-                            <h3 className="font-semibold">
-                              {favorite.review.restaurant?.title || "Review"}
-                            </h3>
-                            <div className="mt-1">
-                              {renderStars(favorite.review.rating || 0)}
-                            </div>
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                              {favorite.review.content || "No content available"}
-                            </p>
-                          </>
-                        ) : (
-                          <h3 className="font-semibold">Unknown Favorite</h3>
-                        )}
+                      <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100">
+                        <Link 
+                          href={favorite.restaurant 
+                            ? `/patron-search?id=${favorite.restaurant.id}` 
+                            : favorite.review 
+                              ? `/review/${favorite.review.id}` 
+                              : "#"
+                          }
+                          className="text-sm text-[#d7b6f6] hover:underline"
+                        >
+                          View Details
+                        </Link>
+                        <button 
+                          onClick={() => handleRemoveFavorite(favorite.id)}
+                          className="text-sm text-gray-500 hover:text-red-500 px-2 py-1 rounded-full hover:bg-red-50"
+                        >
+                          <FontAwesomeIcon icon={faTrash} className="mr-1" />
+                          Remove
+                        </button>
                       </div>
                     </div>
-                    
-                    <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100">
-                      <Link 
-                        href={favorite.restaurant 
-                          ? `/patron-search?id=${favorite.restaurant.id}` 
-                          : favorite.review 
-                            ? `/review/${favorite.review.id}` 
-                            : "#"
-                        }
-                        className="text-sm text-[#d7b6f6] hover:underline"
-                      >
-                        View Details
-                      </Link>
-                      <button 
-                        onClick={() => handleRemoveFavorite(favorite.id)}
-                        className="text-sm text-gray-500 hover:text-red-500 px-2 py-1 rounded-full hover:bg-red-50"
-                      >
-                        <FontAwesomeIcon icon={faTrash} className="mr-1" />
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              // Empty state
-              <div className="text-center py-12 bg-white/50 rounded-xl">
-                <FontAwesomeIcon icon={faStar} className="text-4xl text-gray-300 mb-4" />
-                <h3 className="text-xl font-medium text-gray-700 mb-2">No favourites yet</h3>
-                <p className="text-gray-500 mb-6">Save your favorite restaurants to find them quickly!</p>
-                <Link 
-                  href="/patron-search" 
-                  className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
-                >
-                  Discover Restaurants
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-
-
-          {/* favourites Tab Content (has content) */}
-          {activeTab === 'favourites' && false && (
-            <div>
-              <h2 className="text-xl font-bold mb-6">Your Favorite Restaurants</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Placeholder favourites since we don't have real data */}
-                {[1, 2, 3].map((_, index) => (
-                  <div 
-                    key={index} 
-                    className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                  ))}
+                </div>
+              ) : (
+                // Empty state
+                <div className="text-center py-12 bg-white/50 rounded-xl">
+                  <FontAwesomeIcon icon={faStar} className="text-4xl text-gray-300 mb-4" />
+                  <h3 className="text-xl font-medium text-gray-700 mb-2">No favourites yet</h3>
+                  <p className="text-gray-500 mb-6">Save your favorite restaurants to find them quickly!</p>
+                  <Link 
+                    href="/patron-search" 
+                    className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
                   >
-                    <div className="flex items-start gap-4">
-                      <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
-                        <img 
-                          src={`/restaurant${index + 1}.jpg`} 
-                          alt="Restaurant" 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = "https://via.placeholder.com/80";
-                          }} 
-                        />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">
-                          {["The Urban Bistro", "Coastal Kitchen", "Green Garden Cafe"][index]}
-                        </h3>
-                        <div className="flex text-yellow-400 text-sm mt-1">
-                          {"★★★★★".slice(0, 4 + (index % 2))}
-                          <span className="text-gray-300">{"★".repeat(5 - (4 + (index % 2)))}</span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {["American, Brunch", "Seafood, Bar", "Vegetarian, Healthy"][index]}
-                        </p>
-                        <div className="flex items-center mt-2 text-sm">
-                          <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 mr-1" />
-                          <span className="text-gray-600">
-                            {["New York, NY", "Los Angeles, CA", "Portland, OR"][index]}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    Discover Restaurants
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
+          {/* Following Tab */}
           {activeTab === 'Following' && (
             <div>
               <FollowingList />
             </div>
           )}
-  
         </div>
 
         {/* Edit Review Modal */}
@@ -1160,6 +1238,7 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
             onSuccess={handleEditSuccess}
           />
         )}
+
         {/* Review Modal */}
         {selectedRestaurant && (
           <WriteReviewModal
@@ -1170,31 +1249,33 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
           />
         )}
 
-      {selectedReview && (
-        <ReviewModal 
-          review={{
-            id: selectedReview.id,
-            content: selectedReview.content || selectedReview.text || "", 
-            rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
-            date: selectedReview.date,
-            upvotes: selectedReview.upvotes ?? 0,
-            asExpected: selectedReview.asExpected ?? 0,
-            wouldRecommend: selectedReview.wouldRecommend ?? 0,
-            valueForMoney: selectedReview.valueForMoney ?? 0,
-            imageUrl: selectedReview.imageUrl,
-            patron: selectedReview.patron,
-            patronId: selectedReview.patronId,  // Add this
-            userVote: selectedReview.userVote
-          }}
-          isOpen={isReviewModalOpen} 
-          onClose={handleReviewModalClose} 
-          onVoteUpdate={handleVoteUpdate} 
-        />
-      )}
+        {selectedReview && (
+          <ReviewModal 
+            review={{
+              id: selectedReview.id,
+              content: selectedReview.content || selectedReview.text || "", 
+              rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
+              date: selectedReview.date,
+              upvotes: selectedReview.upvotes ?? 0,
+              asExpected: selectedReview.asExpected ?? 0,
+              wouldRecommend: selectedReview.wouldRecommend ?? 0,
+              valueForMoney: selectedReview.valueForMoney ?? 0,
+              imageUrl: selectedReview.imageUrl,
+              patron: selectedReview.patron,
+              patronId: selectedReview.patronId,
+              userVote: selectedReview.userVote
+            }}
+            isOpen={isReviewModalOpen} 
+            onClose={handleReviewModalClose} 
+            onVoteUpdate={handleVoteUpdate} 
+          />
+        )}
       </main>
 
-      {/* Footer */}
-      <footer className="mt-16 py-8 bg-white/20 backdrop-blur-md border-t border-gray-100">
+      {/* Footer with animation */}
+      <footer className={`transform transition-all duration-700 ease-out mt-16 py-8 bg-white/20 backdrop-blur-md border-t border-gray-100 ${
+        animationComplete ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+      }`}>
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center">
@@ -1212,7 +1293,7 @@ const [trendingError, setTrendingError] = useState<string | null>(null);
           </div>
         </div>
       </footer>
-      
     </div>
-      );
+  </div>
+);
 }

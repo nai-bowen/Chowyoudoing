@@ -8,6 +8,7 @@ import { MapPin, Filter, ThumbsUp, Sparkles, Clock, Search } from "lucide-react"
 import { useRouter } from "next/navigation";
 import ReviewModal from '@/app/_components/ReviewModal';
 import RequestMenuModal from "../_components/RequestMenuModal";
+import CertifiedFoodieBadge from "@/app/_components/CertifiedFoodieBadge";
 
 // Define SearchResult interface
 interface SearchResult {
@@ -72,10 +73,12 @@ interface Review {
   videoUrl: string | null;
   patronId: string; 
   isAnonymous: boolean;
+  isCertifiedFoodie?: boolean; // Add this field at review level
   patron?: {
     id: string;
     firstName: string;
     lastName: string;
+    isCertifiedFoodie?: boolean; // Add this field to patron
   } | undefined;
   userVote?: {
     isUpvote: boolean;
@@ -196,7 +199,7 @@ export default function DiscoveryPage(): JSX.Element {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
 
   //State for Request Menu
-  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState<boolean>(false);
 
   // Handle click outside of search container
   useEffect(() => {
@@ -386,7 +389,7 @@ export default function DiscoveryPage(): JSX.Element {
     
     const data = await response.json();
     
-    // Process reviews to force anonymous handling
+    // Process reviews to force anonymous handling and check for certified foodie status
     const processedReviews = (data.reviews || []).map((review: any) => {
       // Convert to our Review type
       const newReview: Review = {
@@ -398,6 +401,10 @@ export default function DiscoveryPage(): JSX.Element {
       if (newReview.isAnonymous) {
         newReview.author = "Anonymous";
         newReview.patron = undefined;
+        newReview.isCertifiedFoodie = false; // Ensure anonymous reviews don't show as certified
+      } else if (newReview.patron && newReview.patron.isCertifiedFoodie) {
+        // If the review has patron data with certified foodie, set the flag at review level too
+        newReview.isCertifiedFoodie = true;
       }
       
       return newReview;
@@ -546,6 +553,13 @@ export default function DiscoveryPage(): JSX.Element {
         userVote: isUpvoted !== null ? { isUpvote: isUpvoted } : undefined
       });
     }
+  };
+
+  // Helper to check if a review is from a certified foodie
+  const isCertifiedFoodieReview = (review: Review): boolean => {
+    // Check both the direct flag and the patron's flag
+    return !!review.isCertifiedFoodie || 
+           !!(review.patron && review.patron.isCertifiedFoodie);
   };
 
   // If not authenticated, show login prompt
@@ -809,10 +823,16 @@ export default function DiscoveryPage(): JSX.Element {
                         <p className="mb-4 text-gray-700">{review.content}</p>
                         
                         <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
                             <span className="font-medium">
                               {review.isAnonymous === true ? "Anonymous" : review.author}
                             </span>
+                            
+                            {/* Display the Certified Foodie badge if applicable */}
+                            {!review.isAnonymous && isCertifiedFoodieReview(review) && (
+                              <CertifiedFoodieBadge size="md" showText={false} />
+                            )}
+                            
                             {review.date && (
                               <span>
                                 •{" "}
@@ -925,12 +945,12 @@ export default function DiscoveryPage(): JSX.Element {
               ? {
                   id: selectedReview.patron.id,
                   firstName: selectedReview.patron.firstName,
-                  lastName: selectedReview.patron.lastName
+                  lastName: selectedReview.patron.lastName,
                 }
               : undefined,
             patronId: selectedReview.patronId ?? selectedReview.patron?.id,
             isAnonymous: selectedReview.isAnonymous ?? false,
-            userVote: selectedReview.userVote
+            userVote: selectedReview.userVote,
           }}
           isOpen={isReviewModalOpen} 
           onClose={handleCloseReviewModal} 
