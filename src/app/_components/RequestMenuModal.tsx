@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { X } from "lucide-react";
 
 interface RequestMenuModalProps {
   isOpen: boolean;
@@ -106,19 +107,21 @@ const RequestMenuModal: React.FC<RequestMenuModalProps> = ({ isOpen, onClose }) 
       <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-[#D29501]">Request a Menu</h2>
+            <h2 className="text-2xl font-semibold text-[#f2d36e]">Request a Menu</h2>
             <button 
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-700 hover:text-black transition-colors"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={24} />
             </button>
           </div>
           
           {submitStatus && (
-            <div className={`p-3 mb-4 rounded-md ${submitStatus.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            <div className={`p-3 mb-4 rounded-md ${
+              submitStatus.success 
+                ? 'bg-[#f9ebc3] border border-[#f2d36e] text-gray-700' 
+                : 'bg-[#f9c3c9] border border-[#f9c3c9] text-gray-700'
+            }`}>
               {submitStatus.message}
             </div>
           )}
@@ -126,7 +129,7 @@ const RequestMenuModal: React.FC<RequestMenuModalProps> = ({ isOpen, onClose }) 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label htmlFor="restaurantName" className="block text-sm font-medium text-gray-700 mb-1">
-                Restaurant Name <span className="text-red-500">*</span>
+                Restaurant Name <span className="text-[#f9c3c9]">*</span>
               </label>
               <input
                 type="text"
@@ -134,7 +137,7 @@ const RequestMenuModal: React.FC<RequestMenuModalProps> = ({ isOpen, onClose }) 
                 name="restaurantName"
                 value={formData.restaurantName}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#A90D3C] focus:border-[#A90D3C]"
+                className="w-full px-3 py-2 border border-[#f9ebc3] rounded-md focus:outline-none focus:ring-[#dab9f8] focus:border-[#dab9f8] text-gray-700"
                 placeholder="Enter restaurant name"
                 required
               />
@@ -150,7 +153,7 @@ const RequestMenuModal: React.FC<RequestMenuModalProps> = ({ isOpen, onClose }) 
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#A90D3C] focus:border-[#A90D3C]"
+                className="w-full px-3 py-2 border border-[#f9ebc3] rounded-md focus:outline-none focus:ring-[#dab9f8] focus:border-[#dab9f8] text-gray-700"
                 placeholder="City, State or Full Address"
               />
             </div>
@@ -165,7 +168,7 @@ const RequestMenuModal: React.FC<RequestMenuModalProps> = ({ isOpen, onClose }) 
                 name="link"
                 value={formData.link}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#A90D3C] focus:border-[#A90D3C]"
+                className="w-full px-3 py-2 border border-[#f9ebc3] rounded-md focus:outline-none focus:ring-[#dab9f8] focus:border-[#dab9f8] text-gray-700"
                 placeholder="https://..."
               />
             </div>
@@ -180,7 +183,7 @@ const RequestMenuModal: React.FC<RequestMenuModalProps> = ({ isOpen, onClose }) 
                 value={formData.details}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-[#A90D3C] focus:border-[#A90D3C]"
+                className="w-full px-3 py-2 border border-[#f9ebc3] rounded-md focus:outline-none focus:ring-[#dab9f8] focus:border-[#dab9f8] text-gray-700"
                 placeholder="Any additional information about the restaurant..."
               />
             </div>
@@ -188,7 +191,7 @@ const RequestMenuModal: React.FC<RequestMenuModalProps> = ({ isOpen, onClose }) 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2 px-4 bg-[#A90D3C] text-white rounded-md hover:bg-[#8A0B31] focus:outline-none focus:ring-2 focus:ring-[#A90D3C] disabled:opacity-50"
+              className="w-full py-2 px-4 bg-[#f5b7ee] text-gray-700 rounded-md hover:bg-[#dab9f8] focus:outline-none focus:ring-2 focus:ring-[#dab9f8] disabled:opacity-50 transition-colors"
             >
               {isSubmitting ? "Submitting..." : "Submit Request"}
             </button>

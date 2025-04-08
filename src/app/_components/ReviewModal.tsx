@@ -131,6 +131,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
       review: (props as ReadReviewModalProps).review
     });
   }, [isProfileModalOpen, props]);
+
   // Handle voting for a review - IMMEDIATE UI UPDATE APPROACH
   const handleVote = async (isUpvote: boolean): Promise<void> => {
     if (!isReadMode) return;
@@ -267,7 +268,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
         {[1, 2, 3, 4, 5].map((star) => (
           <span
             key={star}
-            className={`text-2xl ${value >= star ? "text-yellow-400" : "text-gray-200"}`}
+            className={`text-2xl ${value >= star ? "text-[#f2d36e]" : "text-[#f9ebc3]"}`}
           >
             ★
           </span>
@@ -291,10 +292,10 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
         >
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-800">Review Details</h2>
+              <h2 className="text-2xl font-bold text-gray-700">Review Details</h2>
               <button
                 onClick={readProps.onClose}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-gray-700 hover:text-black transition-colors"
                 aria-label="Close"
               >
                 <X size={24} />
@@ -304,11 +305,11 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
             <div className="mb-4">
               {renderStars(review.rating)}
               {review.date && (
-                <p className="text-sm text-gray-500 mt-1">{review.date}</p>
+                <p className="text-sm text-gray-700 mt-1">{review.date}</p>
               )}
             </div>
 
-            <div className="mb-6 p-4 bg-gray-50 rounded-md">
+            <div className="mb-6 p-4 bg-[#f9ebc3] rounded-md">
               <p className="text-lg italic text-gray-700 mb-4">"{review.content}"</p>
               <p className="text-right font-medium text-gray-700">
                 {review.isAnonymous ? (
@@ -318,21 +319,21 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
                   // For non-anonymous reviews, make the name clickable
                   review.patron ? (
                     <button 
-                    onClick={() => {
-                      const profileId = review.patron?.id || review.patronId;
-                      console.log("Clicking patron name, patronId:", profileId);
-                      console.log("Reviewer certified status:", isReviewerCertified);
-                      setIsProfileModalOpen(true);
-                    }}
-                    className="hover:underline hover:text-[#8A0B31] transition-colors cursor-pointer"
-                  >
-                    {review.patron.firstName || "Anonymous"} {review.patron.lastName ? review.patron.lastName.charAt(0) + '.' : ''}
-                    {isReviewerCertified && (
-                      <span className="ml-1 text-[#f2d36e]" title="Certified Foodie">
-                        <FontAwesomeIcon icon={faCertificate} size="sm" />
-                      </span>
-                    )}
-                  </button>
+                      onClick={() => {
+                        const profileId = review.patron?.id || review.patronId;
+                        console.log("Clicking patron name, patronId:", profileId);
+                        console.log("Reviewer certified status:", isReviewerCertified);
+                        setIsProfileModalOpen(true);
+                      }}
+                      className="hover:underline hover:text-[#dab9f8] transition-colors cursor-pointer"
+                    >
+                      {review.patron.firstName || "Anonymous"} {review.patron.lastName ? review.patron.lastName.charAt(0) + '.' : ''}
+                      {isReviewerCertified && (
+                        <span className="ml-1 text-[#f2d36e]" title="Certified Foodie">
+                          <FontAwesomeIcon icon={faCertificate} size="sm" />
+                        </span>
+                      )}
+                    </button>
                   ) : (
                     // Fallback if patron data is missing but review is not anonymous
                     <span className="text-gray-700">Anonymous</span>
@@ -346,26 +347,26 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
               <button
                 onClick={() => handleVote(true)}
                 disabled={isVoting}
-                className={`p-2 rounded-full ${voteState.upvoted ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} transition-colors`}
+                className={`p-2 rounded-full ${voteState.upvoted ? 'bg-[#dab9f8] text-white' : 'bg-[#f9ebc3] text-gray-700 hover:bg-[#f5b7ee]'} transition-colors`}
                 aria-label="Upvote"
               >
                 <ChevronUp size={24} />
               </button>
               {/* Display the vote count directly from local state */}
-              <span className="text-lg font-medium">{voteCount}</span>
+              <span className="text-lg font-medium text-gray-700">{voteCount}</span>
               <button
                 onClick={() => handleVote(false)}
                 disabled={isVoting}
-                className={`p-2 rounded-full ${voteState.downvoted ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} transition-colors`}
+                className={`p-2 rounded-full ${voteState.downvoted ? 'bg-[#f9c3c9] text-white' : 'bg-[#f9ebc3] text-gray-700 hover:bg-[#f5b7ee]'} transition-colors`}
                 aria-label="Downvote"
               >
                 <ChevronDown size={24} />
               </button>
-              {isVoting && <span className="text-sm text-gray-500 ml-2">Processing...</span>}
+              {isVoting && <span className="text-sm text-gray-700 ml-2">Processing...</span>}
             </div>
             
             {voteError && (
-              <div className="p-3 mb-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
+              <div className="p-3 mb-4 bg-[#f9c3c9] border border-[#f9c3c9] text-gray-700 rounded-md">
                 {voteError}
               </div>
             )}
@@ -378,7 +379,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
                     Photo
                   </span>
                 </h3>
-                <div className="rounded-md overflow-hidden shadow-sm border border-gray-200">
+                <div className="rounded-md overflow-hidden shadow-sm border border-[#f9ebc3]">
                   <div className="relative h-64 w-full">
                     <Image
                       src={review.imageUrl}
@@ -393,27 +394,27 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
 
             {/* Additional rating criteria */}
             {(review.asExpected !== undefined || review.wouldRecommend !== undefined || review.valueForMoney !== undefined) && (
-              <div className="mb-6 border-t pt-4">
+              <div className="mb-6 border-t border-[#f9ebc3] pt-4">
                 <h3 className="text-lg font-medium text-gray-700 mb-3">Detailed Ratings</h3>
                 
                 <div className="grid grid-cols-1 gap-4">
                   {review.asExpected !== undefined && (
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Was it as expected?</p>
+                      <p className="text-sm text-gray-700 mb-1">Was it as expected?</p>
                       {renderStars(review.asExpected)}
                     </div>
                   )}
                   
                   {review.wouldRecommend !== undefined && (
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Would you recommend it?</p>
+                      <p className="text-sm text-gray-700 mb-1">Would you recommend it?</p>
                       {renderStars(review.wouldRecommend)}
                     </div>
                   )}
                   
                   {review.valueForMoney !== undefined && (
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Value for money</p>
+                      <p className="text-sm text-gray-700 mb-1">Value for money</p>
                       {renderStars(review.valueForMoney)}
                     </div>
                   )}
@@ -422,9 +423,9 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
             )}
 
             {review.reviewStandards && (
-              <div className="border-t pt-4">
+              <div className="border-t border-[#f9ebc3] pt-4">
                 <h3 className="text-lg font-medium text-gray-700 mb-2">Additional Notes</h3>
-                <p className="text-gray-600">{review.reviewStandards}</p>
+                <p className="text-gray-700">{review.reviewStandards}</p>
               </div>
             )}
 
@@ -432,7 +433,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
             <div className="flex justify-end mt-6">
               <button
                 onClick={readProps.onClose}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+                className="px-4 py-2 bg-[#f5b7ee] text-gray-700 hover:bg-[#dab9f8] rounded-lg transition-colors"
               >
                 Close
               </button>
@@ -456,6 +457,5 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   // This component only handles read mode now
   return null;
 };
-
 
 export default ReviewModal;
