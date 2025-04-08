@@ -1,17 +1,17 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FcGoogle } from "react-icons/fc";
 import FloatingFoodEmojis from '@/app/_components/FloatingFoodEmojis';
 
-// Simple component with minimal dependencies to avoid syntax errors
-export default function LoginPage(): JSX.Element {
+export default function RestaurantLoginPage(): JSX.Element {
   const router = useRouter();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [businessRegNumber, setBusinessRegNumber] = useState<string>("");
+  const [vatNumber, setVatNumber] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -21,17 +21,33 @@ export default function LoginPage(): JSX.Element {
     setError("");
     setIsLoading(true);
 
+    if (!businessRegNumber.trim()) {
+      setError("Business Registration Number is required");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const res = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      const response = await fetch("/api/auth/restaurant-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          businessRegNumber,
+          vatNumber,
+        }),
       });
 
-      if (res?.error) {
-        setError(res.error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Authentication failed");
       } else {
-        router.replace("/patron-dashboard");
+        // If login is successful, redirect to restaurant dashboard
+        router.replace("/restaurant-dashboard");
       }
     } catch (err) {
       console.error("Login error:", err);
@@ -44,10 +60,10 @@ export default function LoginPage(): JSX.Element {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#f9ebc2] via-[#faf0f6] to-white">
       {/* Blob decorations */}
-      <div className="fixed top-0 right-0 w-64 h-64 bg-[#FFD879]/20 rounded-full blur-3xl">  
-      </div>
+      <div className="fixed top-0 right-0 w-64 h-64 bg-[#FFD879]/20 rounded-full blur-3xl"></div>
       <div className="fixed bottom-0 left-0 w-64 h-64 bg-[#FFC1B5]/20 rounded-full blur-3xl"></div>
       <FloatingFoodEmojis />
+      
       {/* Login Card */}
       <div className="w-full max-w-md bg-white/60 backdrop-blur-md rounded-3xl border border-white/30 
                     shadow-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-xl">
@@ -58,21 +74,21 @@ export default function LoginPage(): JSX.Element {
           </h1>
 
           <p className="text-center text-[#f2d36f] mb-8">
-            SIGN IN TO YOUR FOODIE ACCOUNT
+            RESTAURANT OWNER LOGIN
           </p>
           
           {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-[#dbbaf8] font-medium mb-1">
-                Email
+                Business Email
               </label>
               <input
                 type="email"
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="restaurant@example.com"
                 required
                 className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
                          focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
@@ -102,6 +118,37 @@ export default function LoginPage(): JSX.Element {
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
+            </div>
+            
+            <div>
+              <label htmlFor="businessRegNumber" className="block text-[#dbbaf8] font-medium mb-1">
+                Business Registration Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="businessRegNumber"
+                value={businessRegNumber}
+                onChange={(e) => setBusinessRegNumber(e.target.value)}
+                placeholder="Enter your business registration number"
+                required
+                className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                         focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="vatNumber" className="block text-[#dbbaf8] font-medium mb-1">
+                VAT Number (if applicable)
+              </label>
+              <input
+                type="text"
+                id="vatNumber"
+                value={vatNumber}
+                onChange={(e) => setVatNumber(e.target.value)}
+                placeholder="Enter your VAT number (optional)"
+                className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                         focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+              />
             </div>
             
             <div className="flex items-center justify-between">
@@ -135,40 +182,16 @@ export default function LoginPage(): JSX.Element {
             >
               {isLoading ? "Signing in..." : "SIGN IN"}
             </button>
-            
-            <div className="flex items-center justify-between my-4">
-              <hr className="w-full border-gray-300" />
-              <p className="mx-4 text-gray-500">OR</p>
-              <hr className="w-full border-gray-300" />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => signIn("google", { callbackUrl: "/patron-dashboard" })}
-              className="w-full flex items-center justify-center gap-2 p-3 border border-gray-300 
-                       rounded-full bg-white hover:bg-gray-50"
-            >
-              <FcGoogle size={20} />
-              <span>Continue with Google</span>
-            </button>
           </form>
         </div>
         
         <div className="py-4 text-center border-t border-gray-200 bg-white/30">
-          <div className="flex flex-col gap-2">
-            <p className="text-gray-400">
-              DONT HAVE AN ACCOUNT?{" "}
-              <Link href="/register" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
-                SIGN UP
-              </Link>
-            </p>
-            <p className="text-gray-400">
-              RESTAURANT OWNER?{" "}
-              <Link href="/login/restaurateur" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
-                RESTAURANT LOGIN
-              </Link>
-            </p>
-          </div>
+          <p className="text-gray-400">
+            CUSTOMER LOGGING IN?{" "}
+            <Link href="/login" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
+              PATRON LOGIN
+            </Link>
+          </p>
         </div>
       </div>
     </div>
