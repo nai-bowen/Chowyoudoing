@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Filter, ThumbsUp, Sparkles, Clock, Search } from "lucide-react";
+import { MapPin, Filter, ThumbsUp, Sparkles, Clock, Search, Award, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ReviewModal from '@/app/_components/ReviewModal';
 import RequestMenuModal from "../_components/RequestMenuModal";
@@ -92,10 +92,12 @@ interface Photo {
   restaurantId: string;
   restaurantName: string;
   upvotes: number;
+  isCertifiedFoodie?: boolean; // Add this field to photos as well
 }
 
 type TabType = "restaurants" | "reviews" | "photos";
-type FilterType = "relevance" | "newest";
+// Updated to include top_rated option
+type FilterType = "relevance" | "newest" | "top_rated";
 
 // Card background colors for restaurant cards
 const CARD_COLORS = {
@@ -379,6 +381,12 @@ export default function DiscoveryPage(): JSX.Element {
     } else if (filter === "newest") {
       queryParams.append("orderBy", "createdAt");
       queryParams.append("orderDir", "desc");
+    } else if (filter === "top_rated") {
+      // When in top_rated mode, we prioritize by upvotes
+      queryParams.append("orderBy", "upvotes");
+      queryParams.append("orderDir", "desc");
+      // Also add a parameter to prioritize certified foodie reviews
+      queryParams.append("prioritizeCertified", "true");
     }
     
     // Set strictInterests to false to always get enough results
@@ -390,7 +398,7 @@ export default function DiscoveryPage(): JSX.Element {
     const data = await response.json();
     
     // Process reviews to force anonymous handling and check for certified foodie status
-    const processedReviews = (data.reviews || []).map((review: any) => {
+    let processedReviews = (data.reviews || []).map((review: any) => {
       // Convert to our Review type
       const newReview: Review = {
         ...review,
@@ -409,6 +417,19 @@ export default function DiscoveryPage(): JSX.Element {
       
       return newReview;
     });
+    
+    // If we're in top_rated mode but the API doesn't support certified foodie sorting,
+    // we can do a client-side sort to promote certified foodie reviews further
+    if (filter === "top_rated") {
+      processedReviews.sort((a: { isCertifiedFoodie: any; upvotes: number; }, b: { isCertifiedFoodie: any; upvotes: number; }) => {
+        // First prioritize certified foodie status
+        if (a.isCertifiedFoodie && !b.isCertifiedFoodie) return -1;
+        if (!a.isCertifiedFoodie && b.isCertifiedFoodie) return 1;
+        
+        // Then sort by upvotes
+        return b.upvotes - a.upvotes;
+      });
+    }
     
     console.log("Processed reviews:", processedReviews);
     setReviews(processedReviews);
@@ -429,6 +450,11 @@ export default function DiscoveryPage(): JSX.Element {
     } else if (filter === "newest") {
       queryParams.append("orderBy", "createdAt");
       queryParams.append("orderDir", "desc");
+    } else if (filter === "top_rated") {
+      // For photos, we can also sort by upvotes
+      queryParams.append("orderBy", "upvotes");
+      queryParams.append("orderDir", "desc");
+      queryParams.append("prioritizeCertified", "true");
     }
     
     // Set strictInterests to false to always get enough results
@@ -448,8 +474,19 @@ export default function DiscoveryPage(): JSX.Element {
         reviewId: review.id,
         restaurantId: review.restaurantId,
         restaurantName: review.restaurant,
-        upvotes: review.upvotes
+        upvotes: review.upvotes,
+        isCertifiedFoodie: review.isCertifiedFoodie || 
+                          (review.patron && review.patron.isCertifiedFoodie) || false
       }));
+    
+    // Similar to reviews, if needed we can further prioritize certified foodie photos
+    if (filter === "top_rated") {
+      extractedPhotos.sort((a, b) => {
+        if (a.isCertifiedFoodie && !b.isCertifiedFoodie) return -1;
+        if (!a.isCertifiedFoodie && b.isCertifiedFoodie) return 1;
+        return b.upvotes - a.upvotes;
+      });
+    }
     
     setPhotos(extractedPhotos);
   };
@@ -562,6 +599,84 @@ export default function DiscoveryPage(): JSX.Element {
            !!(review.patron && review.patron.isCertifiedFoodie);
   };
 
+  // Function to render the review card with special highlight for certified foodie reviews
+  const renderReviewCard = (review: Review): JSX.Element => {
+    const isCertified = isCertifiedFoodieReview(review);
+    
+    return (
+      <div 
+        key={review.id} 
+        className={`bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer ${
+          isCertified ? 'border-2 border-[#f2d36e]' : ''
+        }`}
+        onClick={() => handleViewFullReview(review)}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <Link
+            href={`/patron-search?id=${review.restaurantId}`}
+            className="text-lg font-medium text-[#dab9f8] hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {review.restaurant}
+          </Link>
+          <div className="flex">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <div 
+                key={star}
+                className={`w-4 h-4 ${
+                  star <= review.rating
+                    ? "text-[#FFB400] fill-[#FFB400]"
+                    : "text-gray-300"
+                }`}
+              >★</div>
+            ))}
+          </div>
+        </div>
+        
+        {review.imageUrl && (
+          <div className="mb-4 h-48 w-full relative rounded-lg overflow-hidden">
+            <Image
+              src={review.imageUrl}
+              alt="Review image"
+              fill
+              className="object-cover"
+            />
+          </div>
+        )}
+        
+        <p className="mb-4 text-gray-700">{review.content}</p>
+        
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span className="font-medium">
+              {review.isAnonymous === true ? "Anonymous" : review.author}
+            </span>
+            
+            {/* Display the Certified Foodie badge if applicable */}
+            {!review.isAnonymous && isCertified && (
+              <CertifiedFoodieBadge size="sm" showText={false} />
+            )}
+            
+            {review.date && (
+              <span>
+                •{" "}
+                {new Date(review.date).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit"
+                })}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center text-sm text-gray-500">
+            <ThumbsUp size={14} className="mr-1" />
+            <span>{review.upvotes}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // If not authenticated, show login prompt
   if (status === "unauthenticated") {
     return (
@@ -660,7 +775,7 @@ export default function DiscoveryPage(): JSX.Element {
               </button>
             </div>
             
-            {/* Filter Dropdown */}
+            {/* Filter Dropdown - Now with the new top_rated option */}
             <div className="relative">
               <button
                 className="flex items-center gap-2 px-3 py-2 text-sm border rounded-md bg-white hover:bg-gray-50 transition-colors"
@@ -668,7 +783,8 @@ export default function DiscoveryPage(): JSX.Element {
               >
                 <Filter size={16} />
                 <span>
-                  {filter === "relevance" ? "Relevance" : "Newest"}
+                  {filter === "relevance" ? "Relevance" : 
+                   filter === "newest" ? "Newest" : "Top Rated"}
                 </span>
               </button>
               
@@ -696,6 +812,17 @@ export default function DiscoveryPage(): JSX.Element {
                     >
                       <Clock size={16} className="mr-2" />
                       Newest
+                    </button>
+                    <button
+                      className={`flex items-center w-full px-4 py-2 text-sm ${
+                        filter === "top_rated"
+                          ? "bg-[#FFF0E7] text-gray-800"
+                          : "hover:bg-gray-100 text-gray-700"
+                      }`}
+                      onClick={() => handleFilterChange("top_rated")}
+                    >
+                      <TrendingUp size={16} className="mr-2" />
+                      Top Rated
                     </button>
                   </div>
                 </div>
@@ -777,80 +904,11 @@ export default function DiscoveryPage(): JSX.Element {
                 </div>
               )}
               
-              {/* Reviews Tab */}
+              {/* Reviews Tab - Updated to use the custom renderReviewCard function */}
               {activeTab === "reviews" && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {reviews.length > 0 ? (
-                    reviews.map((review) => (
-                      <div 
-                        key={review.id} 
-                        className="bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
-                        onClick={() => handleViewFullReview(review)}
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <Link
-                            href={`/patron-search?id=${review.restaurantId}`}
-                            className="text-lg font-medium text-[#dab9f8] hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {review.restaurant}
-                          </Link>
-                          <div className="flex">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <div 
-                                key={star}
-                                className={`w-4 h-4 ${
-                                  star <= review.rating
-                                    ? "text-[#FFB400] fill-[#FFB400]"
-                                    : "text-gray-300"
-                                }`}
-                              >★</div>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        {review.imageUrl && (
-                          <div className="mb-4 h-48 w-full relative rounded-lg overflow-hidden">
-                            <Image
-                              src={review.imageUrl}
-                              alt="Review image"
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        )}
-                        
-                        <p className="mb-4 text-gray-700">{review.content}</p>
-                        
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <span className="font-medium">
-                              {review.isAnonymous === true ? "Anonymous" : review.author}
-                            </span>
-                            
-                            {/* Display the Certified Foodie badge if applicable */}
-                            {!review.isAnonymous && isCertifiedFoodieReview(review) && (
-                              <CertifiedFoodieBadge size="md" showText={false} />
-                            )}
-                            
-                            {review.date && (
-                              <span>
-                                •{" "}
-                                {new Date(review.date).toLocaleDateString("en-GB", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "2-digit"
-                                })}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <ThumbsUp size={14} className="mr-1" />
-                            <span>{review.upvotes}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
+                    reviews.map((review) => renderReviewCard(review))
                   ) : (
                     <div className="col-span-full text-center py-12">
                       <p className="text-gray-500">No reviews found. Try a different filter.</p>
@@ -859,14 +917,16 @@ export default function DiscoveryPage(): JSX.Element {
                 </div>
               )}
               
-              {/* Photos Tab */}
+              {/* Photos Tab - With updated UI for certified foodie photos */}
               {activeTab === "photos" && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {photos.length > 0 ? (
                     photos.map((photo) => (
                       <div 
                         key={photo.id} 
-                        className="group relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer"
+                        className={`group relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer ${
+                          photo.isCertifiedFoodie ? 'ring-2 ring-[#f2d36e]' : ''
+                        }`}
                         onClick={() => {
                           // Find the full review data for this photo
                           const review = reviews.find(r => r.id === photo.id);
@@ -890,7 +950,8 @@ export default function DiscoveryPage(): JSX.Element {
                               imageUrl: photo.imageUrl,
                               videoUrl: null,
                               patronId: "",
-                              isAnonymous: false
+                              isAnonymous: false,
+                              isCertifiedFoodie: photo.isCertifiedFoodie
                             });
                           }
                         }}
@@ -901,6 +962,16 @@ export default function DiscoveryPage(): JSX.Element {
                           fill
                           className="object-cover group-hover:scale-105 transition-transform"
                         />
+                        
+                        {/* Add certified foodie badge overlay if applicable */}
+                        {photo.isCertifiedFoodie && (
+                          <div className="absolute top-2 right-2 z-10">
+                            <div className="bg-[#f2d36e] rounded-full p-1">
+                              <Award size={14} className="text-white" />
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
                           <Link
                             href={`/patron-search?id=${photo.restaurantId}`}

@@ -3,11 +3,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { useGeolocation } from "../../lib/locationService";
 import { X, ChevronUp, ChevronDown, Image as ImageIcon } from "lucide-react";
 import PatronProfileModal from "./PatronProfileModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCertificate } from "@fortawesome/free-solid-svg-icons";
+import { faCertificate, faUtensils } from "@fortawesome/free-solid-svg-icons";
 
 interface Patron {
   id: string;
@@ -22,11 +21,10 @@ interface Review {
   rating: number;
   imageUrl?: string | null;
   patron?: {
-    id: string; // This is where it actually is
+    id: string;
     firstName: string;
     lastName: string;
   };
-  // patronId might not be directly on the review object
   patronId?: string;
   reviewStandards?: string;
   date?: string;
@@ -34,10 +32,20 @@ interface Review {
   wouldRecommend?: number;
   valueForMoney?: number;
   upvotes?: number;
-  isAnonymous?: boolean; 
+  isAnonymous?: boolean;
   userVote?: {
     isUpvote: boolean;
   };
+  // Added properties for meal information
+  restaurant?: string;
+  restaurantId?: string;
+  menuItem?: {
+    id: string;
+    name: string;
+  };
+  menuItemId?: string;
+  menuItemName?: string; // For simplified access
+  title?: string; // Sometimes contains the menu item name
 }
 
 interface ReadReviewModalProps {
@@ -69,6 +77,30 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
 
   const [isReviewerCertified, setIsReviewerCertified] = useState<boolean>(false);
+  
+  // Helper to get the meal name if available
+  const getMealName = (): string | null => {
+    if (!isReadMode) return null;
+    
+    const readProps = props as ReadReviewModalProps;
+    const { review } = readProps;
+    
+    // Check multiple possible sources for meal name
+    if (review.menuItem?.name) {
+      return review.menuItem.name;
+    }
+    
+    if (review.menuItemName) {
+      return review.menuItemName;
+    }
+    
+    // Sometimes the title contains the meal name (especially when coming from search)
+    if (review.title && review.title !== review.restaurant) {
+      return review.title;
+    }
+    
+    return null;
+  };
 
   // Handle vote state and count initialization for read mode
   useEffect(() => {
@@ -104,6 +136,11 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
       console.log("PatronId sources:", {
         directPatronId: readProps.review.patronId,
         nestedPatronId: readProps.review.patron?.id
+      });
+      console.log("Meal information:", {
+        menuItem: readProps.review.menuItem,
+        menuItemName: readProps.review.menuItemName,
+        title: readProps.review.title
       });
     }
   }, [props, isReadMode]);
@@ -283,6 +320,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
   if (isReadMode) {
     const readProps = props as ReadReviewModalProps;
     const { review } = readProps;
+    const mealName = getMealName();
     
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -302,6 +340,23 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
               </button>
             </div>
 
+            {/* Restaurant and meal information */}
+            <div className="mb-4">
+              {review.restaurant && (
+                <div className="flex items-center text-lg font-medium text-[#dab9f8]">
+                  {review.restaurant}
+                </div>
+              )}
+              
+              {/* Display meal name if available */}
+              {mealName && (
+                <div className="flex items-center text-md font-medium text-gray-700 mt-1">
+                  <FontAwesomeIcon icon={faUtensils} className="mr-2 text-[#f2d36e]" />
+                  {mealName}
+                </div>
+              )}
+            </div>
+
             <div className="mb-4">
               {renderStars(review.rating)}
               {review.date && (
@@ -309,7 +364,8 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
               )}
             </div>
 
-            <div className="mb-6 p-4 bg-[#f9ebc3] rounded-md">
+            {/* Updated review content with white background and thick yellow border */}
+            <div className="mb-6 p-4 bg-white border-[5px] border-[#f9ebc3] rounded-md">
               <p className="text-lg italic text-gray-700 mb-4">"{review.content}"</p>
               <p className="text-right font-medium text-gray-700">
                 {review.isAnonymous ? (
