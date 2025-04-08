@@ -1,9 +1,18 @@
+// src/server/services/scraperService.ts
+
 import { PrismaClient } from '@prisma/client';
-import { scrapeMenu } from './scraper/menuScraper';  // Ensure this path is correct
+import { scrapeMenu } from './scraper/menuScraper';
 
 const prisma = new PrismaClient();
 
-export async function saveScrapedData(url: string, newCategory: string) {  
+interface ScrapedDataParams {
+    url: string;
+    categories: string[];
+    widerAreas?: string[];
+}
+
+export async function saveScrapedData(params: ScrapedDataParams): Promise<void> {
+    const { url, categories, widerAreas = [] } = params;
     const restaurantData = await scrapeMenu(url);
 
     try {
@@ -13,18 +22,24 @@ export async function saveScrapedData(url: string, newCategory: string) {
         });
 
         if (existingRestaurant) {
-            // Append new category if it's not already in the array
-            const updatedCategories = new Set([...existingRestaurant.category, newCategory]);
+            // Combine existing and new categories and wider areas
+            const updatedCategories = [...new Set([...existingRestaurant.category, ...categories])];
+            const updatedWiderAreas = [...new Set([...existingRestaurant.widerAreas, ...widerAreas])];
 
             await prisma.restaurant.update({
                 where: { url },
                 data: {
-                    category: Array.from(updatedCategories), // Ensure no duplicates
+                    category: updatedCategories,
+                    widerAreas: updatedWiderAreas,
                     updatedAt: new Date()
                 }
             });
 
-            console.log(`✅ Updated categories for: ${restaurantData.title}`);
+            console.log(`✅ Updated restaurant: ${restaurantData.title}`);
+            console.log(`   Categories: ${updatedCategories.join(', ')}`);
+            if (updatedWiderAreas.length > 0) {
+                console.log(`   Wider Areas: ${updatedWiderAreas.join(', ')}`);
+            }
             return;
         }
 
@@ -36,8 +51,9 @@ export async function saveScrapedData(url: string, newCategory: string) {
                 detail: restaurantData.detail,
                 rating: restaurantData.rating,
                 num_reviews: restaurantData.num_reviews,
-                location: restaurantData.location ?? 'Unknown',
-                category: [newCategory], // Store category as an array
+                location: restaurantData.location, // Keep original scraped location
+                category: categories,
+                widerAreas: widerAreas,
                 menuSections: {
                     create: restaurantData.menu.map(section => ({
                         category: section.category,
@@ -56,6 +72,11 @@ export async function saveScrapedData(url: string, newCategory: string) {
         });
 
         console.log(`✅ Saved new restaurant: ${restaurantData.title}`);
+        console.log(`   Categories: ${categories.join(', ')}`);
+        console.log(`   Location: ${restaurantData.location}`);
+        if (widerAreas.length > 0) {
+            console.log(`   Wider Areas: ${widerAreas.join(', ')}`);
+        }
     } catch (error) {
         console.error('❌ Error saving restaurant data:', error);
         throw error;

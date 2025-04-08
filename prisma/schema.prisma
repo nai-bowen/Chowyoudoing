@@ -194,9 +194,10 @@ model Restaurant {
     detail      String?
     rating      String
     num_reviews String
-    location    String?   // Store city, country for map feature
+    location    String?   // Store original scraped location
     category    String[]  @default([]) // Store multiple categories as an array
     interests   String[]  @default([])
+    widerAreas  String[]  @default([]) // New field for wider geographical areas
     
     createdAt   DateTime  @default(now())
     updatedAt   DateTime  @updatedAt
