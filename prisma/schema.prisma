@@ -14,6 +14,13 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
+// Define enum for verification status
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Post {
     id        Int      @id @default(autoincrement())
     name      String
@@ -50,8 +57,8 @@ model Patron {
     
     // New relations
     favorites     Favorite[]
-  followers     Follow[]    @relation("following")
-  following     Follow[]    @relation("follower")  
+    followers     Follow[]    @relation("following")
+    following     Follow[]    @relation("follower")  
 }
 
 // New model for foodie certification requests
@@ -108,13 +115,14 @@ model Account {
     patron                   Patron  @relation(fields: [patronId], references: [id], onDelete: Cascade)
     @@unique([provider, providerAccountId])
 }
+
 model Restaurateur {
-  id                      String    @id @default(cuid())
-  email                   String    @unique
+  id                      String             @id @default(cuid())
+  email                   String             @unique
   password                String
   restaurantName          String
-  businessRegNumber       String?
-  vatNumber               String?
+  businessRegNumber       String?            // Required for approval
+  vatNumber               String?            // Optional but stored for business purposes
   addressLine1            String
   addressLine2            String?
   city                    String
@@ -123,8 +131,8 @@ model Restaurateur {
   contactPersonName       String
   contactPersonPhone      String
   contactPersonEmail      String
-  verificationStatus      String    @default("pending") // pending, approved, rejected
-  submittedAt             DateTime  @default(now())
+  verificationStatus      VerificationStatus @default(PENDING)
+  submittedAt             DateTime           @default(now())
   approvedAt              DateTime?
   
   // Proof documents (stored as URLs)
@@ -135,17 +143,19 @@ model Restaurateur {
   receiptPhotoUrl         String?
   
   // Relations
-  restaurant              Restaurant? @relation(fields: [restaurantId], references: [id])
+  restaurant              Restaurant?        @relation(fields: [restaurantId], references: [id])
   restaurantId            String?
   
-  // Authentication
+  // Authentication - these are used once the restaurateur is approved
   accounts                RestaurateurAccount[]
   sessions                RestaurateurSession[]
 }
 
 model RestaurateurAccount {
-  id                       String  @id @default(cuid())
+  id                       String    @id @default(cuid())
   restaurateurId           String
+  
+  // Authentication fields from OAuth providers
   type                     String
   provider                 String
   providerAccountId        String
@@ -158,16 +168,23 @@ model RestaurateurAccount {
   session_state            String?
   refresh_token_expires_in Int?
   
+  // Added fields to mirror Restaurateur model for login purposes
+  email                    String?   @unique
+  password                 String?
+  businessRegNumber        String?   // Required for login
+  vatNumber                String?   // Optional validation data
+  isApproved               Boolean   @default(true) // If an account exists, it's approved
+  
   restaurateur             Restaurateur  @relation(fields: [restaurateurId], references: [id], onDelete: Cascade)
   @@unique([provider, providerAccountId])
 }
 
 model RestaurateurSession {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  restaurateurId String
-  expires      DateTime
-  restaurateur Restaurateur @relation(fields: [restaurateurId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  sessionToken     String   @unique
+  restaurateurId   String
+  expires          DateTime
+  restaurateur     Restaurateur @relation(fields: [restaurateurId], references: [id], onDelete: Cascade)
 }
 
 model Restaurant {
@@ -187,7 +204,7 @@ model Restaurant {
     // Relations
     menuSections MenuSection[]
     reviews      Review[] 
-    favorites     Favorite[]
+    favorites    Favorite[]
     // New relation to Restaurateur
     restaurateurs Restaurateur[]
 }

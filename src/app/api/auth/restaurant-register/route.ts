@@ -1,8 +1,8 @@
-// src/app/api/auth/restaurant-register/route.ts
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { v2 as cloudinary } from "cloudinary";
 import bcrypt from "bcryptjs";
+import { VerificationStatus } from "@prisma/client";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         foodHygieneCertUrl,
         storefrontPhotoUrl,
         receiptPhotoUrl,
-        verificationStatus: "pending",
+        verificationStatus: VerificationStatus.PENDING,
       },
     });
     

@@ -369,12 +369,22 @@ export default function RegisterPage(): JSX.Element {
         </div>
         
         <div className="py-4 text-center border-t border-gray-200 bg-white/30">
-          <p className="text-gray-400">
-            ALREADY HAVE AN ACCOUNT?{" "}
-            <Link href="/login" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
-              SIGN IN
-            </Link>
-          </p>
+          <div className="mb-2">
+            <p className="text-gray-400">
+              ALREADY HAVE AN ACCOUNT?{" "}
+              <Link href="/login" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
+                SIGN IN
+              </Link>
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-400">
+              RESTAURANT OWNER?{" "}
+              <Link href="/register/restaurateur" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
+                SIGN UP FOR A BUSINESS ACCOUNT
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

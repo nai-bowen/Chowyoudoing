@@ -231,14 +231,13 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
           newIsUpvoted = null;
         }
         break;
-      case 'cancel-downvote':
-        if (voteState.downvoted) {
-          // Remove downvote (+1)
-          newVoteCount += 1;
-          newVoteState = { upvoted: false, downvoted: false };
-          newIsUpvoted = null;
-        }
-        break;
+        case 'cancel-downvote':
+          if (voteState.downvoted) {
+            newVoteCount = Math.max(0, newVoteCount + 1);
+            newVoteState = { upvoted: false, downvoted: false };
+            newIsUpvoted = null;
+          }
+          break;
     }
 
     // Update UI immediately

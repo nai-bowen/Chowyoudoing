@@ -2,13 +2,9 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Kufam, Londrina_Solid } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
-
-// Importing fonts
-const kufam = Kufam({ subsets: ["latin"], weight: ["400", "500", "700"] });
-const londrinaSolid = Londrina_Solid({ subsets: ["latin"], weight: ["400"] });
+import FloatingFoodEmojis from '@/app/_components/FloatingFoodEmojis';
 
 interface RestaurantRegisterResponse {
   success?: boolean;
@@ -265,47 +261,57 @@ export default function RestaurantRegisterPage(): JSX.Element {
     setError("");
   };
   
+  // Render step indicator with only circles
+  const renderStepIndicator = (): JSX.Element => {
+    return (
+      <div className="flex justify-center mb-6 gap-6">
+        {[1, 2, 3].map((s) => (
+          <div key={s} className="flex items-center">
+            <div 
+              className={`h-4 w-4 rounded-full ${
+                s < step ? "bg-[#f2d36f]" : 
+                s === step ? "bg-[#dbbaf8]" : 
+                "bg-gray-300"
+              }`}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
   // If registration was successful, show a success message
   if (success) {
     return (
-      <div className="flex min-h-screen overflow-hidden relative">
-        {/* Left sidebar */}
-        <div className="w-1/2 bg-[#FFD879] flex flex-col justify-between p-8 relative">
-          <h1 className={`${londrinaSolid.className} text-[35px] text-white absolute top-8 left-8`}>
-            Chow You Doing?
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#f9ebc2] via-[#faf0f6] to-white">
+        <FloatingFoodEmojis />
+        <div className="w-full max-w-md bg-white/60 backdrop-blur-md rounded-3xl border border-white/30 
+                      shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl p-8">
+          <h1 className="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-[#dab9f8] to-[#f2d36f] bg-clip-text text-transparent">
+            CHOW YOU DOING
           </h1>
           
-          <div className="flex justify-start items-end h-full">
-            <Image
-              src="/assets/eat.png"
-              alt="Illustration"
-              width={662}
-              height={669}
-              className="object-contain max-w-full h-auto ml-[-4.5rem] mb-[-5rem]"
-            />
-          </div>
-        </div>
-        
-        {/* Success message */}
-        <div className="w-1/2 bg-white flex flex-col justify-center items-center px-12">
-          <div className="w-full max-w-md text-center">
-            <h2 className={`${kufam.className} text-2xl font-bold text-[#D29501] mb-6`}>
-              Registration Successful!
-            </h2>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-              <p className="text-green-800 mb-2">
-                Your restaurant registration has been submitted successfully!
-              </p>
-              <p className="text-green-600">
-                Our team will review your application and get back to you soon.
-              </p>
-            </div>
-            <p className="text-gray-600 mb-4">
-              You will be redirected to the login page in a few seconds...
+          <h2 className="text-2xl font-bold text-[#D29501] mb-6 text-center">
+            Registration Successful!
+          </h2>
+          
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+            <p className="text-green-800 mb-2">
+              Your restaurant registration has been submitted successfully!
             </p>
+            <p className="text-green-600">
+              Our team will review your application and get back to you soon.
+            </p>
+          </div>
+          
+          <p className="text-gray-600 mb-4 text-center">
+            You will be redirected to the login page in a few seconds...
+          </p>
+          
+          <div className="text-center">
             <Link 
               href="/login" 
-              className={`${kufam.className} text-[15px] text-[#D29501] font-bold hover:underline`}
+              className="text-[15px] text-[#D29501] font-bold hover:underline"
             >
               Click here if you are not redirected
             </Link>
@@ -316,575 +322,518 @@ export default function RestaurantRegisterPage(): JSX.Element {
   }
   
   return (
-    <div className="flex min-h-screen overflow-hidden relative">
-      {/* Left sidebar */}
-      <div className="w-1/2 bg-[#FFD879] flex flex-col justify-between p-8 relative">
-        <h1 className={`${londrinaSolid.className} text-[35px] text-white absolute top-8 left-8`}>
-          Chow You Doing?
-        </h1>
-        
-        <div className="flex justify-start items-end h-full">
-          <Image
-            src="/assets/eat.png"
-            alt="Illustration"
-            width={662}
-            height={669}
-            className="object-contain max-w-full h-auto ml-[-4.5rem] mb-[-5rem]"
-          />
-        </div>
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#f9ebc2] via-[#faf0f6] to-white">
+      {/* Blob decorations */}
+      <div className="fixed top-0 right-0 w-64 h-64 bg-[#FFD879]/20 rounded-full blur-3xl"></div>
+      <div className="fixed bottom-0 left-0 w-64 h-64 bg-[#FFC1B5]/20 rounded-full blur-3xl"></div>
+      <FloatingFoodEmojis />
       
-      {/* Form section */}
-      <div className="w-1/2 bg-white flex flex-col justify-center items-center px-12 py-8 overflow-y-auto">
-        <h1 className={`${kufam.className} text-[32px] font-bold text-[#D29501]`}>
-          Restaurant Registration
-        </h1>
-        
-        <h3 className={`${kufam.className} text-[12px] text-[#B1B1B1] font-semibold text-center mb-4`}>
-          {step === 1
-            ? "Create your restaurant owner account"
-            : step === 2
-            ? "Tell us about your restaurant"
-            : "Upload verification documents"}
-        </h3>
-        
-        {/* Progress Bar */}
-        <div className="w-full flex justify-center mb-6">
-          {[1, 2, 3].map((s) => (
-            <div
-              key={s}
-              className={`h-1 w-20 mx-2 rounded-full ${
-                step >= s ? "bg-[#FFB400]" : "bg-[#D9D9D9]"
-              }`}
-            ></div>
-          ))}
-        </div>
-        
-        {/* Error message */}
-        {error && (
-          <div className="w-full max-w-md bg-red-50 border border-red-200 rounded p-3 mb-4 text-red-700">
-            {error}
-          </div>
-        )}
-        
-        {/* Form */}
-        <form
-          onSubmit={step === 3 ? handleSubmit : handleContinue}
-          className="w-full max-w-md space-y-4"
-        >
-          {/* Step 1: Account Information */}
-          {step === 1 && (
-            <>
-              <div>
-                <label
-                  htmlFor="email"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  Business Email *
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  placeholder="restaurant@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-              </div>
-              
-              <div>
-                <label
-                  htmlFor="password"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  placeholder="Create a secure password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  minLength={8}
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Minimum 8 characters
-                </p>
-              </div>
-              
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  Confirm Password *
-                </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-              </div>
-              
-              <button
-                type="submit"
-                className="w-full py-3 bg-[#FFC1B5] text-white rounded-md shadow-md hover:bg-[#FFB4A3] transition-all"
-              >
-                Continue
-              </button>
-            </>
+      {/* Registration Card */}
+      <div className="w-full max-w-md bg-white/60 backdrop-blur-md rounded-3xl border border-white/30 
+                    shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
+        <div className="p-8">
+          {/* Title with gradient */}
+          <h1 className="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-[#dab9f8] to-[#f2d36f] bg-clip-text text-transparent">
+            CHOW YOU DOING
+          </h1>
+
+          <p className="text-center text-[#f2d36f] mb-6">
+            RESTAURANT REGISTRATION
+          </p>
+          
+          {/* Step Indicator */}
+          {renderStepIndicator()}
+          
+          {/* Step text */}
+          <h3 className="text-center text-[#dbbaf8] font-medium mb-6">
+            {step === 1 ? "ACCOUNT INFORMATION" : 
+             step === 2 ? "RESTAURANT DETAILS" : 
+             "VERIFICATION DOCUMENTS"}
+          </h3>
+          
+          {/* Error message */}
+          {error && (
+            <div className="bg-red-100 border border-red-200 text-red-600 p-3 rounded-lg mb-4">
+              {error}
+            </div>
           )}
           
-          {/* Step 2: Restaurant Information */}
-          {step === 2 && (
-            <>
-              <div>
-                <label
-                  htmlFor="restaurantName"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  Restaurant Name *
-                </label>
-                <input
-                  type="text"
-                  id="restaurantName"
-                  name="restaurantName"
-                  placeholder="Your restaurant's name"
-                  value={formData.restaurantName}
-                  onChange={handleChange}
-                  required
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-              </div>
-              
-              <div>
-                <label
-                  htmlFor="businessRegNumber"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  Business Registration Number
-                </label>
-                <input
-                  type="text"
-                  id="businessRegNumber"
-                  name="businessRegNumber"
-                  placeholder="Companies House number"
-                  value={formData.businessRegNumber}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-              </div>
-              
-              <div>
-                <label
-                  htmlFor="vatNumber"
-                  className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                >
-                  VAT Number (if applicable)
-                </label>
-                <input
-                  type="text"
-                  id="vatNumber"
-                  name="vatNumber"
-                  placeholder="Your VAT registration number"
-                  value={formData.vatNumber}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                />
-              </div>
-              
-              <div className="border-t pt-4 mt-4">
-                <h4 className={`${kufam.className} font-medium text-gray-700 mb-2`}>
-                  Registered Business Address
-                </h4>
-                
+          {/* Form */}
+          <form
+            onSubmit={step === 3 ? handleSubmit : handleContinue}
+            className="space-y-6"
+            noValidate
+          >
+            {/* Step 1: Account Information */}
+            {step === 1 && (
+              <>
                 <div>
-                  <label
-                    htmlFor="addressLine1"
-                    className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                  >
-                    Address Line 1 *
-                  </label>
-                  <input
-                    type="text"
-                    id="addressLine1"
-                    name="addressLine1"
-                    placeholder="Street address"
-                    value={formData.addressLine1}
-                    onChange={handleChange}
-                    required
-                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                  />
-                </div>
-                
-                <div className="mt-2">
-                  <label
-                    htmlFor="addressLine2"
-                    className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                  >
-                    Address Line 2
-                  </label>
-                  <input
-                    type="text"
-                    id="addressLine2"
-                    name="addressLine2"
-                    placeholder="Apt, suite, unit, etc. (optional)"
-                    value={formData.addressLine2}
-                    onChange={handleChange}
-                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                  />
-                </div>
-                
-                <div className="mt-2 grid grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      htmlFor="city"
-                      className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                    >
-                      City *
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      name="city"
-                      placeholder="City"
-                      value={formData.city}
-                      onChange={handleChange}
-                      required
-                      className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label
-                      htmlFor="postalCode"
-                      className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                    >
-                      Postal Code *
-                    </label>
-                    <input
-                      type="text"
-                      id="postalCode"
-                      name="postalCode"
-                      placeholder="Postal code"
-                      value={formData.postalCode}
-                      onChange={handleChange}
-                      required
-                      className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                    />
-                  </div>
-                </div>
-                
-                <div className="mt-2">
-                  <label
-                    htmlFor="country"
-                    className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                  >
-                    Country *
-                  </label>
-                  <select
-                    id="country"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleChange}
-                    required
-                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                  >
-                    <option value="">Select a country</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="United States">United States</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Australia">Australia</option>
-                    <option value="Ireland">Ireland</option>
-                    <option value="France">France</option>
-                    <option value="Germany">Germany</option>
-                    <option value="Spain">Spain</option>
-                    <option value="Italy">Italy</option>
-                    {/* Add more countries as needed */}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="flex justify-between pt-4">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-[#FFC1B5] text-white rounded-md shadow-md hover:bg-[#FFB4A3]"
-                >
-                  Continue
-                </button>
-              </div>
-            </>
-          )}
-          
-          {/* Step 3: Contact Person & Verification Documents */}
-          {step === 3 && (
-            <>
-              <div className="mb-4">
-                <h4 className={`${kufam.className} font-medium text-gray-700 mb-2`}>
-                  Contact Person Details
-                </h4>
-                
-                <div>
-                  <label
-                    htmlFor="contactPersonName"
-                    className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                  >
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="contactPersonName"
-                    name="contactPersonName"
-                    placeholder="Full name"
-                    value={formData.contactPersonName}
-                    onChange={handleChange}
-                    required
-                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                  />
-                </div>
-                
-                <div className="mt-2">
-                  <label
-                    htmlFor="contactPersonPhone"
-                    className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                  >
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    id="contactPersonPhone"
-                    name="contactPersonPhone"
-                    placeholder="Phone number"
-                    value={formData.contactPersonPhone}
-                    onChange={handleChange}
-                    required
-                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
-                  />
-                </div>
-                
-                <div className="mt-2">
-                  <label
-                    htmlFor="contactPersonEmail"
-                    className={`${kufam.className} text-sm text-[#B1B1B1] mb-1 block`}
-                  >
-                    Email *
+                  <label htmlFor="email" className="block text-[#dbbaf8] font-medium mb-1">
+                    Business Email
                   </label>
                   <input
                     type="email"
-                    id="contactPersonEmail"
-                    name="contactPersonEmail"
-                    placeholder="Contact email"
-                    value={formData.contactPersonEmail}
+                    id="email"
+                    name="email"
+                    value={formData.email}
                     onChange={handleChange}
+                    placeholder="restaurant@example.com"
                     required
-                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFB400]"
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
                   />
                 </div>
-              </div>
-              
-              <div className="border-t pt-4">
-                <h4 className={`${kufam.className} font-medium text-gray-700 mb-2`}>
-                  Verification Documents
-                </h4>
-                <p className="text-sm text-gray-500 mb-4">
-                  Please upload at least one of the following documents to verify your business.
-                  All files must be less than 5MB.
-                </p>
+
+                <div>
+                  <label htmlFor="password" className="block text-[#dbbaf8] font-medium mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Create a secure password"
+                    required
+                    minLength={8}
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                  <p className="text-xs text-gray-500 mt-1 ml-3">
+                    Minimum 8 characters
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-[#dbbaf8] font-medium mb-1">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Confirm your password"
+                    required
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                </div>
+              </>
+            )}
+            
+            {/* Step 2: Restaurant Information */}
+            {step === 2 && (
+              <>
+                <div>
+                  <label htmlFor="restaurantName" className="block text-[#dbbaf8] font-medium mb-1">
+                    Restaurant Name
+                  </label>
+                  <input
+                    type="text"
+                    id="restaurantName"
+                    name="restaurantName"
+                    value={formData.restaurantName}
+                    onChange={handleChange}
+                    placeholder="Your restaurant's name"
+                    required
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                </div>
                 
-                <div className="space-y-4">
-                  {/* Utility Bill */}
-                  <div className="border rounded-md p-3">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span className={`${kufam.className} text-sm text-gray-700`}>
-                        Utility Bill
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        ref={utilityBillRef}
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'utilityBill')}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => utilityBillRef.current?.click()}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
-                      >
-                        {formData.utilityBillFile ? 'Change' : 'Upload'}
-                      </button>
+                <div>
+                  <label htmlFor="businessRegNumber" className="block text-[#dbbaf8] font-medium mb-1">
+                    Business Registration Number
+                  </label>
+                  <input
+                    type="text"
+                    id="businessRegNumber"
+                    name="businessRegNumber"
+                    value={formData.businessRegNumber}
+                    onChange={handleChange}
+                    placeholder="Companies House number"
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="vatNumber" className="block text-[#dbbaf8] font-medium mb-1">
+                    VAT Number (if applicable)
+                  </label>
+                  <input
+                    type="text"
+                    id="vatNumber"
+                    name="vatNumber"
+                    value={formData.vatNumber}
+                    onChange={handleChange}
+                    placeholder="Your VAT registration number"
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                </div>
+                
+                <div className="pt-2">
+                  <h4 className="font-medium text-[#dbbaf8] mb-2">
+                    Registered Business Address
+                  </h4>
+                  
+                  <div>
+                    <label htmlFor="addressLine1" className="block text-[#dbbaf8] font-medium mb-1">
+                      Address Line 1
                     </label>
-                    {formData.utilityBillFile && (
-                      <p className="text-xs text-green-600 mt-1">
-                        {formData.utilityBillFile.name} uploaded successfully
-                      </p>
-                    )}
+                    <input
+                      type="text"
+                      id="addressLine1"
+                      name="addressLine1"
+                      value={formData.addressLine1}
+                      onChange={handleChange}
+                      placeholder="Street address"
+                      required
+                      className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                               focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                    />
                   </div>
                   
-                  {/* Business License */}
-                  <div className="border rounded-md p-3">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span className={`${kufam.className} text-sm text-gray-700`}>
-                        Business License
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        ref={businessLicenseRef}
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'businessLicense')}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => businessLicenseRef.current?.click()}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
-                      >
-                        {formData.businessLicenseFile ? 'Change' : 'Upload'}
-                      </button>
+                  <div className="mt-2">
+                    <label htmlFor="addressLine2" className="block text-[#dbbaf8] font-medium mb-1">
+                      Address Line 2
                     </label>
-                    {formData.businessLicenseFile && (
-                      <p className="text-xs text-green-600 mt-1">
-                        {formData.businessLicenseFile.name} uploaded successfully
-                      </p>
-                    )}
+                    <input
+                      type="text"
+                      id="addressLine2"
+                      name="addressLine2"
+                      value={formData.addressLine2}
+                      onChange={handleChange}
+                      placeholder="Apt, suite, unit, etc. (optional)"
+                      className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                               focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                    />
                   </div>
                   
-                  {/* Food Hygiene Certificate */}
-                  <div className="border rounded-md p-3">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span className={`${kufam.className} text-sm text-gray-700`}>
-                        Food Hygiene Certificate
-                      </span>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="city" className="block text-[#dbbaf8] font-medium mb-1">
+                        City
+                      </label>
                       <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        ref={foodHygieneCertRef}
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'foodHygieneCert')}
+                        type="text"
+                        id="city"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleChange}
+                        placeholder="City"
+                        required
+                        className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                                 focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
                       />
-                      <button
-                        type="button"
-                        onClick={() => foodHygieneCertRef.current?.click()}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
-                      >
-                        {formData.foodHygieneCertFile ? 'Change' : 'Upload'}
-                      </button>
-                    </label>
-                    {formData.foodHygieneCertFile && (
-                      <p className="text-xs text-green-600 mt-1">
-                        {formData.foodHygieneCertFile.name} uploaded successfully
-                      </p>
-                    )}
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="postalCode" className="block text-[#dbbaf8] font-medium mb-1">
+                        Postal Code
+                      </label>
+                      <input
+                        type="text"
+                        id="postalCode"
+                        name="postalCode"
+                        value={formData.postalCode}
+                        onChange={handleChange}
+                        placeholder="Postal code"
+                        required
+                        className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                                 focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                      />
+                    </div>
                   </div>
                   
-                  {/* Storefront Photo */}
-                  <div className="border rounded-md p-3">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span className={`${kufam.className} text-sm text-gray-700`}>
-                        Storefront Photo
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        ref={storefrontPhotoRef}
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'storefrontPhoto')}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => storefrontPhotoRef.current?.click()}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
-                      >
-                        {formData.storefrontPhotoFile ? 'Change' : 'Upload'}
-                      </button>
+                  <div className="mt-2">
+                    <label htmlFor="country" className="block text-[#dbbaf8] font-medium mb-1">
+                      Country
                     </label>
-                    {formData.storefrontPhotoFile && (
-                      <p className="text-xs text-green-600 mt-1">
-                        {formData.storefrontPhotoFile.name} uploaded successfully
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* Receipt Photo */}
-                  <div className="border rounded-md p-3">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span className={`${kufam.className} text-sm text-gray-700`}>
-                        Receipt Photo
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        ref={receiptPhotoRef}
-                        className="hidden"
-                        onChange={(e) => handleFileUpload(e, 'receiptPhoto')}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => receiptPhotoRef.current?.click()}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
-                      >
-                        {formData.receiptPhotoFile ? 'Change' : 'Upload'}
-                      </button>
-                    </label>
-                    {formData.receiptPhotoFile && (
-                      <p className="text-xs text-green-600 mt-1">
-                        {formData.receiptPhotoFile.name} uploaded successfully
-                      </p>
-                    )}
+                    <select
+                      id="country"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      required
+                      className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                               focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                    >
+                      <option value="">Select a country</option>
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="United States">United States</option>
+                      <option value="Canada">Canada</option>
+                      <option value="Australia">Australia</option>
+                      <option value="Ireland">Ireland</option>
+                      <option value="France">France</option>
+                      <option value="Germany">Germany</option>
+                      <option value="Spain">Spain</option>
+                      <option value="Italy">Italy</option>
+                      {/* Add more countries as needed */}
+                    </select>
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex justify-between pt-4">
+              </>
+            )}
+            
+            {/* Step 3: Contact Person & Verification Documents */}
+            {step === 3 && (
+              <>
+                <div className="mb-4">
+                  <h4 className="font-medium text-[#dbbaf8] mb-2">
+                    Contact Person Details
+                  </h4>
+                  
+                  <div>
+                    <label htmlFor="contactPersonName" className="block text-[#dbbaf8] font-medium mb-1">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      id="contactPersonName"
+                      name="contactPersonName"
+                      value={formData.contactPersonName}
+                      onChange={handleChange}
+                      placeholder="Full name"
+                      required
+                      className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                               focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                    />
+                  </div>
+                  
+                  <div className="mt-2">
+                    <label htmlFor="contactPersonPhone" className="block text-[#dbbaf8] font-medium mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="contactPersonPhone"
+                      name="contactPersonPhone"
+                      value={formData.contactPersonPhone}
+                      onChange={handleChange}
+                      placeholder="Phone number"
+                      required
+                      className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                               focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                    />
+                  </div>
+                  
+                  <div className="mt-2">
+                    <label htmlFor="contactPersonEmail" className="block text-[#dbbaf8] font-medium mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      id="contactPersonEmail"
+                      name="contactPersonEmail"
+                      value={formData.contactPersonEmail}
+                      onChange={handleChange}
+                      placeholder="Contact email"
+                      required
+                      className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                               focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                    />
+                  </div>
+                </div>
+                
+                <div className="pt-2">
+                  <h4 className="font-medium text-[#dbbaf8] mb-2">
+                    Verification Documents
+                  </h4>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Please upload at least one of the following documents to verify your business.
+                    All files must be less than 5MB.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    {/* Utility Bill */}
+                    <div className="rounded-xl bg-white/80 p-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-gray-700">
+                          Utility Bill
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          ref={utilityBillRef}
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'utilityBill')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => utilityBillRef.current?.click()}
+                          className="px-4 py-2 bg-[#f2d36f] text-white rounded-full text-sm hover:bg-opacity-90"
+                        >
+                          {formData.utilityBillFile ? 'Change' : 'Upload'}
+                        </button>
+                      </label>
+                      {formData.utilityBillFile && (
+                        <p className="text-xs text-green-600 mt-1">
+                          {formData.utilityBillFile.name} uploaded successfully
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Business License */}
+                    <div className="rounded-xl bg-white/80 p-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-gray-700">
+                          Business License
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          ref={businessLicenseRef}
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'businessLicense')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => businessLicenseRef.current?.click()}
+                          className="px-4 py-2 bg-[#f2d36f] text-white rounded-full text-sm hover:bg-opacity-90"
+                        >
+                          {formData.businessLicenseFile ? 'Change' : 'Upload'}
+                        </button>
+                      </label>
+                      {formData.businessLicenseFile && (
+                        <p className="text-xs text-green-600 mt-1">
+                          {formData.businessLicenseFile.name} uploaded successfully
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Food Hygiene Certificate */}
+                    <div className="rounded-xl bg-white/80 p-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-gray-700">
+                          Food Hygiene Certificate
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          ref={foodHygieneCertRef}
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'foodHygieneCert')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => foodHygieneCertRef.current?.click()}
+                          className="px-4 py-2 bg-[#f2d36f] text-white rounded-full text-sm hover:bg-opacity-90"
+                        >
+                          {formData.foodHygieneCertFile ? 'Change' : 'Upload'}
+                        </button>
+                      </label>
+                      {formData.foodHygieneCertFile && (
+                        <p className="text-xs text-green-600 mt-1">
+                          {formData.foodHygieneCertFile.name} uploaded successfully
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Storefront Photo */}
+                    <div className="rounded-xl bg-white/80 p-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-gray-700">
+                          Storefront Photo
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          ref={storefrontPhotoRef}
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'storefrontPhoto')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => storefrontPhotoRef.current?.click()}
+                          className="px-4 py-2 bg-[#f2d36f] text-white rounded-full text-sm hover:bg-opacity-90"
+                        >
+                          {formData.storefrontPhotoFile ? 'Change' : 'Upload'}
+                        </button>
+                      </label>
+                      {formData.storefrontPhotoFile && (
+                        <p className="text-xs text-green-600 mt-1">
+                          {formData.storefrontPhotoFile.name} uploaded successfully
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Receipt Photo */}
+                    <div className="rounded-xl bg-white/80 p-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-gray-700">
+                          Receipt Photo
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          ref={receiptPhotoRef}
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'receiptPhoto')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => receiptPhotoRef.current?.click()}
+                          className="px-4 py-2 bg-[#f2d36f] text-white rounded-full text-sm hover:bg-opacity-90"
+                        >
+                          {formData.receiptPhotoFile ? 'Change' : 'Upload'}
+                        </button>
+                      </label>
+                      {formData.receiptPhotoFile && (
+                        <p className="text-xs text-green-600 mt-1">
+                          {formData.receiptPhotoFile.name} uploaded successfully
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {/* Navigation Buttons */}
+            <div className={`flex ${step === 1 ? 'justify-center' : 'justify-between'} mt-6`}>
+              {step > 1 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50"
                 >
                   Back
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`px-6 py-3 bg-[#FFC1B5] text-white rounded-md shadow-md hover:bg-[#FFB4A3] ${
-                    isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Registration'}
-                </button>
-              </div>
-            </>
-          )}
-        </form>
+              )}
+              
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`px-6 py-3 ${
+                  step === 3 ? 'bg-[#dbbaf8]' : 'bg-[#f2d36f]'
+                } text-white font-medium rounded-full 
+                         hover:opacity-90 focus:outline-none disabled:opacity-70 ${
+                step === 1 ? 'w-3/4' : 'w-auto'
+              }`}
+              >
+                {isSubmitting 
+                  ? "Processing..." 
+                  : step === 3 
+                    ? "Submit Registration" 
+                    : "Continue"}
+              </button>
+            </div>
+          </form>
+        </div>
         
-        {/* Login link */}
-        <p className="mt-6 text-center">
-          <span className={`${kufam.className} text-[15px] text-[#B1B1B1]`}>
-            Already have an account?{" "}
-          </span>
-          <Link
-            href="/login"
-            className={`${kufam.className} text-[15px] text-[#D29501] font-bold hover:underline`}
-          >
-            Log in here
-          </Link>
-        </p>
+        <div className="py-4 text-center border-t border-gray-200 bg-white/30">
+          <p className="text-gray-400">
+            ALREADY HAVE AN ACCOUNT?{" "}
+            <Link href="/login" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
+              SIGN IN
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
