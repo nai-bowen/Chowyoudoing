@@ -22,7 +22,7 @@ import {
   faBell
 } from "@fortawesome/free-solid-svg-icons";
 import RestaurantConnectionModal from "../_components/RestaurantConnectionModal";
-import RestaurantCard from "@/app/_components/RestaurantCard";
+import MenuManagement from "@/app/_components/MenuManagement";
 import StatCard from '@/app/_components/StatCard';
 
 // Define interfaces for the types of data we'll be working with
@@ -504,11 +504,11 @@ export default function RestaurantDashboard(): JSX.Element {
     );
   };
 
-  // Render tabs
+  // Update the renderTabs function to include the Menu Management tab
   const renderTabs = (): JSX.Element => {
     return (
       <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-sm p-1 mb-8 max-w-md">
-        <div className="flex">
+        <div className="flex flex-wrap">
           <button 
             className={`py-3 px-4 font-medium rounded-lg transition-all ${
               activeTab === 'My Restaurants' 
@@ -518,6 +518,16 @@ export default function RestaurantDashboard(): JSX.Element {
             onClick={() => setActiveTab('My Restaurants')}
           >
             My Restaurants
+          </button>
+          <button 
+            className={`py-3 px-4 font-medium rounded-lg transition-all ${
+              activeTab === 'Menu Management' 
+              ? 'bg-[#fbe9fc] text-black' 
+              : 'text-gray-600 hover:bg-white/50'
+            }`}
+            onClick={() => setActiveTab('Menu Management')}
+          >
+            Menu Management
           </button>
           <button 
             className={`py-3 px-4 font-medium rounded-lg transition-all ${
@@ -663,8 +673,9 @@ export default function RestaurantDashboard(): JSX.Element {
                       </Link>
                       
                       <span className="text-sm text-gray-500">
-                        {restaurant._count?.reviews || 0} Reviews
-                      </span>
+                      {(restaurant._count?.reviews ?? 0)} Reviews
+                    </span>
+
                     </div>
                   </div>
                 ))}
@@ -677,6 +688,71 @@ export default function RestaurantDashboard(): JSX.Element {
               </div>
             )}
           </div>
+        </div>
+      );
+    }
+    
+    // Menu Management tab content
+    if (activeTab === "Menu Management") {
+      return (
+        <div>
+          {restaurants.length === 0 ? (
+            <div className="text-center py-12 bg-white/50 rounded-xl">
+              <FontAwesomeIcon icon={faUtensils} className="text-4xl text-gray-300 mb-4" />
+              <h3 className="text-xl font-medium text-gray-700 mb-2">No restaurants available</h3>
+              <p className="text-gray-500 mb-6">You need to connect to a restaurant before managing menus.</p>
+              <button
+                onClick={() => setActiveTab("My Restaurants")}
+                className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+              >
+                Connect to Restaurants
+              </button>
+            </div>
+          ) : restaurants.length === 1 ? (
+            // If there's only one restaurant, show its menu directly
+          <MenuManagement restaurantId={restaurants[0]?.id ?? ""} />
+          ) : (
+            // If there are multiple restaurants, show a selector
+            <div>
+              <div className="mb-6">
+                <label htmlFor="restaurantSelector" className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Restaurant to Manage Menu
+                </label>
+                <select
+                  id="restaurantSelector"
+                  className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#dab9f8]"
+                  onChange={(e) => {
+                    // Force a re-render when the selection changes
+                    if (e.target.value) {
+                      setActiveTab("Menu Management");
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select a restaurant</option>
+                  {restaurants.map((restaurant) => (
+                    <option key={restaurant.id} value={restaurant.id}>
+                      {restaurant.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Show the menu management for the selected restaurant */}
+              {document.getElementById("restaurantSelector") && 
+               (document.getElementById("restaurantSelector") as HTMLSelectElement).value ? (
+                <MenuManagement 
+                  restaurantId={(document.getElementById("restaurantSelector") as HTMLSelectElement).value} 
+                />
+              ) : (
+                <div className="text-center py-12 bg-white/50 rounded-xl">
+                  <p className="text-gray-500">
+                    Please select a restaurant to manage its menu.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       );
     }
