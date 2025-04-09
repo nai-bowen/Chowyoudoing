@@ -1,117 +1,94 @@
+// src/app/_components/RestaurantCard.tsx
 "use client";
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from "next/link";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMapMarkerAlt, faUtensils, faEdit, faChartLine } from "@fortawesome/free-solid-svg-icons";
 
-interface RestaurantCardProps {
+interface Restaurant {
   id: string;
-  name: string;
-  imageUrl: string;
-  rating: number;
-  reviewCount: number;
-  priceLevel: string;
-  categories: string[];
-  address: string;
-  isOpen: boolean;
+  title: string;
+  location: string;
+  category: string[] | string;
+  rating?: string;
+  num_reviews?: string;
+  _count?: {
+    reviews: number;
+  };
 }
 
-const getPastelColor = (index: number) => {
-  const colors = [
-    'glass-yellow', // Yellow pastel
-    'glass-pink',   // Pink pastel
-    'glass-purple', // Purple pastel
-  ];
-  return colors[index % colors.length];
-};
+interface RestaurantCardProps {
+  restaurant: Restaurant;
+  color?: string;
+}
 
-const RestaurantCard: React.FC<RestaurantCardProps> = ({
-  id,
-  name,
-  imageUrl,
-  rating,
-  reviewCount,
-  priceLevel,
-  categories,
-  address,
-  isOpen,
-}) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-
-  const handleImageLoad = () => {
-    setImageLoaded(true);
-  };
-
-  // Create a pastel background color based on the restaurant ID
-  const pastelClass = getPastelColor(parseInt(id, 10) || 0);
+export default function RestaurantCard({ 
+  restaurant,
+  color = "#fdf9f5" 
+}: RestaurantCardProps): JSX.Element {
+  
+  const reviewCount = restaurant._count?.reviews || 
+                     (restaurant.num_reviews ? parseInt(restaurant.num_reviews) : 0);
+  
+  const categoryArray = Array.isArray(restaurant.category) 
+    ? restaurant.category 
+    : typeof restaurant.category === 'string'
+      ? [restaurant.category]
+      : [];
 
   return (
-    <Link to={`/restaurants/${id}`} className="block group">
-      <div className={`rounded-xl ${pastelClass} hover-lift overflow-hidden h-full flex flex-col transition-all duration-300`}>
-        <div className="h-48 overflow-hidden bg-gray-100 relative">
-          <div className={`absolute inset-0 bg-gray-200 ${imageLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}></div>
-          <img 
-            src={imageUrl} 
-            alt={name} 
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            onLoad={handleImageLoad}
-          />
-          
-          {/* Status badge - open/closed */}
-          <div 
-            className={`absolute top-3 right-3 ${isOpen ? 'bg-green-500' : 'bg-red-500'} text-white text-xs px-2 py-1 rounded-full font-medium`}
+    <div
+      className="rounded-xl shadow-sm p-5 transition-all hover:shadow-md"
+      style={{ backgroundColor: color }}
+    >
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="font-semibold text-lg">{restaurant.title}</h3>
+      </div>
+      
+      <div className="flex items-center text-sm text-gray-600 mb-3">
+        <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1" />
+        <span>{restaurant.location}</span>
+      </div>
+      
+      {categoryArray.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-4">
+          {categoryArray.slice(0, 3).map((cat, i) => (
+            <span key={i} className="text-xs bg-white px-2 py-1 rounded-full">
+              {cat}
+            </span>
+          ))}
+          {categoryArray.length > 3 && (
+            <span className="text-xs bg-white px-2 py-1 rounded-full">
+              +{categoryArray.length - 3} more
+            </span>
+          )}
+        </div>
+      )}
+      
+      <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between">
+        <div className="flex space-x-3">
+          <Link
+            href={`/restaurant-dashboard/${restaurant.id}`}
+            className="text-sm text-[#dab9f8] hover:underline flex items-center"
           >
-            {isOpen ? 'Open' : 'Closed'}
-          </div>
+            <FontAwesomeIcon icon={faEdit} className="mr-1" />
+            Manage
+          </Link>
+          
+          <Link
+            href={`/restaurant-dashboard/${restaurant.id}/analytics`}
+            className="text-sm text-[#f9c3c9] hover:underline flex items-center"
+          >
+            <FontAwesomeIcon icon={faChartLine} className="mr-1" />
+            Analytics
+          </Link>
         </div>
         
-        <div className="p-4 flex-grow flex flex-col backdrop-blur-sm">
-          <h3 className="font-semibold text-lg text-gray-800 group-hover:text-food-700 transition-colors">{name}</h3>
-          
-          <div className="mt-2 flex items-center gap-1">
-            <div className="flex">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <svg 
-                  key={i} 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className={`w-4 h-4 ${
-                    i < Math.floor(rating) 
-                      ? 'text-food-500 fill-food-500' 
-                      : i < rating 
-                        ? 'text-food-500 fill-food-500/50' 
-                        : 'text-gray-300'
-                  }`}
-                >
-                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                </svg>
-              ))}
-            </div>
-            <span className="text-sm text-gray-500 ml-1">({reviewCount})</span>
-          </div>
-          
-          <div className="mt-3 flex items-center text-sm text-gray-500">
-            <span className="mr-2">{priceLevel}</span>
-            <span className="mr-2">•</span>
-            <span className="truncate">{categories.join(', ')}</span>
-          </div>
-          
-          <div className="mt-3 flex items-start gap-1.5 text-sm text-gray-500">
-            <svg 
-              className="mt-0.5 flex-shrink-0 w-4 h-4 text-gray-400" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 22C16 18 20 14.4183 20 10C20 5.58172 16.4183 2 12 2C7.58172 2 4 5.58172 4 10C4 14.4183 8 18 12 22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span className="line-clamp-1">{address}</span>
-          </div>
-        </div>
+        <span className="text-sm text-gray-500 flex items-center">
+          <FontAwesomeIcon icon={faUtensils} className="mr-1 text-gray-400" />
+          {reviewCount} {reviewCount === 1 ? 'Review' : 'Reviews'}
+        </span>
       </div>
-    </Link>
+    </div>
   );
-};
-
-export default RestaurantCard;
+}

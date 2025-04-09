@@ -149,6 +149,25 @@ model Restaurateur {
   // Authentication - these are used once the restaurateur is approved
   accounts                RestaurateurAccount[]
   sessions                RestaurateurSession[]
+  connectionRequests      RestaurantConnectionRequest[]
+}
+
+// Model for restaurant connection requests
+model RestaurantConnectionRequest {
+  id              String    @id @default(cuid())
+  restaurateurId  String
+  restaurantId    String
+  status          String    @default("pending") // pending, approved, rejected
+  message         String?   // Optional message from restaurateur
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  
+  // Relations
+  restaurateur    Restaurateur @relation(fields: [restaurateurId], references: [id], onDelete: Cascade)
+  restaurant      Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  
+  @@unique([restaurateurId, restaurantId])
 }
 
 model RestaurateurAccount {
@@ -206,8 +225,9 @@ model Restaurant {
     menuSections MenuSection[]
     reviews      Review[] 
     favorites    Favorite[]
-    // New relation to Restaurateur
     restaurateurs Restaurateur[]
+    connectionRequests RestaurantConnectionRequest[]
+    receiptVerifications ReceiptVerification[]
 }
 
 model MenuSection {
@@ -239,7 +259,7 @@ model MenuItem {
     interest     Interest?  @relation("MenuItemInterest", fields: [interestId], references: [id], onDelete: SetNull)  
     interestId   String?
 
-     reviews     Review[]
+    reviews     Review[]
 }
 
 model Session {
@@ -282,6 +302,8 @@ model Review {
     latitude        Float?  @default(0)// Added for location services
     longitude       Float?  @default(0)// Added for location services
     isAnonymous     Boolean @default(false) // New field for anonymous reviews
+    isVerified      Boolean @default(false) // Whether the review is verified
+    restaurantResponse String? // Response from the restaurant
 
     // Optional relation to a specific menu item
     menuItem    MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
@@ -293,8 +315,10 @@ model Review {
 
     restaurant  Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
     restaurantId String
-    votes           UserVotes[]
-    favorites     Favorite[]
+    votes       UserVotes[]
+    favorites   Favorite[]
+    flags       ReviewFlag[]
+    receipts    ReceiptVerification[]
 }
 
 model Follow {
@@ -337,4 +361,33 @@ model TrendingCategory {
   reviewCount     Int       // Total number of reviews analyzed
   
   @@index([isActive, lastUpdated])
+}
+
+model ReviewFlag {
+  id            String    @id @default(cuid())
+  reason        String    // hate_speech, misinformation, inappropriate, spam, other
+  details       String?   // Additional details for 'other' reason
+  createdAt     DateTime  @default(now())
+  flaggedBy     String    // ID of the restaurateur who flagged it
+  status        String    @default("pending") // pending, reviewed, dismissed
+  reviewedAt    DateTime?
+  
+  // Relations
+  review        Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId      String
+}
+
+model ReceiptVerification {
+  id            String    @id @default(cuid())
+  receiptImage  String    // URL to receipt image
+  status        String    @default("pending") // pending, approved, rejected
+  submittedAt   DateTime  @default(now())
+  reviewedAt    DateTime?
+  reviewedBy    String?   // ID of the restaurateur who reviewed it
+  
+  // Relations
+  review        Review?   @relation(fields: [reviewId], references: [id])
+  reviewId      String?
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantId  String
 }
