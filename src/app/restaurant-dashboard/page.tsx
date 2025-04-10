@@ -1,7 +1,7 @@
 // src/app/restaurant-dashboard/page.tsx
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -24,6 +24,7 @@ import {
 import RestaurantConnectionModal from "../_components/RestaurantConnectionModal";
 import MenuManagement from "@/app/_components/MenuManagement";
 import StatCard from '@/app/_components/StatCard';
+import ReviewManagement from "@/app/_components/ReviewManagement"; 
 
 // Define interfaces for the types of data we'll be working with
 interface RestaurateurData {
@@ -110,6 +111,7 @@ export default function RestaurantDashboard(): JSX.Element {
   const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState<boolean>(true);
+  const [isLoadingConnectionRequests, setIsLoadingConnectionRequests] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -121,7 +123,6 @@ export default function RestaurantDashboard(): JSX.Element {
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
 
   // Reviews state
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(true);
   const [reviewFlags, setReviewFlags] = useState<ReviewFlag[]>([]);
   const [isLoadingFlags, setIsLoadingFlags] = useState<boolean>(true);
@@ -131,6 +132,12 @@ export default function RestaurantDashboard(): JSX.Element {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [restaurateurId, setRestaurateurId] = useState<string>("");
 
+  const [reviewStats, setReviewStats] = useState({
+    totalReviews: 0,
+    pendingResponses: 0, 
+    averageRating: 0
+  });
+  
   // Color scheme for UI elements
   const colorScheme: ColorScheme = {
     card1: "#fdf9f5",
@@ -139,6 +146,7 @@ export default function RestaurantDashboard(): JSX.Element {
     card4: "#f1eafe",
     accent: "#faf2e5"
   };
+  
   useEffect(() => {
     const getRestaurateurId = async (): Promise<void> => {
       if (status !== "authenticated" || !session?.user?.email) return;
@@ -168,6 +176,7 @@ export default function RestaurantDashboard(): JSX.Element {
     
     getRestaurateurId();
   }, [session, status]);
+  
   // Handle click outside of search container
   useEffect(() => {
     function handleClickOutside(event: MouseEvent): void {
@@ -236,12 +245,13 @@ export default function RestaurantDashboard(): JSX.Element {
     fetchRestaurants();
   }, [restaurateurData, status]);
 
-  // Fetch connection requests
+  // Fetch connection requests - now always runs when restaurateurData changes
   useEffect(() => {
     const fetchConnectionRequests = async (): Promise<void> => {
       if (status !== "authenticated" || !restaurateurData?.id) return;
       
       try {
+        setIsLoadingConnectionRequests(true);
         const response = await fetch(`/api/restaurateur/connection-requests?restaurateurId=${restaurateurData.id}`);
         
         if (!response.ok) {
@@ -252,48 +262,25 @@ export default function RestaurantDashboard(): JSX.Element {
         setConnectionRequests(data);
       } catch (error) {
         console.error("Error fetching connection requests:", error);
+      } finally {
+        setIsLoadingConnectionRequests(false);
       }
     };
 
-    if (activeTab === "Connection Requests") {
+    // Always fetch connection requests when restaurateurData is available
+    if (restaurateurData?.id) {
       fetchConnectionRequests();
     }
-  }, [restaurateurData, status, activeTab]);
+  }, [restaurateurData, status]);
 
-  // Fetch reviews
-  useEffect(() => {
-    const fetchReviews = async (): Promise<void> => {
-      if (status !== "authenticated" || !restaurants.length) return;
-      
-      try {
-        setIsLoadingReviews(true);
-        
-        // Get restaurant IDs
-        const restaurantIds = restaurants.map(restaurant => restaurant.id);
-        
-        // Create query parameters for all restaurant IDs
-        const queryParams = new URLSearchParams();
-        restaurantIds.forEach(id => queryParams.append("restaurantId", id));
-        
-        const response = await fetch(`/api/restaurateur/reviews?${queryParams.toString()}`);
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch reviews");
-        }
-        
-        const data = await response.json();
-        setReviews(data);
-      } catch (error) {
-        console.error("Error fetching reviews:", error);
-      } finally {
-        setIsLoadingReviews(false);
-      }
-    };
-
-    if (activeTab === "Reviews") {
-      fetchReviews();
-    }
-  }, [restaurants, status, activeTab]);
+  // Callback to receive stats from ReviewManagement
+  const handleReviewStatsUpdate = (stats: { 
+    totalReviews: number; 
+    pendingResponses: number; 
+    averageRating: number 
+  }): void => {
+    setReviewStats(stats);
+  };
 
   // Fetch review flags
   useEffect(() => {
@@ -407,23 +394,21 @@ export default function RestaurantDashboard(): JSX.Element {
     return colors[index % colors.length] ?? "#ffffff"; // fallback color
   };
   
+  // Safe stats getters that use reviewStats
+  const getAverageRating = (): number => {
+    return reviewStats.averageRating;
+  };
 
-  // Calculate stats
   const getPendingReviewsCount = (): number => {
-    return reviews.filter(review => !review.restaurantResponse).length;
+    return reviewStats.pendingResponses;
   };
 
   const getTotalReviewsCount = (): number => {
-    return reviews.length;
-  };
-
-  const getAverageRating = (): number => {
-    if (reviews.length === 0) return 0;
-    const sum = reviews.reduce((total, review) => total + review.rating, 0);
-    return Math.round((sum / reviews.length) * 10) / 10;
+    return reviewStats.totalReviews;
   };
 
   const getPendingRequestsCount = (): number => {
+    if (!Array.isArray(connectionRequests)) return 0;
     return connectionRequests.filter(request => request.status === "pending").length;
   };
 
@@ -470,7 +455,7 @@ export default function RestaurantDashboard(): JSX.Element {
           iconBgColor="bg-[#f2d36e]"
           icon={faUtensils}
           title="Total Restaurants"
-          value={restaurants.length}
+          value={Array.isArray(restaurants) ? restaurants.length : 0}
           isLoading={isLoadingRestaurants}
         />
         
@@ -498,7 +483,7 @@ export default function RestaurantDashboard(): JSX.Element {
           icon={faLink}
           title="Pending Requests"
           value={getPendingRequestsCount()}
-          isLoading={isLoading}
+          isLoading={isLoadingConnectionRequests}
         />
       </div>
     );
@@ -521,6 +506,16 @@ export default function RestaurantDashboard(): JSX.Element {
           </button>
           <button 
             className={`py-3 px-4 font-medium rounded-lg transition-all ${
+              activeTab === 'Reviews' 
+              ? 'bg-[#fad9ea] text-black' 
+              : 'text-gray-600 hover:bg-white/50'
+            }`}
+            onClick={() => setActiveTab('Reviews')}
+          >
+            Reviews
+          </button>
+          <button 
+            className={`py-3 px-4 font-medium rounded-lg transition-all ${
               activeTab === 'Menu Management' 
               ? 'bg-[#fbe9fc] text-black' 
               : 'text-gray-600 hover:bg-white/50'
@@ -528,26 +523,6 @@ export default function RestaurantDashboard(): JSX.Element {
             onClick={() => setActiveTab('Menu Management')}
           >
             Menu Management
-          </button>
-          <button 
-            className={`py-3 px-4 font-medium rounded-lg transition-all ${
-              activeTab === 'Connection Requests' 
-              ? 'bg-[#fad9ea] text-black' 
-              : 'text-gray-600 hover:bg-white/50'
-            }`}
-            onClick={() => setActiveTab('Connection Requests')}
-          >
-            Connection Requests
-          </button>
-          <button 
-            className={`py-3 px-4 font-medium rounded-lg transition-all ${
-              activeTab === 'Reviews' 
-              ? 'bg-[#d7b6f6] text-black' 
-              : 'text-gray-600 hover:bg-white/50'
-            }`}
-            onClick={() => setActiveTab('Reviews')}
-          >
-            Reviews
           </button>
         </div>
       </div>
@@ -621,9 +596,91 @@ export default function RestaurantDashboard(): JSX.Element {
     );
   };
 
-  // Render tabs content
+  const renderConnectionRequests = (): JSX.Element => {
+    return (
+      <div className="mt-12">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Your Connection Requests</h2>
+        </div>
+        
+        {isLoadingConnectionRequests ? (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#f2d36e]"></div>
+          </div>
+        ) : connectionRequests.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {connectionRequests.map((request, index) => (
+              <div
+                key={request.id}
+                className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getCardColor(index + restaurants.length)}`}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-semibold">{request.restaurant.title}</h3>
+                    <p className="text-sm text-gray-600 flex items-center mt-1">
+                      <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-400" />
+                      {request.restaurant.location}
+                    </p>
+                  </div>
+                  
+                  <div className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    request.status === "approved" 
+                      ? "bg-green-100 text-green-800" 
+                      : request.status === "rejected"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-yellow-100 text-yellow-800"
+                  }`}>
+                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                  </div>
+                </div>
+                
+                {request.message && (
+                  <div className="mb-3 p-3 bg-gray-50 rounded-md text-sm text-gray-700">
+                    <strong>Your message:</strong> {request.message}
+                  </div>
+                )}
+                
+                <div className="text-sm text-gray-600">
+                  <p>Submitted: {new Date(request.submittedAt).toLocaleDateString()}</p>
+                  {request.reviewedAt && (
+                    <p>Reviewed: {new Date(request.reviewedAt).toLocaleDateString()}</p>
+                  )}
+                </div>
+                
+                {request.status === "pending" && (
+                  <div className="mt-3 flex justify-end">
+                    <button 
+                      onClick={() => {
+                        // This would be implemented to cancel a pending request
+                        alert("Cancel request functionality would be implemented here");
+                      }}
+                      className="text-sm text-red-500 hover:text-red-700"
+                    >
+                      Cancel Request
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-white/50 rounded-xl">
+            <p className="text-gray-500">
+              You haven't made any connection requests yet. Search for restaurants above to get started.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+        // Use useMemo to prevent recreating the restaurants array on every render
+        const memoizedRestaurants = useMemo(() => {
+          return restaurants.map(r => ({ id: r.id, title: r.title }));
+        }, [restaurants]);
+
   const renderTabContent = (): JSX.Element => {
-    // My Restaurants tab content
+    // My Restaurants tab content (combining restaurants and connection requests)
     if (activeTab === "My Restaurants") {
       return (
         <div>
@@ -646,12 +703,13 @@ export default function RestaurantDashboard(): JSX.Element {
                     className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getCardColor(index)}`}
                   >
                     <div className="flex justify-between items-start mb-3">
-                      <h3 className="font-semibold text-lg">{restaurant.title}</h3>
-                    </div>
-                    
-                    <div className="flex items-center text-sm text-gray-600 mb-3">
-                      <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1" />
-                      <span>{restaurant.location}</span>
+                      <div>
+                        <h3 className="font-semibold text-lg">{restaurant.title}</h3>
+                        <p className="text-sm text-gray-600 flex items-center mt-1">
+                          <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-400" />
+                          <span>{restaurant.location}</span>
+                        </p>
+                      </div>
                     </div>
                     
                     {Array.isArray(restaurant.category) && restaurant.category.length > 0 && (
@@ -673,9 +731,8 @@ export default function RestaurantDashboard(): JSX.Element {
                       </Link>
                       
                       <span className="text-sm text-gray-500">
-                      {(restaurant._count?.reviews ?? 0)} Reviews
-                    </span>
-
+                        {(restaurant._count?.reviews ?? 0)} Reviews
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -688,6 +745,31 @@ export default function RestaurantDashboard(): JSX.Element {
               </div>
             )}
           </div>
+          
+          {/* Connection Requests Section */}
+          {renderConnectionRequests()}
+        </div>
+      );
+    }
+    
+    // Reviews tab content - ONLY ONE VERSION
+    if (activeTab === "Reviews") {
+
+      
+      return (
+        <div>
+          {restaurateurData && restaurants.length > 0 ? (
+            <ReviewManagement 
+              restaurateurId={restaurateurData.id} 
+              restaurants={memoizedRestaurants}
+              onStatsUpdate={handleReviewStatsUpdate}
+            />
+
+          ) : (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
+            </div>
+          )}
         </div>
       );
     }
@@ -710,7 +792,7 @@ export default function RestaurantDashboard(): JSX.Element {
             </div>
           ) : restaurants.length === 1 ? (
             // If there's only one restaurant, show its menu directly
-          <MenuManagement restaurantId={restaurants[0]?.id ?? ""} />
+            <MenuManagement restaurantId={restaurants[0]?.id ?? ""} />
           ) : (
             // If there are multiple restaurants, show a selector
             <div>
@@ -751,206 +833,6 @@ export default function RestaurantDashboard(): JSX.Element {
                   </p>
                 </div>
               )}
-            </div>
-          )}
-        </div>
-      );
-    }
-    
-    // Connection Requests tab content
-    if (activeTab === "Connection Requests") {
-      return (
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Your Connection Requests</h2>
-          </div>
-          
-          {connectionRequests.length > 0 ? (
-            <div className="max-h-[600px] overflow-y-auto flex flex-col gap-4 pr-4">
-              {connectionRequests.map((request, index) => (
-                <div
-                  key={request.id}
-                  className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getCardColor(index)}`}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">{request.restaurant.title}</h3>
-                      <p className="text-sm text-gray-600 flex items-center mt-1">
-                        <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-400" />
-                        {request.restaurant.location}
-                      </p>
-                    </div>
-                    
-                    <div className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      request.status === "approved" 
-                        ? "bg-green-100 text-green-800" 
-                        : request.status === "rejected"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}>
-                      {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                    </div>
-                  </div>
-                  
-                  {request.message && (
-                    <div className="mb-3 p-3 bg-gray-50 rounded-md text-sm text-gray-700">
-                      <strong>Your message:</strong> {request.message}
-                    </div>
-                  )}
-                  
-                  <div className="text-sm text-gray-600">
-                    <p>Submitted: {new Date(request.submittedAt).toLocaleDateString()}</p>
-                    {request.reviewedAt && (
-                      <p>Reviewed: {new Date(request.reviewedAt).toLocaleDateString()}</p>
-                    )}
-                  </div>
-                  
-                  {request.status === "pending" && (
-                    <div className="mt-3 flex justify-end">
-                      <button 
-                        onClick={() => {
-                          // This would be implemented to cancel a pending request
-                          alert("Cancel request functionality would be implemented here");
-                        }}
-                        className="text-sm text-red-500 hover:text-red-700"
-                      >
-                        Cancel Request
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-white/50 rounded-xl">
-              <FontAwesomeIcon icon={faLink} className="text-4xl text-gray-300 mb-4" />
-              <h3 className="text-xl font-medium text-gray-700 mb-2">No connection requests yet</h3>
-              <p className="text-gray-500 mb-6">Go to the My Restaurants tab to search for restaurants and request connections.</p>
-            </div>
-          )}
-        </div>
-      );
-    }
-    
-    // Reviews tab content
-    if (activeTab === "Reviews") {
-      return (
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Recent Reviews</h2>
-            <div className="flex gap-3">
-              <select 
-                className="px-3 py-2 border border-gray-200 rounded-md text-sm"
-                onChange={(e) => {
-                  // This would filter reviews by restaurant
-                  alert("Filter functionality would be implemented here");
-                }}
-              >
-                <option value="">All Restaurants</option>
-                {restaurants.map(restaurant => (
-                  <option key={restaurant.id} value={restaurant.id}>
-                    {restaurant.title}
-                  </option>
-                ))}
-              </select>
-              
-              <select 
-                className="px-3 py-2 border border-gray-200 rounded-md text-sm"
-                onChange={(e) => {
-                  // This would filter reviews by status (responded/not responded)
-                  alert("Filter functionality would be implemented here");
-                }}
-              >
-                <option value="">All Reviews</option>
-                <option value="responded">Responded</option>
-                <option value="not-responded">Not Responded</option>
-              </select>
-            </div>
-          </div>
-          
-          {isLoadingReviews ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
-            </div>
-          ) : reviews.length > 0 ? (
-            <div className="max-h-[600px] overflow-y-auto flex flex-col gap-4 pr-4">
-              {reviews.map((review, index) => (
-                <div
-                  key={review.id}
-                  className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getCardColor(index)}`}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="flex items-center">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <span 
-                            key={star} 
-                            className={`${star <= review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                          >
-                            ★
-                          </span>
-                        ))}
-                        <span className="ml-2 text-gray-600 text-sm">
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      
-                      <p className="mt-2 text-sm font-medium">
-                        By: {review.isAnonymous ? "Anonymous User" : `${review.patron?.firstName} ${review.patron?.lastName}`}
-                      </p>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <button
-                        className="p-2 text-gray-600 hover:text-red-500"
-                        title="Flag review"
-                        onClick={() => {
-                          // This would open a modal to flag a review
-                          alert("Flag review functionality would be implemented here");
-                        }}
-                      >
-                        <FontAwesomeIcon icon={faExclamationTriangle} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <p className="text-gray-700 mb-3">
-                    {review.content}
-                  </p>
-                  
-                  {/* Restaurant response section */}
-                  {review.restaurantResponse ? (
-                    <div className="bg-blue-50 p-3 rounded-md mb-3">
-                      <p className="text-sm font-medium text-blue-800 mb-1">Your Response:</p>
-                      <p className="text-sm text-gray-700">{review.restaurantResponse}</p>
-                    </div>
-                  ) : (
-                    <div className="mb-3">
-                      <button
-                        className="text-[#dab9f8] hover:text-[#c9a2f2] text-sm font-medium"
-                        onClick={() => {
-                          // This would open a modal to respond to the review
-                          alert("Respond to review functionality would be implemented here");
-                        }}
-                      >
-                        Respond to Review
-                      </button>
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <div>
-                      {review.upvotes} upvotes
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-white/50 rounded-xl">
-              <FontAwesomeIcon icon={faFileAlt} className="text-4xl text-gray-300 mb-4" />
-              <h3 className="text-xl font-medium text-gray-700 mb-2">No reviews yet</h3>
-              <p className="text-gray-500 mb-6">Once your restaurants receive reviews, they will appear here.</p>
             </div>
           )}
         </div>
