@@ -11,9 +11,11 @@ import {
   faFilter,
   faStar,
   faComment,
-  faSpinner
+  faSpinner,
+  faFlag
 } from "@fortawesome/free-solid-svg-icons";
 import ReviewResponseModal from "./ReviewResponseModal";
+import FlagReviewModal from "./FlagReviewModal";
 
 interface Restaurant {
   id: string;
@@ -72,6 +74,10 @@ export default function ReviewManagement({
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isResponseModalOpen, setIsResponseModalOpen] = useState<boolean>(false);
   const [responseSubmitting, setResponseSubmitting] = useState<boolean>(false);
+
+  // Flag review modal state
+  const [selectedFlagReview, setSelectedFlagReview] = useState<Review | null>(null);
+  const [isFlagModalOpen, setIsFlagModalOpen] = useState<boolean>(false);
 
   // Statistics
   const [stats, setStats] = useState({
@@ -278,6 +284,20 @@ useEffect(() => {
     }
   };
 
+  const handleOpenFlagModal = (review: Review): void => {
+    setSelectedFlagReview(review);
+    setIsFlagModalOpen(true);
+  };
+
+  const handleCloseFlagModal = (): void => {
+    setIsFlagModalOpen(false);
+    setSelectedFlagReview(null);
+  };
+
+  const handleFlagSuccess = (): void => {
+    console.log("Review flagged successfully");
+  };
+
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -450,8 +470,12 @@ useEffect(() => {
                   <button
                     className="p-2 text-gray-600 hover:text-red-500"
                     title="Flag review"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenFlagModal(review);
+                    }}
                   >
-                    <FontAwesomeIcon icon={faExclamationTriangle} />
+                    <FontAwesomeIcon icon={faFlag} />
                   </button>
                 </div>
               </div>
@@ -514,13 +538,23 @@ useEffect(() => {
         </div>
       )}
       
-      {/* Review Response Modal */}
-      {selectedReview && (
+    {/* Review Response Modal */}
+    {selectedReview && (
         <ReviewResponseModal
           isOpen={isResponseModalOpen}
           onClose={handleCloseResponseModal}
           review={selectedReview}
           onResponseSubmit={handleResponseSubmit}
+        />
+      )}
+      
+      {/* Flag Review Modal */}
+      {selectedFlagReview && (
+        <FlagReviewModal
+          isOpen={isFlagModalOpen}
+          onClose={handleCloseFlagModal}
+          review={selectedFlagReview}
+          onSuccess={handleFlagSuccess}
         />
       )}
     </div>
