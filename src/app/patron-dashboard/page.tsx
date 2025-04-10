@@ -1211,7 +1211,7 @@ return (
                   <h3 className="text-xl font-medium text-gray-700 mb-2">No favourites yet</h3>
                   <p className="text-gray-500 mb-6">Save your favorite restaurants to find them quickly!</p>
                   <Link 
-                    href="/patron-search" 
+                    href="/discover" 
                     className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
                   >
                     Discover Restaurants
