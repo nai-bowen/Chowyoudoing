@@ -16,7 +16,6 @@ interface MenuItem {
   description: string | null;
   price: string;
   img_url: string | null;
-  status: string;
   menuSectionId: string;
   interestId: string | null;
 }
@@ -28,7 +27,6 @@ interface AddEditMenuItemModalProps {
     name: string;
     description: string | null;
     price: string;
-    status: string;
     interestId: string | null;
   }) => Promise<void>;
   item: MenuItem | null;
@@ -45,7 +43,6 @@ export default function AddEditMenuItemModal({
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [price, setPrice] = useState<string>("");
-  const [status, setStatus] = useState<string>("available");
   const [interestId, setInterestId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,13 +54,11 @@ export default function AddEditMenuItemModal({
       setName(item.name);
       setDescription(item.description || "");
       setPrice(item.price);
-      setStatus(item.status);
       setInterestId(item.interestId || "");
     } else {
       setName("");
       setDescription("");
       setPrice("");
-      setStatus("available");
       setInterestId("");
     }
     setError(null);
@@ -85,13 +80,6 @@ export default function AddEditMenuItemModal({
       return;
     }
     
-    // Validate price format
-    const priceRegex = /^\d+(\.\d{1,2})?$/;
-    if (!priceRegex.test(price)) {
-      setError("Price must be a valid number (e.g., 12.99)");
-      return;
-    }
-    
     setIsSubmitting(true);
     setError(null);
     
@@ -100,7 +88,6 @@ export default function AddEditMenuItemModal({
         name: name.trim(),
         description: description.trim() || null,
         price: price.trim(),
-        status,
         interestId: interestId || null,
       });
     } catch (err) {
@@ -175,21 +162,6 @@ export default function AddEditMenuItemModal({
               />
             </div>
             
-            <div className="mb-4">
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#dab9f8]"
-              >
-                <option value="available">Available</option>
-                <option value="unavailable">Unavailable</option>
-              </select>
-            </div>
-            
             <div className="mb-5">
               <label htmlFor="itemInterestId" className="block text-sm font-medium text-gray-700 mb-1">
                 Food Interest (Optional)
@@ -241,4 +213,3 @@ export default function AddEditMenuItemModal({
     </div>
   );
 }
-

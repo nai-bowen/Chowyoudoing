@@ -10,9 +10,7 @@ import {
   faTrash,
   faSearch,
   faChevronDown,
-  faChevronUp,
-  faCheckCircle,
-  faTimesCircle
+  faChevronUp
 } from "@fortawesome/free-solid-svg-icons";
 import AddEditMenuSectionModal from "./AddEditMenuSectionModal";
 import AddEditMenuItemModal from "./AddEditMenuItemModal";
@@ -29,7 +27,6 @@ interface MenuItem {
   description: string | null;
   price: string;
   img_url: string | null;
-  status: string;
   totalUpvotes: number;
   menuSectionId: string;
   interestId: string | null;
@@ -240,7 +237,6 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
     name: string;
     description: string | null;
     price: string;
-    status: string;
     interestId: string | null;
   }): Promise<void> => {
     try {
@@ -468,18 +464,6 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
                             )}
                             
                             <div className="flex items-center mt-2 gap-2">
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                item.status === "available" 
-                                  ? "bg-green-100 text-green-800" 
-                                  : "bg-red-100 text-red-800"
-                              }`}>
-                                <FontAwesomeIcon 
-                                  icon={item.status === "available" ? faCheckCircle : faTimesCircle} 
-                                  className="mr-1"
-                                />
-                                {item.status === "available" ? "Available" : "Unavailable"}
-                              </span>
-                              
                               {item.interest && (
                                 <span className="text-xs bg-[#faf2e5] text-[#a58a62] px-2 py-1 rounded-full">
                                   {item.interest.name}
@@ -538,6 +522,3 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
     </div>
   );
 }
-
-
-
