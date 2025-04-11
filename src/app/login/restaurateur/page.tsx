@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FcGoogle } from "react-icons/fc";
 import FloatingFoodEmojis from '@/app/_components/FloatingFoodEmojis';
+import { signIn } from "next-auth/react"; 
 
 export default function RestaurantLoginPage(): JSX.Element {
   const router = useRouter();
@@ -20,33 +21,20 @@ export default function RestaurantLoginPage(): JSX.Element {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
-    if (!businessRegNumber.trim()) {
-      setError("Business Registration Number is required");
-      setIsLoading(false);
-      return;
-    }
-
+  
     try {
-      const response = await fetch("/api/auth/restaurant-login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          businessRegNumber,
-          vatNumber,
-        }),
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+        businessRegNumber,
+        vatNumber,
+        userType: "restaurateur" // Add this to differentiate from patron login
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "Authentication failed");
+  
+      if (result?.error) {
+        setError(result.error);
       } else {
-        // If login is successful, redirect to restaurant dashboard
         router.replace("/restaurant-dashboard");
       }
     } catch (err) {
@@ -56,7 +44,6 @@ export default function RestaurantLoginPage(): JSX.Element {
       setIsLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#f9ebc2] via-[#faf0f6] to-white">
       {/* Blob decorations */}

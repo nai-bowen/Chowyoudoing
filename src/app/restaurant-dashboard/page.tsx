@@ -19,12 +19,16 @@ import {
   faCheckCircle,
   faStar,
   faMessage,
-  faBell
+  faBell,
+  faComment,
+  faChartLine,
+  faGlobe
 } from "@fortawesome/free-solid-svg-icons";
 import RestaurantConnectionModal from "../_components/RestaurantConnectionModal";
 import MenuManagement from "@/app/_components/MenuManagement";
 import StatCard from '@/app/_components/StatCard';
 import ReviewManagement from "@/app/_components/ReviewManagement"; 
+import { faEdit } from "@fortawesome/free-regular-svg-icons";
 
 // Define interfaces for the types of data we'll be working with
 interface RestaurateurData {
@@ -40,6 +44,7 @@ interface RestaurateurData {
 }
 
 interface Restaurant {
+  widerAreas?: any;
   id: string;
   title: string;
   location: string;
@@ -116,7 +121,7 @@ export default function RestaurantDashboard(): JSX.Element {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>("My Restaurants");
+  const [activeTab, setActiveTab] = useState<string>("Overview");
 
   // Connection modal state
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState<boolean>(false);
@@ -447,87 +452,149 @@ export default function RestaurantDashboard(): JSX.Element {
   };
 
   // Render stats section
-  const renderStats = (): JSX.Element => {
+  const renderRestaurantDetails = (): JSX.Element => {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-        <StatCard 
-          bgColor="bg-[#faf2e5]"
-          iconBgColor="bg-[#f2d36e]"
-          icon={faUtensils}
-          title="Total Restaurants"
-          value={Array.isArray(restaurants) ? restaurants.length : 0}
-          isLoading={isLoadingRestaurants}
-        />
-        
-        <StatCard 
-          bgColor="bg-[#fdedf6]"
-          iconBgColor="bg-[#f9c3c9]"
-          icon={faStar}
-          title="Average Rating"
-          value={getAverageRating()}
-          isLoading={isLoadingReviews}
-        />
-        
-        <StatCard 
-          bgColor="bg-[#fbe9fc]"
-          iconBgColor="bg-[#f5b7ee]"
-          icon={faMessage}
-          title="Pending Reviews"
-          value={getPendingReviewsCount()}
-          isLoading={isLoadingReviews}
-        />
-        
-        <StatCard 
-          bgColor="bg-[#f1eafe]"
-          iconBgColor="bg-[#dab9f8]"
-          icon={faLink}
-          title="Pending Requests"
-          value={getPendingRequestsCount()}
-          isLoading={isLoadingConnectionRequests}
-        />
-      </div>
-    );
-  };
-
-  // Update the renderTabs function to include the Menu Management tab
-  const renderTabs = (): JSX.Element => {
-    return (
-      <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-sm p-1 mb-8 max-w-md">
-        <div className="flex flex-wrap">
-          <button 
-            className={`py-3 px-4 font-medium rounded-lg transition-all ${
-              activeTab === 'My Restaurants' 
-              ? 'bg-[#faf2e8] text-black' 
-              : 'text-gray-600 hover:bg-white/50'
-            }`}
-            onClick={() => setActiveTab('My Restaurants')}
-          >
-            My Restaurants
-          </button>
-          <button 
-            className={`py-3 px-4 font-medium rounded-lg transition-all ${
-              activeTab === 'Reviews' 
-              ? 'bg-[#fad9ea] text-black' 
-              : 'text-gray-600 hover:bg-white/50'
-            }`}
-            onClick={() => setActiveTab('Reviews')}
-          >
-            Reviews
-          </button>
-          <button 
-            className={`py-3 px-4 font-medium rounded-lg transition-all ${
-              activeTab === 'Menu Management' 
-              ? 'bg-[#fbe9fc] text-black' 
-              : 'text-gray-600 hover:bg-white/50'
-            }`}
-            onClick={() => setActiveTab('Menu Management')}
-          >
-            Menu Management
-          </button>
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left column - Restaurant Details */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Restaurant Details</h2>
+            
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Categories</h3>
+              {restaurants && restaurants.length > 0 && 
+                restaurants[0]?.category && 
+                Array.isArray(restaurants[0].category) && 
+                restaurants[0].category.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {restaurants[0].category.map((cat: string, index: number) => (
+                    <span key={index} className="px-2 py-1 bg-[#faf2e5] text-gray-700 rounded-full text-sm">
+                      {cat}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No categories</p>
+              )}
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Food Interests</h3>
+              <p className="text-gray-500">No interests</p>
+            </div>
+          </div>
+          
+          {/* Right column - Performance */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Performance</h2>
+            
+            <div className="space-y-4">
+              {/* Average Rating Card */}
+              <div className="bg-[#faf2e5] p-4 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-sm text-gray-500 mb-2">Average Rating</h3>
+                    <div className="flex items-center">
+                      <span className="text-2xl font-bold mr-2">{getAverageRating()}</span>
+                      <div className="flex text-gray-300">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <FontAwesomeIcon 
+                            key={star} 
+                            icon={faStar} 
+                            className={star <= getAverageRating() ? 'text-yellow-400' : 'text-gray-300'} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-[#f2d36e] p-2 rounded-full">
+                    <FontAwesomeIcon icon={faStar} className="text-white" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Total Reviews Card */}
+              <div className="bg-[#fdedf6] p-4 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-sm text-gray-500 mb-2">Total Reviews</h3>
+                    <p className="text-2xl font-bold">{getTotalReviewsCount()}</p>
+                  </div>
+                  <div className="bg-[#f9c3c9] p-2 rounded-full">
+                    <FontAwesomeIcon icon={faComment} className="text-white" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Pending Responses Card */}
+              <div className="bg-[#fbe9fc] p-4 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-sm text-gray-500 mb-2">Pending Responses</h3>
+                    <p className="text-2xl font-bold">{getPendingReviewsCount()}</p>
+                  </div>
+                  <div className="bg-[#f5b7ee] p-2 rounded-full">
+                    <FontAwesomeIcon icon={faMessage} className="text-white" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   };
+  
+
+// Updated renderTabs function with Overview as first tab
+const renderTabs = (): JSX.Element => {
+  return (
+    <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-sm p-1 mb-8 max-w-md">
+      <div className="flex flex-wrap">
+        <button 
+          className={`py-3 px-4 font-medium rounded-lg transition-all ${
+            activeTab === 'Overview' 
+            ? 'bg-[#faf2e8] text-black' 
+            : 'text-gray-600 hover:bg-white/50'
+          }`}
+          onClick={() => setActiveTab('Overview')}
+        >
+          Overview
+        </button>
+        <button 
+          className={`py-3 px-4 font-medium rounded-lg transition-all ${
+            activeTab === 'My Restaurants' 
+            ? 'bg-[#fad9ea] text-black' 
+            : 'text-gray-600 hover:bg-white/50'
+          }`}
+          onClick={() => setActiveTab('My Restaurants')}
+        >
+          My Restaurants
+        </button>
+        <button 
+          className={`py-3 px-4 font-medium rounded-lg transition-all ${
+            activeTab === 'Reviews' 
+            ? 'bg-[#fbe9fc] text-black' 
+            : 'text-gray-600 hover:bg-white/50'
+          }`}
+          onClick={() => setActiveTab('Reviews')}
+        >
+          Reviews
+        </button>
+        <button 
+          className={`py-3 px-4 font-medium rounded-lg transition-all ${
+            activeTab === 'Menu Management' 
+            ? 'bg-[#f1eafe] text-black' 
+            : 'text-gray-600 hover:bg-white/50'
+          }`}
+          onClick={() => setActiveTab('Menu Management')}
+        >
+          Menu Management
+        </button>
+      </div>
+    </div>
+  );
+};
 
   // Render search bar for restaurants
   const renderRestaurantSearch = (): JSX.Element => {
@@ -679,166 +746,311 @@ export default function RestaurantDashboard(): JSX.Element {
           return restaurants.map(r => ({ id: r.id, title: r.title }));
         }, [restaurants]);
 
-  const renderTabContent = (): JSX.Element => {
-    // My Restaurants tab content (combining restaurants and connection requests)
-    if (activeTab === "My Restaurants") {
-      return (
-        <div>
-          {renderRestaurantSearch()}
-          
-          <div className="mt-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Your Connected Restaurants</h2>
+// Restaurant Dashboard Overview Section with Quick Actions
+const renderOverviewSection = (): JSX.Element => {
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-6">Restaurant Overview</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Rating Stat */}
+        <div className="bg-[#faf2e5] p-4 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-sm text-gray-500">Rating</h3>
+              <p className="text-2xl font-bold">{getAverageRating()}</p>
             </div>
-            
-            {isLoadingRestaurants ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
-              </div>
-            ) : restaurants.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {restaurants.map((restaurant, index) => (
-                  <div
-                    key={restaurant.id}
-                    className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getCardColor(index)}`}
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{restaurant.title}</h3>
-                        <p className="text-sm text-gray-600 flex items-center mt-1">
-                          <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-400" />
-                          <span>{restaurant.location}</span>
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {Array.isArray(restaurant.category) && restaurant.category.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-4">
-                        {restaurant.category.slice(0, 3).map((cat, i) => (
-                          <span key={i} className="text-xs bg-white px-2 py-1 rounded-full">
-                            {cat}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between">
-                      <Link
-                        href={`/restaurant-dashboard/${restaurant.id}`}
-                        className="text-sm text-[#dab9f8] hover:underline"
-                      >
-                        Manage Restaurant
-                      </Link>
-                      
-                      <span className="text-sm text-gray-500">
-                        {(restaurant._count?.reviews ?? 0)} Reviews
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-white/50 rounded-xl">
-                <FontAwesomeIcon icon={faStore} className="text-4xl text-gray-300 mb-4" />
-                <h3 className="text-xl font-medium text-gray-700 mb-2">No connected restaurants yet</h3>
-                <p className="text-gray-500 mb-6">Search for restaurants above to request connections.</p>
-              </div>
-            )}
+            <div className="bg-[#f2d36e] p-2 rounded-full">
+              <FontAwesomeIcon icon={faStar} className="text-white" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Reviews Stat */}
+        <div className="bg-[#fdedf6] p-4 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-sm text-gray-500">Reviews</h3>
+              <p className="text-2xl font-bold">{getTotalReviewsCount()}</p>
+            </div>
+            <div className="bg-[#f9c3c9] p-2 rounded-full">
+              <FontAwesomeIcon icon={faComment} className="text-white" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Menu Items Stat */}
+        <div className="bg-[#fbe9fc] p-4 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-sm text-gray-500">Menu Items</h3>
+              <p className="text-2xl font-bold">
+                {Array.isArray(restaurants) && restaurants.length > 0 ? restaurants.length : 0}
+              </p>
+            </div>
+            <div className="bg-[#f5b7ee] p-2 rounded-full">
+              <FontAwesomeIcon icon={faUtensils} className="text-white" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Areas Served Stat */}
+        <div className="bg-[#f1eafe] p-4 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-sm text-gray-500">Areas Served</h3>
+              <p className="text-2xl font-bold">
+                {restaurants && restaurants.length > 0 && restaurants[0]?.widerAreas ? 
+                  restaurants[0].widerAreas.length : 0}
+              </p>
+            </div>
+            <div className="bg-[#dab9f8] p-2 rounded-full">
+              <FontAwesomeIcon icon={faGlobe} className="text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Quick Actions */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link
+            href="/profile/restaurateur"
+            className="p-4 bg-[#faf2e5] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
+          >
+            <div className="bg-[#f2d36e] p-2 rounded-full">
+              <FontAwesomeIcon icon={faEdit} className="text-white" />
+            </div>
+            <div>
+              <h4 className="font-medium">Edit Profile</h4>
+              <p className="text-sm text-gray-600">Update restaurant details</p>
+            </div>
+          </Link>
+          
+          <button
+            onClick={() => setActiveTab('Menu Management')}
+            className="p-4 bg-[#fdedf6] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
+          >
+            <div className="bg-[#f9c3c9] p-2 rounded-full">
+              <FontAwesomeIcon icon={faUtensils} className="text-white" />
+            </div>
+            <div>
+              <h4 className="font-medium">Manage Menu</h4>
+              <p className="text-sm text-gray-600">Update food & drink items</p>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('Reviews')}
+            className="p-4 bg-[#fbe9fc] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
+          >
+            <div className="bg-[#f5b7ee] p-2 rounded-full">
+              <FontAwesomeIcon icon={faComment} className="text-white" />
+            </div>
+            <div>
+              <h4 className="font-medium">Respond to Reviews</h4>
+              <p className="text-sm text-gray-600">{getPendingReviewsCount()} pending</p>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => alert("Analytics feature coming soon!")}
+            className="p-4 bg-[#f1eafe] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
+          >
+            <div className="bg-[#dab9f8] p-2 rounded-full">
+              <FontAwesomeIcon icon={faChartLine} className="text-white" />
+            </div>
+            <div>
+              <h4 className="font-medium">View Analytics</h4>
+              <p className="text-sm text-gray-600">Performance metrics</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Update renderTabContent to handle the new Overview tab
+const renderTabContent = (): JSX.Element => {
+  // Overview tab content
+  if (activeTab === "Overview") {
+    return (
+      <div>
+        
+        {/* Overview Section */}
+        {renderOverviewSection()}
+      </div>
+    );
+  }
+  
+  // My Restaurants tab content (combining restaurants and connection requests)
+  if (activeTab === "My Restaurants") {
+    return (
+      <div>
+        {renderRestaurantSearch()}
+        
+        <div className="mt-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Your Connected Restaurants</h2>
           </div>
           
-          {/* Connection Requests Section */}
-          {renderConnectionRequests()}
-        </div>
-      );
-    }
-    
-    // Reviews tab content - ONLY ONE VERSION
-    if (activeTab === "Reviews") {
-
-      
-      return (
-        <div>
-          {restaurateurData && restaurants.length > 0 ? (
-            <ReviewManagement 
-              restaurateurId={restaurateurData.id} 
-              restaurants={memoizedRestaurants}
-              onStatsUpdate={handleReviewStatsUpdate}
-            />
-
-          ) : (
+          {isLoadingRestaurants ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
             </div>
-          )}
-        </div>
-      );
-    }
-    
-    // Menu Management tab content
-    if (activeTab === "Menu Management") {
-      return (
-        <div>
-          {restaurants.length === 0 ? (
-            <div className="text-center py-12 bg-white/50 rounded-xl">
-              <FontAwesomeIcon icon={faUtensils} className="text-4xl text-gray-300 mb-4" />
-              <h3 className="text-xl font-medium text-gray-700 mb-2">No restaurants available</h3>
-              <p className="text-gray-500 mb-6">You need to connect to a restaurant before managing menus.</p>
-              <button
-                onClick={() => setActiveTab("My Restaurants")}
-                className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
-              >
-                Connect to Restaurants
-              </button>
-            </div>
-          ) : restaurants.length === 1 ? (
-            // If there's only one restaurant, show its menu directly
-            <MenuManagement restaurantId={restaurants[0]?.id ?? ""} />
-          ) : (
-            // If there are multiple restaurants, show a selector
-            <div>
-              <div className="mb-6">
-                <label htmlFor="restaurantSelector" className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Restaurant to Manage Menu
-                </label>
-                <select
-                  id="restaurantSelector"
-                  className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#dab9f8]"
-                  onChange={(e) => {
-                    // Force a re-render when the selection changes
-                    if (e.target.value) {
-                      setActiveTab("Menu Management");
-                    }
-                  }}
-                  defaultValue=""
+          ) : restaurants.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {restaurants.map((restaurant, index) => (
+                <div
+                  key={restaurant.id}
+                  className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getCardColor(index)}`}
                 >
-                  <option value="" disabled>Select a restaurant</option>
-                  {restaurants.map((restaurant) => (
-                    <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Show the menu management for the selected restaurant */}
-              {document.getElementById("restaurantSelector") && 
-               (document.getElementById("restaurantSelector") as HTMLSelectElement).value ? (
-                <MenuManagement 
-                  restaurantId={(document.getElementById("restaurantSelector") as HTMLSelectElement).value} 
-                />
-              ) : (
-                <div className="text-center py-12 bg-white/50 rounded-xl">
-                  <p className="text-gray-500">
-                    Please select a restaurant to manage its menu.
-                  </p>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">{restaurant.title}</h3>
+                      <p className="text-sm text-gray-600 flex items-center mt-1">
+                        <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-1 text-gray-400" />
+                        <span>{restaurant.location}</span>
+                      </p>
+                    </div>
+                    {/* Edit Button for Restaurant */}
+                    <Link
+                      href={`/restaurant-dashboard/${restaurant.id}/edit`}
+                      className="p-2 text-[#dab9f8] hover:text-[#c9a2f2] transition-colors"
+                      title="Edit Restaurant"
+                    >
+                      <FontAwesomeIcon icon={faEdit} />
+                    </Link>
+                  </div>
+                  
+                  {Array.isArray(restaurant.category) && restaurant.category.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-4">
+                      {restaurant.category.slice(0, 3).map((cat, i) => (
+                        <span key={i} className="text-xs bg-white px-2 py-1 rounded-full">
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between">
+                    <Link
+                      href={`/restaurant-dashboard/${restaurant.id}`}
+                      className="text-sm text-[#dab9f8] hover:underline"
+                    >
+                      Manage Restaurant
+                    </Link>
+                    
+                    <span className="text-sm text-gray-500">
+                      {(restaurant._count?.reviews ?? 0)} Reviews
+                    </span>
+                  </div>
                 </div>
-              )}
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white/50 rounded-xl">
+              <FontAwesomeIcon icon={faStore} className="text-4xl text-gray-300 mb-4" />
+              <h3 className="text-xl font-medium text-gray-700 mb-2">No connected restaurants yet</h3>
+              <p className="text-gray-500 mb-6">Search for restaurants above to request connections.</p>
             </div>
           )}
         </div>
-      );
-    }
-    
+        
+        {/* Connection Requests Section */}
+        {renderConnectionRequests()}
+      </div>
+    );
+  }
+  
+  // Reviews tab content - ONLY ONE VERSION
+  if (activeTab === "Reviews") {
+    return (
+      <div>
+        {restaurateurData && restaurants.length > 0 ? (
+          <ReviewManagement 
+            restaurateurId={restaurateurData.id} 
+            restaurants={memoizedRestaurants}
+            onStatsUpdate={handleReviewStatsUpdate}
+          />
+        ) : (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Menu Management tab content
+  if (activeTab === "Menu Management") {
+    return (
+      <div>
+        {restaurants.length === 0 ? (
+          <div className="text-center py-12 bg-white/50 rounded-xl">
+            <FontAwesomeIcon icon={faUtensils} className="text-4xl text-gray-300 mb-4" />
+            <h3 className="text-xl font-medium text-gray-700 mb-2">No restaurants available</h3>
+            <p className="text-gray-500 mb-6">You need to connect to a restaurant before managing menus.</p>
+            <button
+              onClick={() => setActiveTab("My Restaurants")}
+              className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
+            >
+              Connect to Restaurants
+            </button>
+          </div>
+        ) : restaurants.length === 1 ? (
+          // If there's only one restaurant, show its menu directly
+          <MenuManagement restaurantId={restaurants[0]?.id ?? ""} />
+        ) : (
+          // If there are multiple restaurants, show a selector
+          <div>
+            <div className="mb-6">
+              <label htmlFor="restaurantSelector" className="block text-sm font-medium text-gray-700 mb-2">
+                Select Restaurant to Manage Menu
+              </label>
+              <select
+                id="restaurantSelector"
+                className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#dab9f8]"
+                onChange={(e) => {
+                  // Force a re-render when the selection changes
+                  if (e.target.value) {
+                    setActiveTab("Menu Management");
+                  }
+                }}
+                defaultValue=""
+              >
+                <option value="" disabled>Select a restaurant</option>
+                {restaurants.map((restaurant) => (
+                  <option key={restaurant.id} value={restaurant.id}>
+                    {restaurant.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Show the menu management for the selected restaurant */}
+            {document.getElementById("restaurantSelector") && 
+              (document.getElementById("restaurantSelector") as HTMLSelectElement).value ? (
+              <MenuManagement 
+                restaurantId={(document.getElementById("restaurantSelector") as HTMLSelectElement).value} 
+              />
+            ) : (
+              <div className="text-center py-12 bg-white/50 rounded-xl">
+                <p className="text-gray-500">
+                  Please select a restaurant to manage its menu.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+
     // Default fallback
     return <div>Select a tab to view content</div>;
   };
@@ -919,11 +1131,10 @@ export default function RestaurantDashboard(): JSX.Element {
   return (
     <div>
       <main className="container mx-auto px-6 py-6">
+      {renderHeader()}
+
         {/* User Profile Section */}
-        {renderHeader()}
-        
-        {/* Stats Cards */}
-        {renderStats()}
+        {renderRestaurantDetails()}
         
         {/* Tabs */}
         {renderTabs()}
