@@ -22,13 +22,15 @@ import {
   faBell,
   faComment,
   faChartLine,
-  faGlobe
+  faGlobe,
+  faReceipt
 } from "@fortawesome/free-solid-svg-icons";
 import RestaurantConnectionModal from "../_components/RestaurantConnectionModal";
 import MenuManagement from "@/app/_components/MenuManagement";
 import StatCard from '@/app/_components/StatCard';
 import ReviewManagement from "@/app/_components/ReviewManagement"; 
 import { faEdit } from "@fortawesome/free-regular-svg-icons";
+import ReceiptVerificationManagement from "@/app/_components/ReceiptVerificationManagement";
 
 // Define interfaces for the types of data we'll be working with
 interface RestaurateurData {
@@ -142,6 +144,11 @@ export default function RestaurantDashboard(): JSX.Element {
     pendingResponses: 0, 
     averageRating: 0
   });
+
+  const [receiptStats, setReceiptStats] = useState({
+    total: 0,
+    pending: 0
+  });
   
   // Color scheme for UI elements
   const colorScheme: ColorScheme = {
@@ -152,6 +159,32 @@ export default function RestaurantDashboard(): JSX.Element {
     accent: "#faf2e5"
   };
   
+  const fetchReceiptStats = async (): Promise<void> => {
+    if (!restaurateurId) return;
+    
+    try {
+      // Fetch pending stats
+      const response = await fetch(`/api/restaurateur/receipt-verifications/stats?restaurateurId=${restaurateurId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setReceiptStats({
+          total: data.total || 0,
+          pending: data.pending || 0
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching receipt stats:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (restaurateurId) {
+      fetchReceiptStats();
+    }
+  }, [restaurateurId]);
+
+
   useEffect(() => {
     const getRestaurateurId = async (): Promise<void> => {
       if (status !== "authenticated" || !session?.user?.email) return;
@@ -591,6 +624,21 @@ const renderTabs = (): JSX.Element => {
         >
           Menu Management
         </button>
+        <button 
+          className={`py-3 px-4 font-medium rounded-lg transition-all ${
+            activeTab === 'Receipt Verifications' 
+            ? 'bg-[#dcf1e5] text-black' 
+            : 'text-gray-600 hover:bg-white/50'
+          }`}
+          onClick={() => setActiveTab('Receipt Verifications')}
+        >
+          Receipt Verifications
+          {receiptStats.pending > 0 && (
+            <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+              {receiptStats.pending}
+            </span>
+          )}
+        </button>
       </div>
     </div>
   );
@@ -794,18 +842,18 @@ const renderOverviewSection = (): JSX.Element => {
           </div>
         </div>
         
-        {/* Areas Served Stat */}
-        <div className="bg-[#f1eafe] p-4 rounded-lg shadow-sm">
+        {/* Receipt Verification Card - NEW */}
+        <div className="bg-[#dcf1e5] p-4 rounded-lg shadow-sm">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-sm text-gray-500">Areas Served</h3>
-              <p className="text-2xl font-bold">
-                {restaurants && restaurants.length > 0 && restaurants[0]?.widerAreas ? 
-                  restaurants[0].widerAreas.length : 0}
-              </p>
+              <h3 className="text-sm text-gray-500">Receipt Verifications</h3>
+              <p className="text-2xl font-bold">{receiptStats.total}</p>
+              {receiptStats.pending > 0 && (
+                <p className="text-sm text-red-500">{receiptStats.pending} pending</p>
+              )}
             </div>
-            <div className="bg-[#dab9f8] p-2 rounded-full">
-              <FontAwesomeIcon icon={faGlobe} className="text-white" />
+            <div className="bg-[#4ade80] p-2 rounded-full">
+              <FontAwesomeIcon icon={faReceipt} className="text-white" />
             </div>
           </div>
         </div>
@@ -855,16 +903,19 @@ const renderOverviewSection = (): JSX.Element => {
             </div>
           </button>
           
+          {/* Add Receipt Verification Quick Action Button - NEW */}
           <button
-            onClick={() => alert("Analytics feature coming soon!")}
-            className="p-4 bg-[#f1eafe] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
+            onClick={() => setActiveTab('Receipt Verifications')}
+            className="p-4 bg-[#dcf1e5] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
           >
-            <div className="bg-[#dab9f8] p-2 rounded-full">
-              <FontAwesomeIcon icon={faChartLine} className="text-white" />
+            <div className="bg-[#4ade80] p-2 rounded-full">
+              <FontAwesomeIcon icon={faReceipt} className="text-white" />
             </div>
             <div>
-              <h4 className="font-medium">View Analytics</h4>
-              <p className="text-sm text-gray-600">Performance metrics</p>
+              <h4 className="font-medium">Receipt Verifications</h4>
+              <p className="text-sm text-gray-600">
+                {receiptStats.pending > 0 ? `${receiptStats.pending} pending` : "Verify receipts"}
+              </p>
             </div>
           </button>
         </div>
@@ -872,6 +923,7 @@ const renderOverviewSection = (): JSX.Element => {
     </div>
   );
 };
+
 
 // Update renderTabContent to handle the new Overview tab
 const renderTabContent = (): JSX.Element => {
@@ -1044,6 +1096,24 @@ const renderTabContent = (): JSX.Element => {
                 </p>
               </div>
             )}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+   // Receipt Verifications Tab
+   if (activeTab === "Receipt Verifications") {
+    return (
+      <div>
+        {restaurateurData ? (
+          <ReceiptVerificationManagement 
+            restaurateurId={restaurateurData.id} 
+            restaurants={memoizedRestaurants}
+          />
+        ) : (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
           </div>
         )}
       </div>

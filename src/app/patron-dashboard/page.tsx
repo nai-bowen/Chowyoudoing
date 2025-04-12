@@ -27,8 +27,8 @@ import FollowingList from "@/app/_components/FollowingList";
 import Image from "next/image";
 import ProfileImage from "@/app/_components/ProfileImage";
 import StatCard from '@/app/_components/StatCard';
-
-
+import SubmitReceiptModal from "@/app/_components/SubmitReceiptModal";
+import { faReceipt, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
 // Define interfaces for the types of data we'll be working with
 interface Review {
   userVote: { isUpvote: boolean; } | undefined;
@@ -171,6 +171,10 @@ export default function PatronDashboard(): JSX.Element {
   const calculateTotalUpvotes = (): number => {
     return userReviews.reduce((total, review) => total + (review.upvotes || 0), 0);
   };
+
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
+  const [selectedReviewForReceipt, setSelectedReviewForReceipt] = useState<Review | null>(null);
+  const [reviewVerificationStatus, setReviewVerificationStatus] = useState<Record<string, string>>({});
   //Js transition for page - staggered loading  
   const [animationComplete, setAnimationComplete] = useState<boolean>(false);
   const [sectionsLoaded, setSectionsLoaded] = useState<{
@@ -376,6 +380,81 @@ export default function PatronDashboard(): JSX.Element {
     };
   }, []);
 
+  const fetchVerificationStatuses = async (reviews: Review[]): Promise<void> => {
+    if (!reviews.length) return;
+    
+    const statuses: Record<string, string> = {};
+    
+    // Create a promise for each review's verification status
+    const statusPromises = reviews.map(async (review) => {
+      try {
+        const response = await fetch(`/api/patron/receipt-verification?reviewId=${review.id}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.exists) {
+            statuses[review.id] = data.verification.status;
+          } else {
+            statuses[review.id] = "none"; // No verification exists
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching verification status for review ${review.id}:`, error);
+        statuses[review.id] = "error";
+      }
+    });
+    
+    // Wait for all status fetches to complete
+    await Promise.all(statusPromises);
+    
+    // Update the state with all statuses
+    setReviewVerificationStatus(statuses);
+  };
+
+  useEffect(() => {
+    // After fetching user reviews, fetch verification statuses
+    if (userReviews.length > 0) {
+      fetchVerificationStatuses(userReviews);
+    }
+  }, [userReviews]);
+  
+  // Handle opening the receipt modal for a specific review
+  const handleOpenReceiptModal = (review: Review): void => {
+    setSelectedReviewForReceipt(review);
+    setIsReceiptModalOpen(true);
+  };
+  
+  const renderVerificationBadge = (reviewId: string): JSX.Element | null => {
+    const status = reviewVerificationStatus[reviewId];
+    
+    if (!status || status === "none") {
+      return null;
+    }
+    
+    switch (status) {
+      case "pending":
+        return (
+          <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">
+            Verification Pending
+          </span>
+        );
+      case "approved":
+        return (
+          <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full flex items-center">
+            <FontAwesomeIcon icon={faCheckCircle} className="mr-1" />
+            Verified
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="ml-2 bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">
+            Verification Rejected
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
 
   const handleEditReview = (reviewId: string): void => {
     // Instead of navigating, open the modal
@@ -1065,6 +1144,13 @@ return (
                           </p>
                         </div>
                         <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleOpenReceiptModal(review)}
+                          className="p-2 text-gray-600 hover:text-[#f2d36e]"
+                          title="Verify with Receipt"
+                        >
+                          <FontAwesomeIcon icon={faReceipt} />
+                        </button>
                           <button 
                             onClick={() => handleEditReview(review.id)}
                             className="p-2 text-gray-600 hover:text-[#f3b4eb]"
@@ -1228,6 +1314,21 @@ return (
             </div>
           )}
         </div>
+        {/* Receipt Verification Modal */}
+        {isReceiptModalOpen && selectedReviewForReceipt && (
+          <SubmitReceiptModal
+            isOpen={isReceiptModalOpen}
+            onClose={() => {
+              setIsReceiptModalOpen(false);
+              setSelectedReviewForReceipt(null);
+              // Refresh verification statuses after modal closes
+              if (userReviews.length > 0) {
+                fetchVerificationStatuses(userReviews);
+              }
+            }}
+            review={selectedReviewForReceipt}
+          />
+        )}
 
         {/* Edit Review Modal */}
         {isEditReviewModalOpen && (
