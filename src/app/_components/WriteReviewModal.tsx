@@ -2,9 +2,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, Upload, MapPin, Star, Search, EyeOff } from "lucide-react";
+import { X, Upload, MapPin, Star, Search, EyeOff, Receipt } from "lucide-react";
 import { useGeolocation } from "../../lib/locationService";
 import { useSession } from "next-auth/react";
+import SubmitReceiptModal from "@/app/_components/SubmitReceiptModal";
 
 // Define types for search results
 interface SearchResult {
@@ -113,6 +114,11 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
   // New state for image prompt popup
   const [showImagePrompt, setShowImagePrompt] = useState<boolean>(false);
   
+  // New state for receipt verification prompt
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState<boolean>(false);
+  const [submittedReview, setSubmittedReview] = useState<{ id: string; restaurantId: string } | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
+  
   const location = useGeolocation();
 
   // Update character count when content changes
@@ -220,6 +226,10 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
       setIsSimpleMode(true);
       setIsSubmitting(false);
       setShowImagePrompt(false);
+      // Reset verification states
+      setShowVerificationPrompt(false);
+      setSubmittedReview(null);
+      setIsReceiptModalOpen(false);
     }
 
     return () => {
@@ -330,100 +340,224 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
     handleSubmit();
   };
 
-  const handleSubmit = async (): Promise<void> => {
-    setIsSubmitting(true);
-    setErrorMessage("");
-    setShowImagePrompt(false);
+// Add this function to extract review data from various response formats
+const extractReviewData = (data: any, fallbackRestaurantId: string): { reviewId: string | null; restaurantId: string | null } => {
+  console.log("API Response type:", typeof data);
+  console.log("API Response structure:", JSON.stringify(data, null, 2));
+  
+  let reviewId = null;
+  let restaurantId = null;
+  
+  // Try all possible response structures
+  if (data.review && data.review.id) {
+    reviewId = data.review.id;
+    restaurantId = data.review.restaurantId || fallbackRestaurantId;
+  } else if (data.id) {
+    reviewId = data.id;
+    restaurantId = data.restaurantId || fallbackRestaurantId;
+  } else if (data.data && data.data.review && data.data.review.id) {
+    reviewId = data.data.review.id;
+    restaurantId = data.data.review.restaurantId || fallbackRestaurantId;
+  } else if (data.reviewId) {
+    reviewId = data.reviewId;
+    restaurantId = data.restaurantData?.id || fallbackRestaurantId;
+  } else if (data.review && data.review._id) {
+    reviewId = data.review._id;
+    restaurantId = data.review.restaurant?.id || data.review.restaurantId || fallbackRestaurantId;
+  } 
+  
+  // If no ID found, search recursively as a last resort
+  if (!reviewId) {
+    reviewId = findIdRecursively(data);
+    if (!restaurantId) {
+      restaurantId = findIdRecursively(data, 'restaurantId') || fallbackRestaurantId;
+    }
+  }
+  
+  console.log("Extracted review ID:", reviewId);
+  console.log("Extracted restaurant ID:", restaurantId);
+  
+  return { reviewId, restaurantId };
+};
+
+// Helper function to find IDs recursively in complex objects
+const findIdRecursively = (obj: any, key = 'id'): string | null => {
+  if (!obj || typeof obj !== 'object') return null;
+  
+  // Check direct properties
+  if (obj[key] !== undefined && obj[key] !== null) {
+    return String(obj[key]);
+  }
+  
+  // Check nested properties
+  for (const prop in obj) {
+    if (typeof obj[prop] === 'object' && obj[prop] !== null) {
+      const found = findIdRecursively(obj[prop], key);
+      if (found) return found;
+    }
+  }
+  
+  return null;
+};
+
+// Then update the handleSubmit function
+const handleSubmit = async (): Promise<void> => {
+  setIsSubmitting(true);
+  setErrorMessage("");
+  setShowImagePrompt(false);
+  
+  try {
+    const reviewData: {
+      restaurantId?: string;
+      restaurant?: string;
+      menuItemId?: string;
+      menuItem?: string;
+      content: string;
+      rating: number;
+      asExpected: number;
+      wouldRecommend: number;
+      valueForMoney: number;
+      imageUrl?: string;
+      videoUrl?: string;
+      latitude?: number;
+      longitude?: number;
+      isAnonymous: boolean;
+    } = {
+      content,
+      rating,
+      asExpected,
+      wouldRecommend,
+      valueForMoney,
+      isAnonymous
+    };
     
-    try {
-      const reviewData: {
-        restaurantId?: string;
-        restaurant?: string;
-        menuItemId?: string;
-        menuItem?: string;
-        content: string;
-        rating: number;
-        asExpected: number;
-        wouldRecommend: number;
-        valueForMoney: number;
-        imageUrl?: string;
-        videoUrl?: string;
-        latitude?: number;
-        longitude?: number;
-        isAnonymous: boolean; // Add the anonymous field
-      } = {
-        content,
-        rating,
-        asExpected,
-        wouldRecommend,
-        valueForMoney,
-        isAnonymous // Include anonymity preference
-      };
-      
-      // Add restaurant info (prefer ID if available)
-      if (selectedRestaurantId) {
-        reviewData.restaurantId = selectedRestaurantId;
-      } else if (selectedRestaurantName) {
-        reviewData.restaurant = selectedRestaurantName;
-      }
-      
-      // Add menu item info if available
-      if (selectedMenuItemId) {
-        reviewData.menuItemId = selectedMenuItemId;
-      } else if (selectedMenuItemName) {
-        reviewData.menuItem = selectedMenuItemName;
-      }
-      
-      // Add media URLs if available
-      if (imageUrl) {
-        reviewData.imageUrl = imageUrl;
-      }
-      
-      if (videoUrl) {
-        reviewData.videoUrl = videoUrl;
-      }
-      
-      // Add location if user has permitted it
-      if (includeLocation && location.coordinates) {
-        reviewData.latitude = location.coordinates.latitude;
-        reviewData.longitude = location.coordinates.longitude;
-      }
-      
-      const response = await fetch("/api/review", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(reviewData),
-        credentials: "include", // Include cookies for auth
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || "Failed to submit review");
-      }
-      
-      const data = await response.json();
-      console.log("Review submission response:", data);
-      
+    // Add restaurant info (prefer ID if available)
+    if (selectedRestaurantId) {
+      reviewData.restaurantId = selectedRestaurantId;
+    } else if (selectedRestaurantName) {
+      reviewData.restaurant = selectedRestaurantName;
+    }
+    
+    // Add menu item info if available
+    if (selectedMenuItemId) {
+      reviewData.menuItemId = selectedMenuItemId;
+    } else if (selectedMenuItemName) {
+      reviewData.menuItem = selectedMenuItemName;
+    }
+    
+    // Add media URLs if available
+    if (imageUrl) {
+      reviewData.imageUrl = imageUrl;
+    }
+    
+    if (videoUrl) {
+      reviewData.videoUrl = videoUrl;
+    }
+    
+    // Add location if user has permitted it
+    if (includeLocation && location.coordinates) {
+      reviewData.latitude = location.coordinates.latitude;
+      reviewData.longitude = location.coordinates.longitude;
+    }
+    
+    const response = await fetch("/api/review", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(reviewData),
+      credentials: "include", // Include cookies for auth
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || errorData.error || "Failed to submit review");
+    }
+    
+    const data = await response.json();
+    console.log("Review submission response:", data);
+    
+    // Use our robust extraction function to get the IDs
+    const { reviewId, restaurantId } = extractReviewData(data, selectedRestaurantId);
+    
+    if (!reviewId) {
+      // If we still can't get an ID, show success but skip verification
+      console.warn("Could not determine review ID from response - skipping verification prompt");
       setSuccessMessage("Review submitted successfully!");
       
-      // Call success callback if provided
+      // Call success callback
       if (onSuccess) {
         onSuccess();
       }
       
-      // Close modal after successful submission
+      // Close modal after a delay
       setTimeout(() => {
         onClose();
       }, 2000);
-    } catch (error) {
-      console.error("Error submitting review:", error);
-      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred");
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
-  };
+    
+    // Store the extracted review info for verification
+    setSubmittedReview({
+      id: reviewId,
+      restaurantId: restaurantId || selectedRestaurantId
+    });
+    
+    // Show the verification prompt
+    setShowVerificationPrompt(true);
+    
+  } catch (error) {
+    console.error("Error submitting review:", error);
+    setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred");
+    setIsSubmitting(false);
+  }
+};
+
+const handleReceiptModalClose = (): void => {
+  setIsReceiptModalOpen(false);
+  setSuccessMessage("Review submitted successfully!");
+  setTimeout(() => {
+    onClose();
+    // Call success callback if provided
+    if (onSuccess) {
+      onSuccess();
+    }
+  }, 1000);
+};
+
+const handleVerificationResponse = (wantToVerify: boolean): void => {
+  setShowVerificationPrompt(false);
+  
+  if (wantToVerify) {
+    if (submittedReview && submittedReview.id && submittedReview.restaurantId) {
+      // Open receipt modal only if we have valid data
+      console.log("Opening receipt modal with:", submittedReview);
+      setIsReceiptModalOpen(true);
+    } else {
+      console.error("Missing review data for verification:", submittedReview);
+      setErrorMessage("Unable to verify review: Missing review information");
+      
+      // Still show success message for the review submission
+      setSuccessMessage("Review submitted successfully!");
+      setTimeout(() => {
+        onClose();
+        if (onSuccess) {
+          onSuccess();
+        }
+      }, 2000);
+    }
+  } else {
+    // Just show success message and close
+    setSuccessMessage("Review submitted successfully!");
+    setTimeout(() => {
+      onClose();
+      // Call success callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
+    }, 2000);
+  }
+};
 
   // Function to render star ratings for different criteria
   const renderStars = (type: RatingType, value: number, onChange: (value: number) => void): JSX.Element => {
@@ -887,6 +1021,50 @@ const WriteReviewModal: React.FC<WriteReviewModalProps> = ({
                 </div>
               </div>
             </div>
+          )}
+          
+          {/* Verification Prompt Popup */}
+          {showVerificationPrompt && submittedReview && (
+            <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
+                <div className="w-16 h-16 mx-auto bg-[#faf2e5] rounded-full flex items-center justify-center mb-4">
+                  <Receipt size={28} className="text-[#f2d36e]" />
+                </div>
+                <h2 className="text-2xl font-bold text-[#f5b7ee]">Verify Your Review?</h2>
+                <p className="mt-4 text-gray-600">
+                  If you have a receipt, you can verify your review to make it more reliable for other users.
+                  Verified reviews have better visibility and help build trust!
+                </p>
+                <div className="mt-6 flex justify-center space-x-4">
+                  <button 
+                    onClick={() => handleVerificationResponse(false)}
+                    className="px-6 py-2 bg-[#f9c3c9] text-white rounded-full hover:bg-[#f5b7ee] transition"
+                  >
+                    No, Thanks
+                  </button>
+                  <button 
+                    onClick={() => handleVerificationResponse(true)}
+                    className="px-6 py-2 bg-[#dab9f8] text-white rounded-full hover:bg-[#c9a1f0] transition"
+                  >
+                    Yes, Verify
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Receipt Modal */}
+          {isReceiptModalOpen && submittedReview && submittedReview.id && submittedReview.restaurantId && (
+            <SubmitReceiptModal
+              isOpen={isReceiptModalOpen}
+              onClose={handleReceiptModalClose}
+              review={{
+                id: submittedReview.id,
+                restaurantId: submittedReview.restaurantId,
+                restaurant: selectedRestaurantName,
+                date: new Date().toISOString()
+              }}
+            />
           )}
         </div>
       </div>
