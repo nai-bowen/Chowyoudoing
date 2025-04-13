@@ -13,6 +13,8 @@ import RequestMenuModal from "@/app/_components/RequestMenuModal";
 import AnimatedBackground from "../_components/AnimatedBackground";
 import WriteReviewModal from '@/app/_components/WriteReviewModal';
 import CertifiedFoodieBadge from "@/app/_components/CertifiedFoodieBadge";
+import VerificationBadge from "@/app/_components/VerificationBadge";
+
 // Define types
 interface Patron {
   firstName: string;
@@ -43,6 +45,7 @@ interface Review {
   menuItemId?: string;
   isAnonymous?: boolean;
   isCertifiedFoodie?: boolean;
+  isVerified?: boolean; // Add the verification flag
   userVote?: {
     isUpvote: boolean;
   } | null;
@@ -1066,16 +1069,27 @@ function RestaurantContent(): JSX.Element {
           <div className="px-4">
             {menuPhotos.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {menuPhotos.map((photo, index) => (
-                  <div key={index} className="aspect-square relative rounded-lg overflow-hidden shadow-md">
-                    <Image 
-                      src={photo} 
-                      alt={`Restaurant photo ${index + 1}`} 
-                      fill
-                      className="object-cover hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                ))}
+                {menuPhotos.map((photo, index) => {
+                  // Find the review that has this photo to check verification status
+                  const reviewWithPhoto = restaurant.reviews.find(review => review.imageUrl === photo);
+                  const isVerified = reviewWithPhoto?.isVerified || false;
+                  
+                  return (
+                    <div key={index} className="aspect-square relative rounded-lg overflow-hidden shadow-md">
+                      <Image 
+                        src={photo} 
+                        alt={`Restaurant photo ${index + 1}`} 
+                        fill
+                        className="object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                      
+                      {/* Add verification badge to photos if they are from verified reviews */}
+                      {isVerified && (
+                        <VerificationBadge placement="corner" size="sm" showText={false} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-10">
@@ -1205,11 +1219,19 @@ function RestaurantContent(): JSX.Element {
                       const menuItem = review.menuItemId 
                         ? restaurant.menuItems.find(item => item.id === review.menuItemId)
                         : null;
+                      
+                      // Check if the review is verified
+                      const isVerified = review.isVerified === true;
+                      
+                      // Check if the review is from a certified foodie
+                      const isCertified = isCertifiedFoodieReview(review);
                         
                       return (
                         <div 
                           key={review.id || index} 
-                          className="bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg transition-shadow relative overflow-hidden"
+                          className={`bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg transition-shadow relative overflow-hidden ${
+                            isVerified ? 'border-2 border-green-500' : isCertified ? 'border-2 border-[#f2d36e]' : ''
+                          }`}
                           onClick={() => handleReviewClick(review)}
                         >
                           {/* Blob decoration for review card */}
@@ -1234,10 +1256,18 @@ function RestaurantContent(): JSX.Element {
                                 ? "Anonymous" 
                                 : `${review.patron?.firstName || review.author || "Anonymous"} ${review.patron?.lastName?.charAt(0) || ""}`}
                               
-                              {/* Certified Foodie Badge */}
-                              {!review.isAnonymous && isCertifiedFoodieReview(review) && (
-                                <CertifiedFoodieBadge size="sm" showText={true} />
-                              )}
+                              {/* Badges */}
+                              <div className="flex items-center gap-1">
+                                {/* Certified Foodie Badge */}
+                                {!review.isAnonymous && isCertified && (
+                                  <CertifiedFoodieBadge size="sm" showText={false} />
+                                )}
+                                
+                                {/* Verification Badge */}
+                                {isVerified && (
+                                  <VerificationBadge size="sm" showText={false} />
+                                )}
+                              </div>
                             </div>
                           </div>
                           
@@ -1250,6 +1280,11 @@ function RestaurantContent(): JSX.Element {
                                   fill
                                   className="object-cover rounded-md"
                                 />
+                                
+                                {/* Add verification badge to the corner of images for verified reviews */}
+                                {isVerified && (
+                                  <VerificationBadge placement="corner" size="sm" showText={false} />
+                                )}
                               </div>
                             )}
                             <p className="text-gray-700 italic">"{review.content || review.text || ''}"</p>
@@ -1375,7 +1410,6 @@ function RestaurantContent(): JSX.Element {
             // Add isAnonymous property
             isAnonymous: selectedReview.isAnonymous ?? false,
             
-            // Keep track of user's vote
           }}
           isOpen={true} 
           onClose={closeModal} 

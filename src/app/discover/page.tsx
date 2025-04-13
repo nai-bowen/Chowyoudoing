@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import ReviewModal from '@/app/_components/ReviewModal';
 import RequestMenuModal from "../_components/RequestMenuModal";
 import CertifiedFoodieBadge from "@/app/_components/CertifiedFoodieBadge";
+import VerificationBadge from "../_components/VerificationBadge";
 
 // Define SearchResult interface
 interface SearchResult {
@@ -75,12 +76,13 @@ interface Review {
   videoUrl: string | null;
   patronId: string; 
   isAnonymous: boolean;
-  isCertifiedFoodie?: boolean; // Add this field at review level
+  isVerified?: boolean; // Add this field
+  isCertifiedFoodie?: boolean;
   patron?: {
     id: string;
     firstName: string;
     lastName: string;
-    isCertifiedFoodie?: boolean; // Add this field to patron
+    isCertifiedFoodie?: boolean;
   } | undefined;
   userVote?: {
     isUpvote: boolean;
@@ -94,8 +96,10 @@ interface Photo {
   restaurantId: string;
   restaurantName: string;
   upvotes: number;
-  isCertifiedFoodie?: boolean; // Add this field to photos as well
+  isVerified?: boolean; // Add this field
+  isCertifiedFoodie?: boolean;
 }
+
 
 type TabType = "restaurants" | "reviews" | "photos";
 // Updated to include top_rated option
@@ -477,6 +481,7 @@ export default function DiscoveryPage(): JSX.Element {
         restaurantId: review.restaurantId,
         restaurantName: review.restaurant,
         upvotes: review.upvotes,
+        isVerified: review.isVerified || false, // Add isVerified
         isCertifiedFoodie: review.isCertifiedFoodie || 
                           (review.patron && review.patron.isCertifiedFoodie) || false
       }));
@@ -604,13 +609,14 @@ export default function DiscoveryPage(): JSX.Element {
   // Function to render the review card with special highlight for certified foodie reviews
   const renderReviewCard = (review: Review): JSX.Element => {
     const isCertified = isCertifiedFoodieReview(review);
+    const isVerified = review.isVerified;
     
     return (
       <div 
         key={review.id} 
         className={`bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer ${
           isCertified ? 'border-2 border-[#f2d36e]' : ''
-        }`}
+        } ${isVerified ? 'border-2 border-green-500' : ''}`}
         onClick={() => handleViewFullReview(review)}
       >
         <div className="flex justify-between items-start mb-4">
@@ -643,6 +649,11 @@ export default function DiscoveryPage(): JSX.Element {
               fill
               className="object-cover"
             />
+            
+            {/* Add verification badge to the corner of the image if review is verified */}
+            {isVerified && (
+              <VerificationBadge placement="corner" size="sm" showText={false} />
+            )}
           </div>
         )}
         
@@ -654,10 +665,16 @@ export default function DiscoveryPage(): JSX.Element {
               {review.isAnonymous === true ? "Anonymous" : review.author}
             </span>
             
-            {/* Display the Certified Foodie badge if applicable */}
-            {!review.isAnonymous && isCertified && (
-              <CertifiedFoodieBadge size="sm" showText={false} />
-            )}
+            {/* Display badges if applicable */}
+            <div className="flex items-center gap-1">
+              {!review.isAnonymous && isCertified && (
+                <CertifiedFoodieBadge size="sm" showText={false} />
+              )}
+              
+              {isVerified && (
+                <VerificationBadge size="sm" showText={false} />
+              )}
+            </div>
             
             {review.date && (
               <span>
@@ -928,7 +945,7 @@ export default function DiscoveryPage(): JSX.Element {
                         key={photo.id} 
                         className={`group relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer ${
                           photo.isCertifiedFoodie ? 'ring-2 ring-[#f2d36e]' : ''
-                        }`}
+                        } ${photo.isVerified ? 'ring-2 ring-green-500' : ''}`}
                         onClick={() => {
                           // Find the full review data for this photo
                           const review = reviews.find(r => r.id === photo.id);
@@ -953,6 +970,7 @@ export default function DiscoveryPage(): JSX.Element {
                               videoUrl: null,
                               patronId: "",
                               isAnonymous: false,
+                              isVerified: photo.isVerified,
                               isCertifiedFoodie: photo.isCertifiedFoodie
                             });
                           }
@@ -965,12 +983,19 @@ export default function DiscoveryPage(): JSX.Element {
                           className="object-cover group-hover:scale-105 transition-transform"
                         />
                         
-                        {/* Add certified foodie badge overlay if applicable */}
-                        {photo.isCertifiedFoodie && (
-                          <div className="absolute top-2 right-2 z-10">
+                        {/* Badges - position them at different corners */}
+                        <div className="absolute top-2 right-2 z-10 flex gap-1">
+                          {photo.isCertifiedFoodie && (
                             <div className="bg-[#f2d36e] rounded-full p-1">
                               <Award size={14} className="text-white" />
                             </div>
+                          )}
+                        </div>
+                        
+                        {/* Add verification badge if photo is verified */}
+                        {photo.isVerified && (
+                          <div className="absolute top-2 left-2 z-10">
+                            <VerificationBadge placement="corner" size="sm" showText={false} />
                           </div>
                         )}
                         

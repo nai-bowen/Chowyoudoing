@@ -26,6 +26,7 @@ interface FormattedReview {
   longitude?: number | null;
   isAnonymous: boolean; 
   isCertifiedFoodie?: boolean;
+  isVerified?: boolean; // Add isVerified property
   patron?: {
     id: string;
     firstName: string;
@@ -165,6 +166,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       videoUrl: true,
       restaurantId: true, 
       isAnonymous: true,
+      isVerified: true, // Include isVerified field
       patron: {
         select: {
           id: true,
@@ -347,8 +349,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       
       console.log(`Reviews API: Found ${reviews.length} reviews with base filters`);
     }
-    
-// Update the formatted reviews mapping in your GET handler:
 
     const formattedReviews = reviews.map((review) => {
       // Ensure `createdAt` is always treated as a Date
@@ -368,6 +368,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         restaurant: `${review.restaurant?.title ?? "Restaurant"}${review.restaurant?.location ? ` - ${review.restaurant.location}` : ""}`,
         restaurantId: review.restaurantId || "", // Include the restaurantId
         isAnonymous: review.isAnonymous ?? false, // Include anonymous flag with default
+        isVerified: review.isVerified ?? false, // Include verification status
         author: (review.isAnonymous) 
           ? "Anonymous" 
           : (review.patron
@@ -602,6 +603,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       wouldRecommend: wouldRecommendRating,
       valueForMoney: valueForMoneyRating,
       isAnonymous: isAnonymous, // Add the anonymous flag to the review data
+      isVerified: false, // New reviews are not verified by default
       
       // Connect to patron
       patron: {

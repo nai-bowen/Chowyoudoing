@@ -55,6 +55,7 @@ export async function GET(
             createdAt: true,
             menuItemId: true,
             isAnonymous: true,
+            isVerified: true, // Add isVerified field
             patron: { 
               select: { 
                 firstName: true, 
@@ -116,6 +117,7 @@ export async function GET(
         date,
         upvotes,
         userVote,
+        isVerified: review.isVerified || false, // Ensure isVerified is included with default value
         votes: undefined
       };
     });
