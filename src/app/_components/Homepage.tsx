@@ -1,12 +1,14 @@
 "use client";
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import Link from 'next/link';
-import { Search, ArrowRight, Star, MapPin, ExternalLink, Mail, Phone, MapIcon, ArrowRightCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, ArrowRight, Star, MapPin, ExternalLink, Mail, Phone, MapIcon, ArrowRightCircle, AlertCircle } from 'lucide-react';
 import Navbar from './Home-Navbar';
 import Hero from './Hero';
 import { useSession } from "next-auth/react";
 import ReviewsSection from './ReviewSection';
+import { toast } from 'react-hot-toast'; // Make sure to install this package
 
 // Type definitions
 type Restaurant = {
@@ -18,7 +20,7 @@ type Restaurant = {
   priceLevel: string;
   categories: string[];
   address: string;
-  hasReviews : boolean;
+  hasReviews: boolean;
 };
 
 type ReviewRatings = {
@@ -42,12 +44,36 @@ type Review = {
 };
 
 export default function Home(): JSX.Element {
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
+  
   const [activeReview, setActiveReview] = React.useState<number>(0);
   const [reviews, setReviews] = React.useState<Review[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = React.useState<boolean>(true);
   const [userLocation, setUserLocation] = React.useState<string>("");
   const [hasLocalReviews, setHasLocalReviews] = React.useState<boolean>(false);
+
+  // Handler for protected routes
+  const handleProtectedLink = useCallback((e: React.MouseEvent, path: string): void => {
+    e.preventDefault();
+    
+    if (!isAuthenticated) {
+      // Show notification
+      toast.error("Please log in to use this feature", {
+        icon: <AlertCircle className="text-red-500" size={18} />,
+        position: "top-center",
+        duration: 3000
+      });
+      
+      // Redirect to login
+      setTimeout(() => {
+        router.push("/login");
+      }, 500);
+    } else {
+      router.push(path);
+    }
+  }, [isAuthenticated, router]);
 
   // Fetch mock reviews on mount
   React.useEffect(() => {
@@ -127,7 +153,7 @@ export default function Home(): JSX.Element {
       priceLevel: '$',
       categories: ['American', 'Brunch'],
       address: '123 Main St, San Francisco, CA',
-      hasReviews : true,
+      hasReviews: true,
     },
     {
       id: '2',
@@ -138,7 +164,7 @@ export default function Home(): JSX.Element {
       priceLevel: '$$',
       categories: ['Seafood', 'Bar'],
       address: '456 Ocean Ave, Los Angeles, CA',
-      hasReviews : true,
+      hasReviews: true,
     },
     {
       id: '3',
@@ -149,7 +175,7 @@ export default function Home(): JSX.Element {
       priceLevel: '$',
       categories: ['Vegetarian', 'Healthy'],
       address: '789 Market St, Portland, OR',
-      hasReviews : false,
+      hasReviews: false,
     },
     {
       id: '4',
@@ -160,14 +186,14 @@ export default function Home(): JSX.Element {
       priceLevel: '$',
       categories: ['Indian', 'Asian Fusion'],
       address: '101 Eastern Blvd, Seattle, WA',
-      hasReviews : true,
+      hasReviews: true,
     },
   ];
 
   return (
     <main className="min-h-screen">
       {/* Navbar */}
-      <Navbar  />
+      <Navbar />
 
       {/* Hero Section */}
       <Hero />
@@ -177,14 +203,15 @@ export default function Home(): JSX.Element {
         <div className="container mx-auto px-4 md:px-8">
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-3xl font-bold text-[#F1C84B]">Featured Restaurants</h2>
-            <Link href="/patron-search" className="text-[#FFB400] hover:text-[#D29501] font-medium flex items-center gap-1">
+            {/* Public link - no auth needed */}
+            <Link href="/discover" className="text-[#FFB400] hover:text-[#D29501] font-medium flex items-center gap-1">
               View all
               <ArrowRight size={16} />
             </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Restaurant Cards */}
+            {/* Restaurant Cards - Public routes (no auth needed) */}
             {restaurants.map((restaurant, index) => {
               const gradientColors = [
                 '#f2d577',
@@ -197,7 +224,11 @@ export default function Home(): JSX.Element {
               const fallbackGradient = `linear-gradient(135deg, ${baseColor}, ${baseColor}80)`;
 
               return (
-                <div key={restaurant.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                <Link 
+                  key={restaurant.id} 
+                  href={`/restaurants/${restaurant.id}`} 
+                  className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+                >
                   <div className="h-48 overflow-hidden">
                     <div 
                       className="w-full h-full bg-cover bg-center"
@@ -210,9 +241,9 @@ export default function Home(): JSX.Element {
                     <div className="flex items-start justify-between">
                       <h3 className="font-semibold text-lg text-[#4B2B10]">{restaurant.name}</h3>
                       <div className="flex items-center gap-1 text-sm font-medium">
-                        <span className={`inline-block rounded-full w-2 h-2 ${restaurant.hasReviews  ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                        <span className={restaurant.hasReviews  ? 'text-green-700' : 'text-red-700'}>
-                          {restaurant.hasReviews  ? 'Has Reviews' : 'No Reviews Yet'}
+                        <span className={`inline-block rounded-full w-2 h-2 ${restaurant.hasReviews ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                        <span className={restaurant.hasReviews ? 'text-green-700' : 'text-red-700'}>
+                          {restaurant.hasReviews ? 'Has Reviews' : 'No Reviews Yet'}
                         </span>
                       </div>
                     </div>
@@ -246,7 +277,7 @@ export default function Home(): JSX.Element {
                       <span className="line-clamp-1">{restaurant.address}</span>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -255,8 +286,7 @@ export default function Home(): JSX.Element {
 
       <ReviewsSection />
 
-
-      {/* Call to Action - Write a Review */}
+      {/* Call to Action - Write a Review - PROTECTED ROUTE */}
       <section className="py-20 bg-gradient-to-br from-[#f9ecd0] to-[#f2d577]">
         <div className="container mx-auto px-4 md:px-8">
           <div className="flex flex-col items-center text-center">
@@ -266,13 +296,15 @@ export default function Home(): JSX.Element {
             <p className="text-white/90 text-lg max-w-2xl mb-10">
               Had an amazing meal? Or perhaps something not worth the hype? Let others know by writing a review and help them find the perfect spot!
             </p>
-            <Link 
-              href="/review" 
-              className="bg-white text-[#F1C84B] hover:bg-[#F8A5A5] hover:text-white transition-colors px-10 py-4 rounded-full font-medium text-lg shadow-lg flex items-center gap-2"
+            {/* Protected route that checks auth status */}
+            <a 
+              href="#"
+              onClick={(e) => handleProtectedLink(e, "/review")}
+              className="bg-white text-[#F1C84B] hover:bg-[#F8A5A5] hover:text-white transition-colors px-10 py-4 rounded-full font-medium text-lg shadow-lg flex items-center gap-2 cursor-pointer"
             >
               Write a Review
               <ArrowRightCircle size={20} />
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -352,18 +384,52 @@ export default function Home(): JSX.Element {
                 <ul className="space-y-2">
                   <li><Link href="/login" className="text-gray-300 hover:text-white">Login</Link></li>
                   <li><Link href="/register" className="text-gray-300 hover:text-white">Sign Up</Link></li>
-                  <li><Link href="/patron-dashboard" className="text-gray-300 hover:text-white">Dashboard</Link></li>
-                  <li><Link href="/review" className="text-gray-300 hover:text-white">Write a Review</Link></li>
+                  {/* Protected footer links */}
+                  <li>
+                    <a 
+                      href="#" 
+                      onClick={(e) => handleProtectedLink(e, "/patron-dashboard")} 
+                      className="text-gray-300 hover:text-white cursor-pointer"
+                    >
+                      Dashboard
+                    </a>
+                  </li>
+                  <li>
+                    <a 
+                      href="#" 
+                      onClick={(e) => handleProtectedLink(e, "/review")} 
+                      className="text-gray-300 hover:text-white cursor-pointer"
+                    >
+                      Write a Review
+                    </a>
+                  </li>
                 </ul>
               </div>
               
               <div>
                 <h4 className="text-lg font-semibold mb-4">For Restaurants</h4>
                 <ul className="space-y-2">
-                  <li><Link href="#" className="text-gray-300 hover:text-white">Claim Business</Link></li>
-                  <li><Link href="#" className="text-gray-300 hover:text-white">Business Login</Link></li>
-                  <li><Link href="#" className="text-gray-300 hover:text-white">Add Restaurant</Link></li>
-                  <li><Link href="#" className="text-gray-300 hover:text-white">Advertising</Link></li>
+                  {/* Protected restaurant links */}
+                  <li>
+                    <a 
+                      href="#" 
+                      onClick={(e) => handleProtectedLink(e, "/restaurant-dashboard")} 
+                      className="text-gray-300 hover:text-white cursor-pointer"
+                    >
+                      Claim Business
+                    </a>
+                  </li>
+                  <li><Link href="/login" className="text-gray-300 hover:text-white">Business Login</Link></li>
+                  <li><Link href="/discover" className="text-gray-300 hover:text-white">Discover Restaurants</Link></li>
+                  <li>
+                    <a 
+                      href="#" 
+                      onClick={(e) => handleProtectedLink(e, "/restaurant-dashboard")} 
+                      className="text-gray-300 hover:text-white cursor-pointer"
+                    >
+                      Restaurant Dashboard
+                    </a>
+                  </li>
                 </ul>
               </div>
               
