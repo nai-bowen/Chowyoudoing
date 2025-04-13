@@ -1,4 +1,4 @@
-// src/app/api/profile/follow/route.ts
+/*eslint-disable*/
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";

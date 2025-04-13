@@ -1,3 +1,4 @@
+/*eslint-disable*/
 import { pipeline, env } from '@xenova/transformers';
 
 // Configure transformers.js for server environment

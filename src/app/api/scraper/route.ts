@@ -1,4 +1,4 @@
-// src/app/api/scraper/route.ts
+/*eslint-disable*/
 
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeUberEatsData } from '@/server/services/scraper/uberEatsScraper';

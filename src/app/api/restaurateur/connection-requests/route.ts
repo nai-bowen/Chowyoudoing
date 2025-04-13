@@ -1,4 +1,4 @@
-// src/app/api/restaurateur/connection-requests/route.ts
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";

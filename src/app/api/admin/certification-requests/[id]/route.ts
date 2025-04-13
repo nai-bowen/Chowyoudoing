@@ -2,19 +2,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
-// Update certification request status
+// Force params to be a Promise if your setup requires it
 export async function PATCH(
   req: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    // Check admin password
     const authHeader = req.headers.get("Authorization");
     const providedPassword = authHeader?.split("Bearer ")?.[1];
 
@@ -22,18 +15,22 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
-    const { status, reviewedBy } = await req.json() as { status: string; reviewedBy: string };
+    // Extract the id from the promise
+    const { id } = await params;
+    const { status, reviewedBy } = (await req.json()) as {
+      status: string;
+      reviewedBy: string;
+    };
 
-    // Validate input
     if (!["approved", "rejected", "pending"].includes(status)) {
       return NextResponse.json(
-        { error: "Invalid status. Must be 'approved', 'rejected', or 'pending'" },
+        {
+          error: "Invalid status. Must be 'approved', 'rejected', or 'pending'",
+        },
         { status: 400 }
       );
     }
 
-    // Get the certification request to check if it exists
     const certRequest = await db.certificationRequest.findUnique({
       where: { id },
     });
@@ -45,7 +42,6 @@ export async function PATCH(
       );
     }
 
-    // Update the certification request
     const updatedRequest = await db.certificationRequest.update({
       where: { id },
       data: {
@@ -55,7 +51,6 @@ export async function PATCH(
       },
     });
 
-    // If approved, update the patron's certification status
     if (status === "approved") {
       await db.patron.update({
         where: { id: certRequest.patronId },
@@ -65,7 +60,6 @@ export async function PATCH(
         },
       });
     } else if (status === "rejected" && certRequest.status === "approved") {
-      // If previously approved and now rejected, remove certification
       await db.patron.update({
         where: { id: certRequest.patronId },
         data: {

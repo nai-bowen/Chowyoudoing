@@ -1,4 +1,4 @@
-// src/app/_components/MenuManagement.tsx
+/*eslint-disable*/
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";

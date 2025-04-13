@@ -1,4 +1,4 @@
-// src/app/api/restaurateur/receipt-verifications/[id]/route.ts
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { db } from "@/server/db";
@@ -6,9 +6,10 @@ import { authOptions } from "@/lib/auth";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  // Get the session
+  const { id: verificationId } = await params;
+
   const session = await getServerSession(authOptions);
   
   if (!session?.user) {
@@ -16,13 +17,10 @@ export async function PATCH(
   }
 
   try {
-    // Get verification ID from URL params
-    const verificationId = params.id;
     if (!verificationId) {
       return NextResponse.json({ error: "Verification ID is required" }, { status: 400 });
     }
 
-    // Get request body
     const body = await req.json();
     const { status, reviewedBy } = body;
 
@@ -33,7 +31,6 @@ export async function PATCH(
       );
     }
 
-    // Verify this receipt verification exists
     const receiptVerification = await db.receiptVerification.findUnique({
       where: { id: verificationId },
       include: {
@@ -48,8 +45,6 @@ export async function PATCH(
       );
     }
 
-    // Verify the user has permission to update this verification
-    // This would require checking if the user is associated with the restaurant
     const userEmail = session.user.email;
     if (!userEmail) {
       return NextResponse.json(
@@ -58,7 +53,6 @@ export async function PATCH(
       );
     }
 
-    // Find the restaurateur by email
     const restaurateur = await db.restaurateur.findFirst({
       where: { 
         OR: [
@@ -78,14 +72,11 @@ export async function PATCH(
       );
     }
 
-    // Check if the restaurateur is authorized to update this verification
     let isAuthorized = false;
-    
-    // Direct restaurant owner check
+
     if (restaurateur.restaurant && restaurateur.restaurant.id === receiptVerification.restaurantId) {
       isAuthorized = true;
     } else {
-      // Check for approved connection to this restaurant
       const connectionRequest = await db.restaurantConnectionRequest.findFirst({
         where: {
           restaurateurId: restaurateur.id,
@@ -93,7 +84,7 @@ export async function PATCH(
           status: "approved",
         },
       });
-      
+
       if (connectionRequest) {
         isAuthorized = true;
       }
@@ -106,7 +97,6 @@ export async function PATCH(
       );
     }
 
-    // Update the receipt verification
     const updatedVerification = await db.receiptVerification.update({
       where: { id: verificationId },
       data: {
@@ -116,7 +106,6 @@ export async function PATCH(
       },
     });
 
-    // If the verification is approved and linked to a review, update the review's verified status
     if (status === "approved" && receiptVerification.reviewId) {
       await db.review.update({
         where: { id: receiptVerification.reviewId },

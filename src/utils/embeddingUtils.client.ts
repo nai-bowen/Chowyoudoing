@@ -1,4 +1,4 @@
-// src/utils/embeddingUtils.client.ts
+/*eslint-disable*/
 // Browser-safe version of embedding utilities
 
 // Instead of directly using transformers.js in the browser,

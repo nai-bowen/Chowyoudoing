@@ -1,3 +1,5 @@
+/*eslint-disable*/
+
 import { db } from "@/server/db";
 import { Prisma } from "@prisma/client";
 

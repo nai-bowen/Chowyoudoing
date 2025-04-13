@@ -6,26 +6,24 @@ import { authOptions } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { restaurantId: string } }
+  { params }: { params: Promise<{ restaurantId: string }> }
 ): Promise<NextResponse> {
-  // Verify authentication
+  const { restaurantId } = await params;
+
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  
-  const { restaurantId } = context.params;
-  
+
   try {
     const restaurant = await db.restaurant.findUnique({
       where: { id: restaurantId }
     });
-    
+
     if (!restaurant) {
       return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
     }
-    
-    // Return the restaurant data in exactly the format needed by the edit form
+
     return NextResponse.json({
       id: restaurant.id,
       title: restaurant.title,

@@ -52,9 +52,9 @@ export default function AddEditMenuItemModal({
     if (item) {
       console.log("Editing item:", item); // Debug log
       setName(item.name);
-      setDescription(item.description || "");
+      setDescription(item.description ?? "");
       setPrice(item.price);
-      setInterestId(item.interestId || "");
+      setInterestId(item.interestId ?? "");
     } else {
       setName("");
       setDescription("");

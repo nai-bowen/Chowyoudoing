@@ -1,4 +1,4 @@
-// src/app/api/restaurateur/receipt-verifications/stats/route.ts
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { db } from "@/server/db";

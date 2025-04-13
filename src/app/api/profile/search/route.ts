@@ -17,7 +17,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     // Get query parameters
     const url = new URL(req.url);
-    const query = url.searchParams.get("q") || "";
+    const query = url.searchParams.get("q") ?? "";
     
     if (!query.trim()) {
       return NextResponse.json({ patrons: [] });
@@ -50,7 +50,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       id: patron.id,
       firstName: patron.firstName,
       lastName: patron.lastName,
-      username: patron.username || patron.email.split('@')[0], // Use email username as fallback
+      username: patron.username 
+      ?? patron.email.split('@')[0], // Use email username as fallback
       profileImage: patron.profileImage,
       isCertifiedFoodie: patron.isCertifiedFoodie
     }));

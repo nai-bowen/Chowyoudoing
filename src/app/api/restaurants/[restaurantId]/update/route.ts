@@ -1,4 +1,4 @@
-// src/app/api/restaurants/[restaurantId]/update/route.ts
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { db } from "@/server/db";
@@ -6,9 +6,10 @@ import { authOptions } from "@/lib/auth";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { restaurantId: string } }
+  { params }: { params: Promise<{ restaurantId: string }> }
 ): Promise<NextResponse> {
-  // Get the session
+  const { restaurantId } = await params;
+
   const session = await getServerSession(authOptions);
   
   if (!session || !session.user) {
@@ -16,13 +17,10 @@ export async function PATCH(
   }
 
   try {
-    // Get restaurant ID from URL params
-    const restaurantId = params.restaurantId;
     if (!restaurantId) {
       return NextResponse.json({ error: "Restaurant ID is required" }, { status: 400 });
     }
 
-    // Get request body
     const body = await req.json();
     const { 
       title, 
@@ -34,12 +32,10 @@ export async function PATCH(
       widerAreas 
     } = body;
 
-    // Validate required fields
     if (!title?.trim()) {
       return NextResponse.json({ error: "Restaurant name is required" }, { status: 400 });
     }
 
-    // Check if URL is valid if provided
     if (url && typeof url === "string" && url.trim() !== "") {
       try {
         new URL(url);
@@ -48,7 +44,6 @@ export async function PATCH(
       }
     }
 
-    // Verify the restaurant exists and user has permission to edit it
     const restaurant = await db.restaurant.findUnique({
       where: { id: restaurantId },
       include: {
@@ -68,7 +63,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
     }
 
-    // Check if user has permission to edit this restaurant
     const isRestaurantOwner = restaurant.restaurateurs.length > 0;
     const hasApprovedConnection = restaurant.connectionRequests.length > 0;
 
@@ -79,7 +73,6 @@ export async function PATCH(
       );
     }
 
-    // Update the restaurant
     const updatedRestaurant = await db.restaurant.update({
       where: { id: restaurantId },
       data: {

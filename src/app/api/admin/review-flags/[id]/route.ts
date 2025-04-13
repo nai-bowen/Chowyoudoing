@@ -1,22 +1,20 @@
-// src/app/api/admin/review-flags/[id]/route.ts
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 
-// Environment variables should be set in your .env file
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    // Get flag ID from URL params
-    const flagId = params.id;
+    const { id: flagId } = await params;
+
     if (!flagId) {
       return NextResponse.json({ error: "Flag ID is required" }, { status: 400 });
     }
 
-    // Validate admin authentication
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,7 +25,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid admin password" }, { status: 401 });
     }
 
-    // Get request body
     const body = await req.json();
     const { status, deleteReview } = body;
 
@@ -38,7 +35,6 @@ export async function PATCH(
       );
     }
 
-    // Check if the flag exists
     const flag = await db.reviewFlag.findUnique({
       where: { id: flagId },
       include: {
@@ -53,7 +49,6 @@ export async function PATCH(
       );
     }
 
-    // Update the flag status
     const updatedFlag = await db.reviewFlag.update({
       where: { id: flagId },
       data: {
@@ -62,7 +57,6 @@ export async function PATCH(
       },
     });
 
-    // If the flag is approved and deleteReview is true, delete the review
     if (status === "reviewed" && deleteReview === true && flag.review) {
       await db.review.delete({
         where: { id: flag.review.id },

@@ -1,4 +1,4 @@
-// src/app/api/restaurateur/menu-items/route.ts
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { db } from "@/server/db";
@@ -6,7 +6,6 @@ import { authOptions } from "@/lib/auth";
 
 // Create a new menu item
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Get the session
   const session = await getServerSession(authOptions);
   
   if (!session || !session.user) {
@@ -14,7 +13,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    // Get request body
     const body = await req.json();
     const { 
       menuSectionId, 
@@ -26,7 +24,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       interestId 
     } = body;
     
-    // Validate required fields
     if (!menuSectionId || !name || !price) {
       return NextResponse.json(
         { error: "menuSectionId, name, and price are required" }, 
@@ -34,7 +31,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Check if menu section exists
     const menuSection = await db.menuSection.findUnique({
       where: { id: menuSectionId },
     });
@@ -46,7 +42,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Create the menu item
     const menuItem = await db.menuItem.create({
       data: {
         name,

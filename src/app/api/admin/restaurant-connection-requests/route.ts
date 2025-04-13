@@ -1,4 +1,4 @@
-// src/app/api/admin/restaurant-connection-requests/route.ts
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 

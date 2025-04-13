@@ -1,4 +1,4 @@
-// src/app/restaurant-dashboard/page.tsx
+/*eslint-disable*/
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";

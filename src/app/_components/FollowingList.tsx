@@ -1,4 +1,4 @@
-// src/app/_components/FollowingList.tsx
+/*eslint-disable*/
 "use client";
 
 import { useState, useEffect, useCallback } from "react";

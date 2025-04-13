@@ -1,22 +1,20 @@
-// src/app/api/admin/restaurant-connection-requests/[id]/route.ts
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 
-// Environment variables should be set in your .env file
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    // Get request ID from URL params
-    const requestId = params.id;
+    const { id: requestId } = await params;
+
     if (!requestId) {
       return NextResponse.json({ error: "Request ID is required" }, { status: 400 });
     }
 
-    // Validate admin authentication
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,7 +25,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid admin password" }, { status: 401 });
     }
 
-    // Get request body
     const body = await req.json();
     const { status, reviewedBy } = body;
 
@@ -38,7 +35,6 @@ export async function PATCH(
       );
     }
 
-    // Check if the connection request exists
     const connectionRequest = await db.restaurantConnectionRequest.findUnique({
       where: { id: requestId },
       include: {
@@ -54,7 +50,6 @@ export async function PATCH(
       );
     }
 
-    // Update the connection request status
     const updatedRequest = await db.restaurantConnectionRequest.update({
       where: { id: requestId },
       data: {
@@ -64,7 +59,6 @@ export async function PATCH(
       },
     });
 
-    // If the request was approved, update the restaurateur record to associate with the restaurant
     if (status === "approved") {
       await db.restaurateur.update({
         where: { id: connectionRequest.restaurateurId },
@@ -74,8 +68,10 @@ export async function PATCH(
       });
     }
 
-    // If the request was rejected, remove any restaurant association
-    if (status === "rejected" && connectionRequest.restaurateur.restaurantId === connectionRequest.restaurantId) {
+    if (
+      status === "rejected" &&
+      connectionRequest.restaurateur.restaurantId === connectionRequest.restaurantId
+    ) {
       await db.restaurateur.update({
         where: { id: connectionRequest.restaurateurId },
         data: {

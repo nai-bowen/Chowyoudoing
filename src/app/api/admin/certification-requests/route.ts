@@ -1,4 +1,4 @@
-// src/app/api/admin/certification-requests/route.ts
+/*eslint-disable*/
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 

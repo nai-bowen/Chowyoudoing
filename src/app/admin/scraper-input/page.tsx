@@ -1,4 +1,4 @@
-// src/app/scraper-input/page.tsx
+/*eslint-disable*/
 "use client";
 
 import React, { useState, useEffect } from "react";

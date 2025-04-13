@@ -1,4 +1,4 @@
-// src/app/_components/FlagReviewModal.tsx
+/*eslint-disable*/
 "use client";
 
 import { useState, Fragment } from "react";

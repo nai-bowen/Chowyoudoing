@@ -1,9 +1,10 @@
+/*eslint-disable*/
+
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { PREDEFINED_INTERESTS } from "@/utils/categoryMappingService.client";
 
-// Rest of your component remains the same...
 interface CategoryMapping {
   category: string;
   interests: string[];

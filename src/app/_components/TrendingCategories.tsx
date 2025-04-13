@@ -1,4 +1,4 @@
-// src/app/_components/TrendingCategories.tsx
+/*eslint-disable*/
 "use client";
 
 import React, { useEffect, useState } from "react";

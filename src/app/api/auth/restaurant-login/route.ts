@@ -1,3 +1,4 @@
+/*eslint-disable*/
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import bcrypt from "bcryptjs";

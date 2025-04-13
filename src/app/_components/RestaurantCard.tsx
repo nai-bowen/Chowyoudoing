@@ -27,7 +27,7 @@ export default function RestaurantCard({
   color = "#fdf9f5" 
 }: RestaurantCardProps): JSX.Element {
   
-  const reviewCount = restaurant._count?.reviews || 
+  const reviewCount = restaurant._count?.reviews ?? 
                      (restaurant.num_reviews ? parseInt(restaurant.num_reviews) : 0);
   
   const categoryArray = Array.isArray(restaurant.category) 

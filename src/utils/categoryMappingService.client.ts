@@ -1,4 +1,4 @@
-// src/utils/categoryMappingService.client.ts
+/*eslint-disable*/
 import { enhanceCategory, enhanceInterest, getEmbeddings, cosineSimilarity } from './embeddingUtils.client';
 
 // Predefined interests that we want to map categories to

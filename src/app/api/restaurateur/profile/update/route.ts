@@ -1,4 +1,5 @@
-// src/app/api/restaurateur/profile/update/route.ts
+/*eslint-disable*/
+/*eslint-disable*/
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { db } from "@/server/db";

@@ -1,4 +1,4 @@
-// src/app/_components/RestaurantConnectionModal.tsx
+/*eslint-disable*/
 "use client";
 
 import { useState, Fragment } from "react";

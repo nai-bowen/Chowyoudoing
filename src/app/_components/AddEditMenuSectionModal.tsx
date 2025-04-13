@@ -42,7 +42,7 @@ export default function AddEditMenuSectionModal({
   useEffect(() => {
     if (section) {
       setCategory(section.category);
-      setInterestId(section.interestId || "");
+      setInterestId(section.interestId ?? "");
     } else {
       setCategory("");
       setInterestId("");

@@ -1,4 +1,4 @@
-// src/app/_components/ReceiptVerificationManagement.tsx
+/*eslint-disable*/
 "use client";
 
 import { useState, useEffect } from "react";

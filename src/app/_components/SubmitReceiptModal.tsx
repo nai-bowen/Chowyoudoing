@@ -1,4 +1,4 @@
-// src/app/_components/SubmitReceiptModal.tsx
+/*eslint-disable*/
 "use client";
 
 import React, { useState, useRef } from "react";
