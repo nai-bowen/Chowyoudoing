@@ -8,10 +8,10 @@ import { db } from "@/server/db";
 // This is for the API route in /api/review/[id]/route.ts
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    const { id } = await params;
+    const { id } = params;
     console.log("Get Review API: Fetching review with ID:", id);
 
     // Get the current user's session
@@ -80,6 +80,7 @@ export async function GET(
       menuItemId: review.menuItemId,
       menuItemName: review.menuItem?.name,
       patronId: review.patron.id,
+      restaurantResponse: review.restaurantResponse, // Include restaurant response
       patron: review.patron ? {
         id: review.patron.id,
         firstName: review.patron.firstName,
@@ -102,10 +103,10 @@ export async function GET(
 // DELETE handler for removing a review
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    const { id } = await params;
+    const { id } = params;
     console.log("Delete Review API: Processing delete request for review ID:", id);
 
     // Get server session with authOptions
@@ -170,10 +171,10 @@ export async function DELETE(
 // PUT handler for updating a review
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    const { id } = await params;
+    const { id } = params;
     console.log("Update Review API: Processing update for review ID:", id);
 
     // Get server session with authOptions

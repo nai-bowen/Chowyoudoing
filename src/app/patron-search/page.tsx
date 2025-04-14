@@ -45,7 +45,8 @@ interface Review {
   menuItemId?: string;
   isAnonymous?: boolean;
   isCertifiedFoodie?: boolean;
-  isVerified?: boolean; // Add the verification flag
+  isVerified?: boolean;
+  restaurantResponse?: string | null; // Added restaurantResponse field
   userVote?: {
     isUpvote: boolean;
   } | null;
@@ -1213,109 +1214,125 @@ function RestaurantContent(): JSX.Element {
                 
                 {/* Reviews list */}
                 <div className="space-y-6">
-                  {filteredReviews.length > 0 ? (
-                    filteredReviews.map((review, index) => {
-                      // Find the menu item for this review (if menuItemId exists)
-                      const menuItem = review.menuItemId 
-                        ? restaurant.menuItems.find(item => item.id === review.menuItemId)
-                        : null;
+                {filteredReviews.length > 0 ? (
+                  filteredReviews.map((review, index) => {
+                    // Find the menu item for this review (if menuItemId exists)
+                    const menuItem = review.menuItemId 
+                      ? restaurant.menuItems.find(item => item.id === review.menuItemId)
+                      : null;
+                    
+                    // Check if the review is verified
+                    const isVerified = review.isVerified === true;
+                    
+                    // Check if the review is from a certified foodie
+                    const isCertified = isCertifiedFoodieReview(review);
+                    
+                    // Check if there is a restaurant response
+                    const hasResponse = review.restaurantResponse && review.restaurantResponse.trim().length > 0;
                       
-                      // Check if the review is verified
-                      const isVerified = review.isVerified === true;
-                      
-                      // Check if the review is from a certified foodie
-                      const isCertified = isCertifiedFoodieReview(review);
+                    return (
+                      <div 
+                        key={review.id || index} 
+                        className={`bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg transition-shadow relative overflow-hidden ${
+                          isVerified ? 'border-2 border-green-500' : isCertified ? 'border-2 border-[#f2d36e]' : ''
+                        }`}
+                        onClick={() => handleReviewClick(review)}
+                      >
+                        {/* Blob decoration for review card */}
+                        <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#f9ebc3]/10 rounded-full"></div>
                         
-                      return (
-                        <div 
-                          key={review.id || index} 
-                          className={`bg-white rounded-lg shadow-md p-5 cursor-pointer hover:shadow-lg transition-shadow relative overflow-hidden ${
-                            isVerified ? 'border-2 border-green-500' : isCertified ? 'border-2 border-[#f2d36e]' : ''
-                          }`}
-                          onClick={() => handleReviewClick(review)}
-                        >
-                          {/* Blob decoration for review card */}
-                          <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#f9ebc3]/10 rounded-full"></div>
-                          
-                          {/* Menu Item Name*/}
-                          {menuItem && (
-                            <div className="mb-3 px-2 py-1 bg-[#f8bff1]/10 rounded-md inline-block">
-                              <span className="text-sm font-medium text-[#dab9f8]">Review for: {menuItem.name}</span>
-                            </div>
-                          )}
-                          
-                          <div className="flex justify-between relative z-10">
-                            <div className="flex items-center">
-                              {renderStars(review.rating || 5)}
-                              {review.date && (
-                                <span className="ml-2 text-sm text-gray-500">{review.date}</span>
+                        {/* Menu Item Name*/}
+                        {menuItem && (
+                          <div className="mb-3 px-2 py-1 bg-[#f8bff1]/10 rounded-md inline-block">
+                            <span className="text-sm font-medium text-[#dab9f8]">Review for: {menuItem.name}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between relative z-10">
+                          <div className="flex items-center">
+                            {renderStars(review.rating || 5)}
+                            {review.date && (
+                              <span className="ml-2 text-sm text-gray-500">{review.date}</span>
+                            )}
+                          </div>
+                          <div className="text-sm font-medium text-[#f5b7ee] flex items-center gap-2">
+                            {review.isAnonymous 
+                              ? "Anonymous" 
+                              : `${review.patron?.firstName || review.author || "Anonymous"} ${review.patron?.lastName?.charAt(0) || ""}`}
+                            
+                            {/* Badges */}
+                            <div className="flex items-center gap-1">
+                              {/* Certified Foodie Badge */}
+                              {!review.isAnonymous && isCertified && (
+                                <CertifiedFoodieBadge size="sm" showText={false} />
+                              )}
+                              
+                              {/* Verification Badge */}
+                              {isVerified && (
+                                <VerificationBadge size="sm" showText={false} />
                               )}
                             </div>
-                            <div className="text-sm font-medium text-[#f5b7ee] flex items-center gap-2">
-                              {review.isAnonymous 
-                                ? "Anonymous" 
-                                : `${review.patron?.firstName || review.author || "Anonymous"} ${review.patron?.lastName?.charAt(0) || ""}`}
-                              
-                              {/* Badges */}
-                              <div className="flex items-center gap-1">
-                                {/* Certified Foodie Badge */}
-                                {!review.isAnonymous && isCertified && (
-                                  <CertifiedFoodieBadge size="sm" showText={false} />
-                                )}
-                                
-                                {/* Verification Badge */}
-                                {isVerified && (
-                                  <VerificationBadge size="sm" showText={false} />
-                                )}
-                              </div>
-                            </div>
                           </div>
-                          
-                          <div className="mt-4 flex gap-4 relative z-10">
-                            {review.imageUrl && (
-                              <div className="w-24 h-24 relative flex-shrink-0">
-                                <Image 
-                                  src={review.imageUrl} 
-                                  alt="Review photo" 
-                                  fill
-                                  className="object-cover rounded-md"
-                                />
-                                
-                                {/* Add verification badge to the corner of images for verified reviews */}
-                                {isVerified && (
-                                  <VerificationBadge placement="corner" size="sm" showText={false} />
-                                )}
-                              </div>
-                            )}
-                            <p className="text-gray-700 italic">"{review.content || review.text || ''}"</p>
-                          </div>
-                          
-                          {/* Edit button if user is the author */}
-                          {isReviewAuthor(review) && (
-                            <button
-                              className="mt-2 text-sm text-[#dab9f8] hover:underline flex items-center relative z-10"
-                              onClick={(e) => handleEditReview(review, e)}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                              </svg>
-                              Edit Review
-                            </button>
-                          )}
                         </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-6 bg-gray-50 rounded-lg">
-                      <p className="text-gray-500">No reviews match your filter criteria.</p>
-                      <button
-                        onClick={clearReviewFilters}
-                        className="mt-2 text-[#dab9f8] hover:underline"
-                      >
-                        Clear filters
-                      </button>
-                    </div>
-                  )}
+                        
+                        <div className="mt-4 flex gap-4 relative z-10">
+                          {review.imageUrl && (
+                            <div className="w-24 h-24 relative flex-shrink-0">
+                              <Image 
+                                src={review.imageUrl} 
+                                alt="Review photo" 
+                                fill
+                                className="object-cover rounded-md"
+                              />
+                              
+                              {/* Add verification badge to the corner of images for verified reviews */}
+                              {isVerified && (
+                                <VerificationBadge placement="corner" size="sm" showText={false} />
+                              )}
+                            </div>
+                          )}
+                          <p className="text-gray-700 italic">"{review.content || review.text || ''}"</p>
+                        </div>
+                        
+                        {/* Restaurant Response - Add this section */}
+                        {hasResponse && (
+                          <div className="mt-4 bg-blue-50 p-3 rounded-lg relative z-10">
+                            <div className="flex items-center mb-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                              </svg>
+                              <h4 className="text-sm font-medium text-blue-700">Restaurant Response</h4>
+                            </div>
+                            <p className="text-sm text-gray-700">{review.restaurantResponse}</p>
+                          </div>
+                        )}
+                        
+                        {/* Edit button if user is the author */}
+                        {isReviewAuthor(review) && (
+                          <button
+                            className="mt-2 text-sm text-[#dab9f8] hover:underline flex items-center relative z-10"
+                            onClick={(e) => handleEditReview(review, e)}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            Edit Review
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-6 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500">No reviews match your filter criteria.</p>
+                    <button
+                      onClick={clearReviewFilters}
+                      className="mt-2 text-[#dab9f8] hover:underline"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                )}
                 </div>
               </>
             ) : (
@@ -1379,26 +1396,17 @@ function RestaurantContent(): JSX.Element {
         <ReviewModal 
           review={{
             id: selectedReview.id,
-            // Ensure required properties are always defined with non-null values
             content: selectedReview.content || selectedReview.text || "", 
             rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
-            
-            // Add image URL
             imageUrl: selectedReview.imageUrl,
-            
-            // Use reviewStandards to display menu item information
             reviewStandards: selectedReview.menuItemId && restaurant.menuItems ? 
                             `Menu item: ${restaurant.menuItems.find(item => item.id === selectedReview.menuItemId)?.name || ''}` : 
                             selectedReview.reviewStandards,
-            
-            // Include all optional properties with their original values or safe defaults
             date: selectedReview.date,
             upvotes: selectedReview.upvotes ?? 0,
             asExpected: selectedReview.asExpected ?? 0,
             wouldRecommend: selectedReview.wouldRecommend ?? 0,
             valueForMoney: selectedReview.valueForMoney ?? 0,
-            
-            // Include patron information for author display
             patron: selectedReview.patron?.id
             ? {
                 id: selectedReview.patron.id,
@@ -1406,10 +1414,8 @@ function RestaurantContent(): JSX.Element {
                 lastName: selectedReview.patron.lastName,
               }
             : undefined,
-                      
-            // Add isAnonymous property
             isAnonymous: selectedReview.isAnonymous ?? false,
-            
+            restaurantResponse: selectedReview.restaurantResponse || null, // Add this line
           }}
           isOpen={true} 
           onClose={closeModal} 

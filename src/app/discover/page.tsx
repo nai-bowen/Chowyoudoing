@@ -74,9 +74,9 @@ interface Review {
   valueForMoney: number;
   imageUrl: string | undefined;
   videoUrl: string | null;
-  patronId: string; 
+  patronId: string;
   isAnonymous: boolean;
-  isVerified?: boolean; // Add this field
+  isVerified?: boolean;
   isCertifiedFoodie?: boolean;
   patron?: {
     id: string;
@@ -87,6 +87,7 @@ interface Review {
   userVote?: {
     isUpvote: boolean;
   } | undefined;
+  restaurantResponse?: string | null;// Add this field
 }
 
 interface Photo {
@@ -610,10 +611,11 @@ export default function DiscoveryPage(): JSX.Element {
   const renderReviewCard = (review: Review): JSX.Element => {
     const isCertified = isCertifiedFoodieReview(review);
     const isVerified = review.isVerified;
-    
+    const hasResponse = review.restaurantResponse && review.restaurantResponse.trim().length > 0;
+  
     return (
-      <div 
-        key={review.id} 
+      <div
+        key={review.id}
         className={`bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer ${
           isCertified ? 'border-2 border-[#f2d36e]' : ''
         } ${isVerified ? 'border-2 border-green-500' : ''}`}
@@ -629,7 +631,7 @@ export default function DiscoveryPage(): JSX.Element {
           </Link>
           <div className="flex">
             {[1, 2, 3, 4, 5].map((star) => (
-              <div 
+              <div
                 key={star}
                 className={`w-4 h-4 ${
                   star <= review.rating
@@ -640,7 +642,7 @@ export default function DiscoveryPage(): JSX.Element {
             ))}
           </div>
         </div>
-        
+  
         {review.imageUrl && (
           <div className="mb-4 h-48 w-full relative rounded-lg overflow-hidden">
             <Image
@@ -649,33 +651,57 @@ export default function DiscoveryPage(): JSX.Element {
               fill
               className="object-cover"
             />
-            
+  
             {/* Add verification badge to the corner of the image if review is verified */}
             {isVerified && (
               <VerificationBadge placement="corner" size="sm" showText={false} />
             )}
           </div>
         )}
-        
+  
         <p className="mb-4 text-gray-700">{review.content}</p>
-        
+  
+        {/* Restaurant Response Section */}
+        {hasResponse && (
+          <div className="mb-4 bg-blue-50 p-3 rounded-lg">
+            <div className="flex items-center mb-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-blue-500 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                />
+              </svg>
+              <h4 className="text-sm font-medium text-blue-700">Restaurant Response</h4>
+            </div>
+            <p className="text-sm text-gray-700">{review.restaurantResponse}</p>
+          </div>
+        )}
+  
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span className="font-medium">
               {review.isAnonymous === true ? "Anonymous" : review.author}
             </span>
-            
+  
             {/* Display badges if applicable */}
             <div className="flex items-center gap-1">
               {!review.isAnonymous && isCertified && (
                 <CertifiedFoodieBadge size="sm" showText={false} />
               )}
-              
+  
               {isVerified && (
                 <VerificationBadge size="sm" showText={false} />
               )}
             </div>
-            
+  
             {review.date && (
               <span>
                 •{" "}
@@ -695,7 +721,6 @@ export default function DiscoveryPage(): JSX.Element {
       </div>
     );
   };
-
   // If not authenticated, show login prompt
   if (status === "unauthenticated") {
     return (
@@ -1028,10 +1053,10 @@ export default function DiscoveryPage(): JSX.Element {
 
       {/* Review Modal */}
       {selectedReview && (
-        <ReviewModal 
+        <ReviewModal
           review={{
             id: selectedReview.id,
-            content: selectedReview.content || selectedReview.text || "", 
+            content: selectedReview.content || selectedReview.text || "",
             rating: typeof selectedReview.rating === 'number' ? selectedReview.rating : 5,
             date: selectedReview.date,
             upvotes: selectedReview.upvotes ?? 0,
@@ -1049,10 +1074,11 @@ export default function DiscoveryPage(): JSX.Element {
             patronId: selectedReview.patronId ?? selectedReview.patron?.id,
             isAnonymous: selectedReview.isAnonymous ?? false,
             userVote: selectedReview.userVote,
+            restaurantResponse: selectedReview.restaurantResponse,// Add this line
           }}
-          isOpen={isReviewModalOpen} 
-          onClose={handleCloseReviewModal} 
-          onVoteUpdate={handleVoteUpdate} 
+          isOpen={isReviewModalOpen}
+          onClose={handleCloseReviewModal}
+          onVoteUpdate={handleVoteUpdate}
         />
       )}
 

@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { X, ChevronUp, ChevronDown, Image as ImageIcon } from "lucide-react";
+import { X, ChevronUp, ChevronDown, Image as ImageIcon, MessageSquare } from "lucide-react";
 import PatronProfileModal from "./PatronProfileModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCertificate, faUtensils } from "@fortawesome/free-solid-svg-icons";
+import { faCertificate, faUtensils, faReply, faStore } from "@fortawesome/free-solid-svg-icons";
 
 interface Patron {
   id: string;
@@ -46,6 +46,7 @@ interface Review {
   menuItemId?: string;
   menuItemName?: string; // For simplified access
   title?: string; // Sometimes contains the menu item name
+  restaurantResponse?: string | null; // Restaurant response property
 }
 
 interface ReadReviewModalProps {
@@ -142,6 +143,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
         menuItemName: readProps.review.menuItemName,
         title: readProps.review.title
       });
+      console.log("Restaurant response:", readProps.review.restaurantResponse);
     }
   }, [props, isReadMode]);
 
@@ -321,6 +323,9 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
     const { review } = readProps;
     const mealName = getMealName();
     
+    // Check if there's a restaurant response to display
+    const hasRestaurantResponse = review.restaurantResponse && review.restaurantResponse.trim().length > 0;
+    
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
         <div
@@ -363,7 +368,7 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
               )}
             </div>
 
-            {/* Updated review content with white background and thick yellow border */}
+            {/* Review content with white background and thick yellow border */}
             <div className="mb-6 p-4 bg-white border-[5px] border-[#f9ebc3] rounded-md">
               <p className="text-lg italic text-gray-700 mb-4">"{review.content}"</p>
               <p className="text-right font-medium text-gray-700">
@@ -396,6 +401,17 @@ const ReviewModal: React.FC<ReviewModalProps> = (props) => {
                 )}
               </p>
             </div>
+
+            {/* Restaurant Response Section - Only show if there's a response */}
+            {hasRestaurantResponse && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center gap-2 mb-3">
+                  <FontAwesomeIcon icon={faStore} className="text-blue-600" />
+                  <h3 className="font-medium text-blue-800">Restaurant Response</h3>
+                </div>
+                <p className="text-gray-700 mb-2">{review.restaurantResponse}</p>
+              </div>
+            )}
 
             {/* Vote buttons - using the local state value directly */}
             <div className="flex items-center gap-4 mb-6 justify-center">

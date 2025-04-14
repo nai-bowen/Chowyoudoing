@@ -12,7 +12,7 @@ interface FormattedReview {
   date: string|undefined;
   upvotes: number;
   content: string;
-  text: string;
+  text?: string;
   rating: number;
   restaurant: string;
   restaurantId: string;
@@ -20,23 +20,25 @@ interface FormattedReview {
   asExpected: number;
   wouldRecommend: number;
   valueForMoney: number;
-  imageUrl: string | null;
+  imageUrl: string | undefined;
   videoUrl: string | null;
   latitude?: number | null;
   longitude?: number | null;
   isAnonymous: boolean; 
   isCertifiedFoodie?: boolean;
-  isVerified?: boolean; // Add isVerified property
+  isVerified?: boolean;
+  restaurantResponse?: string | null; // Add restaurantResponse field
   patron?: {
     id: string;
     firstName: string;
     lastName: string;
     isCertifiedFoodie?: boolean;
-  } | null;
+  } | undefined;
   userVote?: {
     isUpvote: boolean;
-  } | null;
+  } | undefined;
 }
+
 interface ReviewStandards {
   asExpected?: number;
   wouldRecommend?: number;
@@ -58,7 +60,7 @@ interface ReviewRequestBody {
   asExpected?: number;
   wouldRecommend?: number;
   valueForMoney?: number;
-  isAnonymous?: boolean; // Add this field
+  isAnonymous?: boolean;
 }
 
 interface VoteRequestBody {
@@ -166,7 +168,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       videoUrl: true,
       restaurantId: true, 
       isAnonymous: true,
-      isVerified: true, // Include isVerified field
+      isVerified: true, 
+      restaurantResponse: true, // Add restaurantResponse to selected fields
       patron: {
         select: {
           id: true,
@@ -369,6 +372,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         restaurantId: review.restaurantId || "", // Include the restaurantId
         isAnonymous: review.isAnonymous ?? false, // Include anonymous flag with default
         isVerified: review.isVerified ?? false, // Include verification status
+        restaurantResponse: review.restaurantResponse, // Include restaurant response
         author: (review.isAnonymous) 
           ? "Anonymous" 
           : (review.patron
@@ -377,7 +381,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         asExpected: review.asExpected ?? 0,
         wouldRecommend: review.wouldRecommend ?? 0,
         valueForMoney: review.valueForMoney ?? 0,
-        imageUrl: review.imageUrl ?? null,
+        imageUrl: review.imageUrl ?? undefined,
         videoUrl: review.videoUrl ?? null,
         patronId: review.patronId,
       };
@@ -406,10 +410,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       // Include the user's vote if available
       if (currentUserId && review.votes?.length) {
         formattedReview.userVote = {
-          isUpvote: review.votes[0]?.isUpvote ?? false, // Ensure a default boolean value
+          isUpvote: review.votes[0]?.isUpvote ?? false,
         };
-      } else {
-        formattedReview.userVote = null;
       }
 
       return formattedReview;

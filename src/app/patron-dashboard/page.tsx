@@ -17,7 +17,8 @@ import {
   faTimes,
   faAward,
   faThumbsUp,
-  faUsers
+  faUsers,
+  faReply
 } from "@fortawesome/free-solid-svg-icons";
 import {  faStar, 
   faEdit, faHeart} from  "@fortawesome/free-regular-svg-icons";
@@ -46,6 +47,7 @@ interface Review {
   restaurant?: string;
   restaurantId?: string; 
   patronId: string;  
+  restaurantResponse?: string | null; // Added restaurantResponse property
   patron?: {
     id:string;
     firstName: string;
@@ -188,6 +190,8 @@ export default function PatronDashboard(): JSX.Element {
     tabs: false,
     content: false
   });
+
+  
 
   //get profile photo 
   // Helper function to process profile image URL
@@ -1126,69 +1130,84 @@ return (
                 </div>
               ) : filteredReviews.length > 0 ? (
                 <div className="max-h-[800px] overflow-y-auto flex flex-col gap-4 pr-4">
-                  {filteredReviews.map((review, index) => (
-                    <div 
-                      key={review.id} 
-                      className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <Link 
-                            href={`/patron-search?id=${review.restaurantId || ""}`}
-                            className="font-semibold hover:text-[#f3b4eb]"
-                          >
-                            {review.restaurant || "Restaurant Name"}
-                          </Link>
-                          <p className="text-sm text-gray-600">
-                            {new Date(review.date || Date.now()).toLocaleDateString()}
-                          </p>
+                  {filteredReviews.map((review, index) => {
+                    const hasResponse = review.restaurantResponse && review.restaurantResponse.trim().length > 0;
+                    
+                    return (
+                      <div 
+                        key={review.id} 
+                        className={`rounded-xl shadow-sm p-5 transition-all hover:shadow-md ${getReviewCardColor(index)}`}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <Link 
+                              href={`/patron-search?id=${review.restaurantId || ""}`}
+                              className="font-semibold hover:text-[#f3b4eb]"
+                            >
+                              {review.restaurant || "Restaurant Name"}
+                            </Link>
+                            <p className="text-sm text-gray-600">
+                              {new Date(review.date || Date.now()).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleOpenReceiptModal(review)}
+                              className="p-2 text-gray-600 hover:text-[#f2d36e]"
+                              title="Verify with Receipt"
+                            >
+                              <FontAwesomeIcon icon={faReceipt} />
+                            </button>
+                            <button 
+                              onClick={() => handleEditReview(review.id)}
+                              className="p-2 text-gray-600 hover:text-[#f3b4eb]"
+                            >
+                              <FontAwesomeIcon icon={faEdit} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteReview(review.id)}
+                              className="p-2 text-gray-600 hover:text-red-500"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleOpenReceiptModal(review)}
-                          className="p-2 text-gray-600 hover:text-[#f2d36e]"
-                          title="Verify with Receipt"
-                        >
-                          <FontAwesomeIcon icon={faReceipt} />
-                        </button>
+                        
+                        <div className="mb-3">
+                          {renderStars(review.rating || 0)}
+                        </div>
+                        
+                        <p className="text-gray-700 mb-3 line-clamp-3">
+                          {review.content || review.text || "No review content"}
+                        </p>
+                        
+                        {/* Restaurant Response */}
+                        {hasResponse && (
+                          <div className="mb-3 bg-blue-50 p-3 rounded-lg">
+                            <div className="flex items-center mb-2">
+                              <FontAwesomeIcon icon={faReply} className="text-blue-500 mr-2" />
+                              <h4 className="text-sm font-medium text-blue-700">Restaurant Response</h4>
+                            </div>
+                            <p className="text-sm text-gray-700">{review.restaurantResponse}</p>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-1 text-sm">
+                            <span className="bg-white px-2 py-1 rounded-full text-gray-600">
+                              {review.upvotes || 0} upvotes
+                            </span>
+                          </div>
                           <button 
-                            onClick={() => handleEditReview(review.id)}
-                            className="p-2 text-gray-600 hover:text-[#f3b4eb]"
+                            onClick={() => handleViewFullReview(review)}
+                            className="text-sm text-[#d7b6f6] hover:underline"
                           >
-                            <FontAwesomeIcon icon={faEdit} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteReview(review.id)}
-                            className="p-2 text-gray-600 hover:text-red-500"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
+                            View Full Review
                           </button>
                         </div>
                       </div>
-                      
-                      <div className="mb-3">
-                        {renderStars(review.rating || 0)}
-                      </div>
-                      
-                      <p className="text-gray-700 mb-3 line-clamp-3">
-                        {review.content || review.text || "No review content"}
-                      </p>
-                      
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-1 text-sm">
-                          <span className="bg-white px-2 py-1 rounded-full text-gray-600">
-                            {review.upvotes || 0} upvotes
-                          </span>
-                        </div>
-                        <button 
-                          onClick={() => handleViewFullReview(review)}
-                          className="text-sm text-[#d7b6f6] hover:underline"
-                        >
-                          View Full Review
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12 bg-white/50 rounded-xl">
@@ -1364,7 +1383,11 @@ return (
               imageUrl: selectedReview.imageUrl,
               patron: selectedReview.patron,
               patronId: selectedReview.patronId,
-              userVote: selectedReview.userVote
+              userVote: selectedReview.userVote,
+              restaurant: selectedReview.restaurant,
+              restaurantId: selectedReview.restaurantId,
+              // Add the restaurant response
+              restaurantResponse: selectedReview.restaurantResponse
             }}
             isOpen={isReviewModalOpen} 
             onClose={handleReviewModalClose} 
