@@ -12,6 +12,7 @@ import ReviewModal from '@/app/_components/ReviewModal';
 import RequestMenuModal from "../_components/RequestMenuModal";
 import CertifiedFoodieBadge from "@/app/_components/CertifiedFoodieBadge";
 import VerificationBadge from "../_components/VerificationBadge";
+import { useGeolocation, LocationState } from "@/lib/locationService";
 
 // Define SearchResult interface
 interface SearchResult {
@@ -53,6 +54,8 @@ interface Restaurant {
   num_reviews?: string;
   latitude?: number | null;
   longitude?: number | null;
+  widerAreas?: string[]; // Add the widerAreas field
+  isNearby?: boolean; // Add isNearby field to indicate if restaurant is nearby
   _count?: {
     reviews: number;
   };
@@ -74,9 +77,9 @@ interface Review {
   valueForMoney: number;
   imageUrl: string | undefined;
   videoUrl: string | null;
-  patronId: string;
+  patronId: string; 
   isAnonymous: boolean;
-  isVerified?: boolean;
+  isVerified?: boolean; // Add this field
   isCertifiedFoodie?: boolean;
   patron?: {
     id: string;
@@ -87,7 +90,7 @@ interface Review {
   userVote?: {
     isUpvote: boolean;
   } | undefined;
-  restaurantResponse?: string | null;// Add this field
+  restaurantResponse?: string | null; // Add this field
 }
 
 interface Photo {
@@ -187,6 +190,9 @@ export default function DiscoveryPage(): JSX.Element {
   const [activeTab, setActiveTab] = useState<TabType>("restaurants");
   const [filter, setFilter] = useState<FilterType>("relevance");
   const [showFilterDropdown, setShowFilterDropdown] = useState<boolean>(false);
+  
+  // Move the useGeolocation hook call to the top level of the component
+  const location = useGeolocation();
   
   // Search related states
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -315,7 +321,8 @@ export default function DiscoveryPage(): JSX.Element {
       
       try {
         if (activeTab === "restaurants") {
-          await fetchRestaurants();
+          // Pass the location to fetchRestaurants
+          await fetchRestaurants(location);
         } else if (activeTab === "reviews") {
           await fetchReviews();
         } else if (activeTab === "photos") {
@@ -330,9 +337,10 @@ export default function DiscoveryPage(): JSX.Element {
     };
 
     fetchData();
-  }, [activeTab, filter, profile, status]);
+  }, [activeTab, filter, profile, status, location]); // Add location as a dependency
 
-  const fetchRestaurants = async (): Promise<void> => {
+  // Update fetchRestaurants to accept location as a parameter
+  const fetchRestaurants = async (locationData: LocationState): Promise<void> => {
     // For restaurant discovery, we can use a modified endpoint or parameters
     const queryParams = new URLSearchParams();
     
@@ -351,6 +359,17 @@ export default function DiscoveryPage(): JSX.Element {
     // Set strictInterests to false to always get enough results
     queryParams.append("strictInterests", "false");
     
+    // Add city name if available from the location data
+    if (locationData.address) {
+      queryParams.append("cityName", locationData.address);
+    }
+    
+    // Add coordinates if available
+    if (locationData.coordinates) {
+      queryParams.append("latitude", locationData.coordinates.latitude.toString());
+      queryParams.append("longitude", locationData.coordinates.longitude.toString());
+    }
+    
     const response = await fetch(`/api/restaurants/discover?${queryParams.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch restaurants");
     
@@ -365,9 +384,9 @@ export default function DiscoveryPage(): JSX.Element {
       interests: Array.isArray(r.interests) ? r.interests : [],
       rating: r.rating || "0",
       num_reviews: r.num_reviews || "0",
-      latitude: r.latitude || null,
-      longitude: r.longitude || null,
-      _count: r._count || { reviews: 0 } // Make sure this is included
+      widerAreas: r.widerAreas || [],
+      isNearby: r.isNearby || false, // Flag if restaurant is nearby based on server response
+      _count: r._count || { reviews: 0 }
     }));
     
     setRestaurants(formattedRestaurants);
@@ -721,6 +740,7 @@ export default function DiscoveryPage(): JSX.Element {
       </div>
     );
   };
+  
   // If not authenticated, show login prompt
   if (status === "unauthenticated") {
     return (
@@ -907,7 +927,16 @@ export default function DiscoveryPage(): JSX.Element {
                           </div>
                         </div>
                         <div className="p-4">
-                          <h3 className="font-semibold text-lg hover:text-[#dab9f8]">{restaurant.name}</h3>
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-semibold text-lg hover:text-[#dab9f8]">{restaurant.name}</h3>
+                            
+                            {/* Display "Near You" tag if location matches */}
+                            {restaurant.isNearby && (
+                              <span className="bg-[#f2d36e] text-white text-xs px-2 py-1 rounded-full">
+                                Near You
+                              </span>
+                            )}
+                          </div>
                           
                           {/* Restaurant location displayed on a separate line */}
                           <div className="flex items-start gap-1.5 text-sm text-gray-500 mt-1 mb-2">
@@ -915,7 +944,7 @@ export default function DiscoveryPage(): JSX.Element {
                             <span className="line-clamp-1">{restaurant.address}</span>
                           </div>
                           
-                          {/* Has Reviews indicator (replaces star rating) */}
+                          {/* Has Reviews indicator */}
                           <div className="flex items-center mt-3">
                             <span 
                               className={`inline-block rounded-full w-2 h-2 ${
@@ -927,7 +956,7 @@ export default function DiscoveryPage(): JSX.Element {
                             </span>
                           </div>
                           
-                          {/* Show interests instead of categories */}
+                          {/* Show interests */}
                           {restaurant.interests && restaurant.interests.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-1">
                               {restaurant.interests.slice(0, 3).map((interest, i) => (
@@ -948,7 +977,7 @@ export default function DiscoveryPage(): JSX.Element {
                 </div>
               )}
               
-              {/* Reviews Tab - Updated to use the custom renderReviewCard function */}
+              {/* Reviews Tab */}
               {activeTab === "reviews" && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {reviews.length > 0 ? (
@@ -961,7 +990,7 @@ export default function DiscoveryPage(): JSX.Element {
                 </div>
               )}
               
-              {/* Photos Tab - With updated UI for certified foodie photos */}
+              {/* Photos Tab */}
               {activeTab === "photos" && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {photos.length > 0 ? (
@@ -1074,7 +1103,7 @@ export default function DiscoveryPage(): JSX.Element {
             patronId: selectedReview.patronId ?? selectedReview.patron?.id,
             isAnonymous: selectedReview.isAnonymous ?? false,
             userVote: selectedReview.userVote,
-            restaurantResponse: selectedReview.restaurantResponse,// Add this line
+            restaurantResponse: selectedReview.restaurantResponse,
           }}
           isOpen={isReviewModalOpen}
           onClose={handleCloseReviewModal}
