@@ -708,23 +708,7 @@ export default function ProfilePage(): JSX.Element {
                   />
                 </div>
                 
-                {/* Location */}
-                <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2">Location</label>
-                  <div className="relative">
-                    <select className="w-full p-3 appearance-none bg-white border border-[#fdedf6] rounded-md text-gray-700 focus:outline-none focus:border-2 focus:border-[#fdedf6]">
-                      <option>New York, NY</option>
-                      <option>Los Angeles, CA</option>
-                      <option>Chicago, IL</option>
-                      <option>Houston, TX</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+
                 
                 {/* Username */}
                 <div>

@@ -5,13 +5,13 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/server/db";
 
-// This is for the API route in /api/review/[id]/route.ts
+// GET handler for fetching a specific review
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const { id } = params;
+    const { id } = await params;
     console.log("Get Review API: Fetching review with ID:", id);
 
     // Get the current user's session
@@ -79,7 +79,7 @@ export async function GET(
       restaurantId: review.restaurantId,
       menuItemId: review.menuItemId,
       menuItemName: review.menuItem?.name,
-      patronId: review.patron.id,
+      patronId: review.patronId,
       restaurantResponse: review.restaurantResponse, // Include restaurant response
       patron: review.patron ? {
         id: review.patron.id,
@@ -103,10 +103,10 @@ export async function GET(
 // DELETE handler for removing a review
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const { id } = params;
+    const { id } = await params;
     console.log("Delete Review API: Processing delete request for review ID:", id);
 
     // Get server session with authOptions
@@ -171,10 +171,10 @@ export async function DELETE(
 // PUT handler for updating a review
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const { id } = params;
+    const { id } = await params;
     console.log("Update Review API: Processing update for review ID:", id);
 
     // Get server session with authOptions

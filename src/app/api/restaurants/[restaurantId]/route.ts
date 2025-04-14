@@ -118,8 +118,8 @@ export async function GET(
         date,
         upvotes,
         userVote,
-        isVerified: review.isVerified || false,
-        restaurantResponse: review.restaurantResponse || null, // Ensure restaurantResponse is included
+        isVerified: review.isVerified ?? false,
+        restaurantResponse: review.restaurantResponse ?? null, // Ensure restaurantResponse is included
         votes: undefined
       };
     });
