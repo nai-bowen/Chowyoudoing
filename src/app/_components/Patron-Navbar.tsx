@@ -294,7 +294,7 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
           <div className="bg-[#f2d36e] rounded-full h-10 w-10 flex items-center justify-center">
             <FontAwesomeIcon icon={faUtensils} className="text-white" />
           </div>
-          <h1 className="ml-3 text-xl font-bold">Chow You Doing?</h1>
+          <h3 className="ml-3 text-xl font-bold md:text-xl text-base">Chow You Doing?</h3>
         </div>
         
         {/* Desktop Navigation */}
@@ -488,16 +488,6 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
                 }`}
               >
                 Discover
-              </Link>
-              <Link 
-                href="/patron-search" 
-                className={`px-4 py-2 rounded ${
-                  isActivePath('/patron-search') 
-                    ? 'bg-[#fbe9fc]' 
-                    : 'hover:bg-[#fbe9fc]'
-                }`}
-              >
-                Search
               </Link>
               <div className="border-t border-gray-100 mt-4 pt-4">
                 <button 

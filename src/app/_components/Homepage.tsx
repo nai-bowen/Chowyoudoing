@@ -204,7 +204,7 @@ export default function Home(): JSX.Element {
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-3xl font-bold text-[#F1C84B]">Featured Restaurants</h2>
             {/* Public link - no auth needed */}
-            <Link href="/discover" className="text-[#FFB400] hover:text-[#D29501] font-medium flex items-center gap-1">
+            <Link href="/login" className="text-[#FFB400] hover:text-[#D29501] font-medium flex items-center gap-1">
               View all
               <ArrowRight size={16} />
             </Link>
@@ -226,7 +226,7 @@ export default function Home(): JSX.Element {
               return (
                 <Link 
                   key={restaurant.id} 
-                  href={`/restaurants/${restaurant.id}`} 
+                  href={`/login`} 
                   className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden"
                 >
                   <div className="h-48 overflow-hidden">

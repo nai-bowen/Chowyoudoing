@@ -204,7 +204,7 @@ const ReviewsSection = () => {
                     >
                       {/* Restaurant Name Link */}
                       <Link 
-                        href={`/restaurants/${review.restaurantId}`}
+                        href={`/login`}
                         className="block text-xl font-semibold text-[#F1C84B] hover:underline mb-3"
                       >
                         {review.restaurantName}
