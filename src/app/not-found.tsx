@@ -83,7 +83,7 @@ const NotFound = (): JSX.Element => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.5 }}
         >
-          <h2 className="text-2xl md:text-3xl font-bold text-[#393E46] mb-3">Oh Buns! This page can't be found :(</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#393E46] mb-3">Oh Buns! This page can&apos;t be found :(</h2>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
             The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
           </p>
