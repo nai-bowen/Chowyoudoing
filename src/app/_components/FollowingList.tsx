@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faUserGroup, faSearch, faXmark } from "@fortawesome/free-solid-svg-icons";
 import PatronProfileModal from "./PatronProfileModal";
+import { createPortal } from "react-dom";
 
 interface Patron {
   id: string;
@@ -19,14 +20,22 @@ const FollowingList: React.FC = () => {
   const [following, setFollowing] = useState<Patron[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPatronId, setSelectedPatronId] = useState<string | null>(null);
+  const [selectedPatron, setSelectedPatron] = useState<Patron | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  
+  // State to track if we're in the browser environment for portal rendering
+  const [isBrowser, setIsBrowser] = useState<boolean>(false);
   
   // Search states
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<Patron[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [showingSearchResults, setShowingSearchResults] = useState<boolean>(false);
+  
+  // Initialize browser state on component mount
+  useEffect(() => {
+    setIsBrowser(true);
+  }, []);
   
   // Fetch following list on component mount
   useEffect(() => {
@@ -91,8 +100,14 @@ const FollowingList: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery, searchPatrons]);
   
-  const handleViewProfile = (patronId: string): void => {
-    setSelectedPatronId(patronId);
+  const handleViewProfile = (patron: Patron): void => {
+    // Clear search when opening a profile to prevent UI constraints
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowingSearchResults(false);
+    
+    // Set the selected patron and open modal
+    setSelectedPatron(patron);
     setIsProfileModalOpen(true);
   };
   
@@ -108,6 +123,21 @@ const FollowingList: React.FC = () => {
   
   // Filter following list if not showing search results
   const displayList = showingSearchResults ? searchResults : following;
+  
+  // Render profile modal with portal
+  const renderProfileModal = (): React.ReactNode => {
+    if (!isBrowser || !selectedPatron || !isProfileModalOpen) return null;
+    
+    return createPortal(
+      <PatronProfileModal
+        patronId={selectedPatron.id}
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        isCertifiedFoodie={selectedPatron.isCertifiedFoodie}
+      />,
+      document.body
+    );
+  };
   
   return (
     <div>
@@ -182,7 +212,7 @@ const FollowingList: React.FC = () => {
             <div
               key={patron.id}
               className="flex items-center p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer"
-              onClick={() => handleViewProfile(patron.id)}
+              onClick={() => handleViewProfile(patron)}
             >
               <div className="relative">
                 {patron.profileImage ? (
@@ -234,14 +264,8 @@ const FollowingList: React.FC = () => {
         </div>
       ) : null}
       
-      {/* Profile Modal */}
-      {selectedPatronId && (
-        <PatronProfileModal
-          patronId={selectedPatronId}
-          isOpen={isProfileModalOpen}
-          onClose={() => setIsProfileModalOpen(false)}
-        />
-      )}
+      {/* Render the modal via portal */}
+      {renderProfileModal()}
     </div>
   );
 };

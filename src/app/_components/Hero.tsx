@@ -114,6 +114,14 @@ const Hero: React.FC = () => {
     setQuery(e.target.value);
   };
 
+  // Function to handle popular search term clicks
+  const handlePopularTermClick = (term: string): void => {
+    setQuery(term);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   const toggleFilter = (filter: keyof Filters): void => {
     setFilters(prev => ({
       ...prev,
@@ -306,12 +314,33 @@ const Hero: React.FC = () => {
               />
             )}
 
+            {/* Popular search terms - updated to set search query instead of navigating */}
             <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm text-gray-500">
               <span>Popular:</span>
-              <Link href="/patron-search?q=Pizza" className="text-[#F1C84B] hover:underline">Pizza</Link>
-              <Link href="/patron-search?q=Sushi" className="text-[#F1C84B] hover:underline">Sushi</Link>
-              <Link href="/patron-search?q=Burgers" className="text-[#F1C84B] hover:underline">Burgers</Link>
-              <Link href="/patron-search?q=Vegetarian" className="text-[#F1C84B] hover:underline">Vegetarian</Link>
+              <button 
+                onClick={() => handlePopularTermClick("Pizza")} 
+                className="text-[#F1C84B] hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
+              >
+                Pizza
+              </button>
+              <button 
+                onClick={() => handlePopularTermClick("Sushi")} 
+                className="text-[#F1C84B] hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
+              >
+                Sushi
+              </button>
+              <button 
+                onClick={() => handlePopularTermClick("Burgers")} 
+                className="text-[#F1C84B] hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
+              >
+                Burgers
+              </button>
+              <button 
+                onClick={() => handlePopularTermClick("Vegetarian")} 
+                className="text-[#F1C84B] hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
+              >
+                Vegetarian
+              </button>
             </div>
           </div>
         </div>

@@ -20,14 +20,22 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email and password are required.");
         }
 
+        // Normalize email to lowercase for consistency
+        const email = credentials.email.toLowerCase().trim();
+        
         // Default to patron if userType is not specified
         const userType = credentials.userType || "patron";
 
         // Check if this is a restaurateur login
         if (userType === "restaurateur") {
-          // Try to find the restaurateur directly
-          const restaurateur = await prisma.restaurateur.findUnique({
-            where: { email: credentials.email },
+          // Try to find the restaurateur with case-insensitive email matching
+          const restaurateur = await prisma.restaurateur.findFirst({
+            where: { 
+              email: {
+                equals: email,
+                mode: "insensitive" // Case-insensitive comparison
+              }
+            },
           });
 
           if (restaurateur) {
@@ -48,9 +56,14 @@ export const authOptions: NextAuthOptions = {
             };
           }
 
-          // If not found directly, check RestaurateurAccount
+          // If not found directly, check RestaurateurAccount with case-insensitive match
           const restaurateurAccount = await prisma.restaurateurAccount.findFirst({
-            where: { email: credentials.email },
+            where: { 
+              email: {
+                equals: email,
+                mode: "insensitive" // Case-insensitive comparison
+              }
+            },
             include: { restaurateur: true }
           });
 
@@ -75,12 +88,18 @@ export const authOptions: NextAuthOptions = {
           throw new Error("No restaurateur found with this email.");
         } 
         
-        // Patron login (default)
-        const patron = await prisma.patron.findUnique({
-          where: { email: credentials.email },
+        // Patron login (default) - Use case-insensitive match
+        const patron = await prisma.patron.findFirst({
+          where: { 
+            email: {
+              equals: email,
+              mode: "insensitive" // Case-insensitive comparison
+            }
+          },
         });
 
         if (!patron) {
+          console.log(`No patron found with email: ${email}`);
           throw new Error("No user found.");
         }
 

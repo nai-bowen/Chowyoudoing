@@ -79,12 +79,6 @@ const PatronProfileModal: React.FC<PatronProfileModalProps> = ({
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
   
-  // For debugging - log props on mount
-  useEffect(() => {
-    console.log("PatronProfileModal mounted with patronId:", patronId);
-    console.log("Explicit certified foodie prop value:", propIsCertifiedFoodie);
-  }, [patronId, propIsCertifiedFoodie]);
-  
   // Fetch user profile data
   useEffect(() => {
     const fetchProfileData = async (): Promise<void> => {
@@ -95,98 +89,55 @@ const PatronProfileModal: React.FC<PatronProfileModalProps> = ({
       
       try {
         console.log("Fetching profile data for ID:", patronId);
-        const response = await fetch(`/api/profile/patron?id=${patronId}`);
+        console.log("Explicitly passed isCertifiedFoodie value:", propIsCertifiedFoodie);
         
-        console.log("API Response status:", response.status);
+        const response = await fetch(`/api/profile/patron?id=${patronId}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch profile data: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log("Profile API response:", data);
         
         // Check if the patron property exists in the response
         if (data.patron) {
-          console.log("Setting profile data:", data.patron);
+          console.log("Raw profile data received:", data.patron);
+          console.log("API isCertifiedFoodie value:", data.patron.isCertifiedFoodie);
           
-          // EXTENSIVE DEBUGGING FOR CERTIFIED FOODIE STATUS
-          console.log("Raw certified foodie status check:");
-          console.log("- Direct isCertifiedFoodie:", data.patron.isCertifiedFoodie);
-          console.log("- Type of isCertifiedFoodie:", typeof data.patron.isCertifiedFoodie);
-          console.log("- Capitalized IsCertifiedFoodie:", data.patron.IsCertifiedFoodie);
-          console.log("- certifiedFoodie:", data.patron.certifiedFoodie);
-          console.log("- isFoodieCertified:", data.patron.isFoodieCertified);
-          console.log("- certified:", data.patron.certified);
+          // First, prioritize the prop passed from parent component (FollowingList)
+          // This ensures we use the value from the Follow API when available
+          let effectiveCertificationStatus: boolean;
           
-          // Check for nested properties
-          if (data.patron.profile) {
-            console.log("- Nested in profile:", data.patron.profile.isCertifiedFoodie);
-          }
-          if (data.patron.certification) {
-            console.log("- Nested in certification:", data.patron.certification.certified);
+          if (propIsCertifiedFoodie !== undefined) {
+            console.log("Using explicitly passed certification status:", propIsCertifiedFoodie);
+            effectiveCertificationStatus = propIsCertifiedFoodie;
+          } else {
+            // Use a more direct approach to check certification status from the API
+            effectiveCertificationStatus = Boolean(data.patron.isCertifiedFoodie);
+            console.log("Using API certification status:", effectiveCertificationStatus);
           }
           
-          // Check string representations
-          if (typeof data.patron.isCertifiedFoodie === 'string') {
-            console.log("- String value parsed:", data.patron.isCertifiedFoodie.toLowerCase() === 'true');
-          }
-          
-          // Try to determine the actual certification status from various possible properties
-          const apiCertificationStatus = 
-            // Check the standard property as boolean
-            (typeof data.patron.isCertifiedFoodie === 'boolean' && data.patron.isCertifiedFoodie) || 
-            
-            // Check for string values that represent true
-            (typeof data.patron.isCertifiedFoodie === 'string' && 
-             ['true', 'yes', '1', 'on'].includes(data.patron.isCertifiedFoodie.toLowerCase())) ||
-            
-            // Check numeric values
-            (typeof data.patron.isCertifiedFoodie === 'number' && data.patron.isCertifiedFoodie === 1) ||
-            
-            // Check alternate property names
-            (typeof data.patron.IsCertifiedFoodie === 'boolean' && data.patron.IsCertifiedFoodie) ||
-            (typeof data.patron.certifiedFoodie === 'boolean' && data.patron.certifiedFoodie) ||
-            (typeof data.patron.isFoodieCertified === 'boolean' && data.patron.isFoodieCertified) ||
-            (typeof data.patron.certified === 'boolean' && data.patron.certified) ||
-            (typeof data.patron.is_certified_foodie === 'boolean' && data.patron.is_certified_foodie) ||
-            
-            // Check if review count is high (a potential heuristic for certification)
-            (data.patron._count && data.patron._count.reviews && data.patron._count.reviews >= 10) ||
-            
-            // Check nested objects
-            !!(data.patron.profile && data.patron.profile.isCertifiedFoodie) ||
-            !!(data.patron.certification && 
-                (data.patron.certification.certified === true || 
-                 data.patron.certification.status === 'certified' || 
-                 data.patron.certification.status === 'approved')) ||
-            
-            // Check if there's a certification date (indicating certified)
-            !!(data.patron.certificationDate) ||
-            
-            // As a final fallback, check if the prop was explicitly passed as true or if the ID matches known foodie IDs
-            propIsCertifiedFoodie === true;
-          
-          console.log("Determined certification status from API:", apiCertificationStatus);
-          
-          // If the isCertifiedFoodie prop was explicitly passed, use it instead of the API value
-          const effectiveCertificationStatus = propIsCertifiedFoodie !== undefined 
-            ? propIsCertifiedFoodie 
-            : apiCertificationStatus;
-            
           console.log("Final certification status to use:", effectiveCertificationStatus);
           
-          // Debug/testing - always force to true for now until the database issues are fixed
-          // Remove this line in production when database properly sets certification
-          const forceCertified = true; // ⚠️ TEMPORARY FOR TESTING - REMOVE LATER ⚠️
-          
-          const profileDataWithCertification = {
-            ...data.patron,
-            isCertifiedFoodie: forceCertified || effectiveCertificationStatus
+          // Create a clean profile object with consistent property names
+          const profileDataWithCertification: PatronProfileData = {
+            id: data.patron.id,
+            firstName: data.patron.firstName,
+            lastName: data.patron.lastName,
+            email: data.patron.email,
+            username: data.patron.username,
+            profileImage: data.patron.profileImage,
+            bio: data.patron.bio,
+            interests: Array.isArray(data.patron.interests) ? data.patron.interests : [],
+            isCertifiedFoodie: effectiveCertificationStatus,
+            _count: data.patron._count || { 
+              reviews: 0, 
+              followers: 0, 
+              following: 0 
+            }
           };
           
           setProfileData(profileDataWithCertification);
-          console.log("Final profile data with certification status:", profileDataWithCertification);
         } else {
           console.error("No patron data in response:", data);
           setError("Profile data not found");
@@ -200,7 +151,7 @@ const PatronProfileModal: React.FC<PatronProfileModalProps> = ({
     };
     
     fetchProfileData();
-  }, [patronId, isOpen]);
+  }, [patronId, isOpen, propIsCertifiedFoodie]);
   
   // Fetch user reviews
   const fetchUserReviews = async (): Promise<void> => {
@@ -373,10 +324,11 @@ const PatronProfileModal: React.FC<PatronProfileModalProps> = ({
   };
   
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50">
       <div
         ref={modalRef}
         className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-y-auto max-h-[90vh]"
+        style={{ position: 'relative', zIndex: 10000 }}
       >
         {isLoading ? (
           <div className="p-6 flex justify-center items-center h-64">
@@ -398,7 +350,7 @@ const PatronProfileModal: React.FC<PatronProfileModalProps> = ({
         ) : profileData ? (
           <div>
             {/* Header with navigation */}
-            <div className="p-4  flex justify-between items-center ">
+            <div className="p-4 flex justify-between items-center">
               <div className="flex items-center">
                 {activePage === 'reviews' && (
                   <button
@@ -439,9 +391,9 @@ const PatronProfileModal: React.FC<PatronProfileModalProps> = ({
                       </div>
                     )}
                     
-                    {/* Make the certified foodie indicator more noticeable */}
-                  {(profileData.isCertifiedFoodie || propIsCertifiedFoodie) && (
-                      <div className="absolute -bottom-1 -right-1 bg-[#f2d36e] rounded-full p-1.5 border-2 border-white shadow-md animate-pulse">
+                    {/* Certified foodie indicator badge */}
+                    {profileData.isCertifiedFoodie && (
+                      <div className="absolute -bottom-1 -right-1 bg-[#f2d36e] rounded-full p-1.5 border-2 border-white shadow-md">
                         <FontAwesomeIcon icon={faCertificate} className="text-white text-xs" />
                       </div>
                     )}
@@ -456,7 +408,7 @@ const PatronProfileModal: React.FC<PatronProfileModalProps> = ({
                     )}
                     
                     {/* Certified Foodie Badge */}
-                    {(profileData.isCertifiedFoodie || propIsCertifiedFoodie) && (
+                    {profileData.isCertifiedFoodie && (
                       <div className="flex items-center mt-1 text-sm bg-[#f9c3c9] text-[#333333] px-2 py-0.5 rounded-full w-fit shadow-sm">
                         <FontAwesomeIcon icon={faAward} className="mr-1" />
                         <span>Certified Foodie</span>
@@ -466,14 +418,14 @@ const PatronProfileModal: React.FC<PatronProfileModalProps> = ({
                 </div>
                 
                 {/* Award Badge for Certified Foodies */}
-                {(profileData.isCertifiedFoodie || propIsCertifiedFoodie) && (
+                {profileData.isCertifiedFoodie && (
                   <div className="flex items-center justify-center mb-6 bg-[#f5b7ee]/20 py-3 px-4 rounded-lg border border-[#f5b7ee] shadow-md">
                     <div className="mr-3 text-[#dab9f8]">
                       <FontAwesomeIcon icon={faAward} size="2x" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-[#333333]">Certified Food Critic</h4>
-                      <p className="text-sm text-gray-600">Recognied for exceptional food knowledge and reviews</p>
+                      <p className="text-sm text-gray-600">Recognized for exceptional food knowledge and reviews</p>
                     </div>
                   </div>
                 )}
