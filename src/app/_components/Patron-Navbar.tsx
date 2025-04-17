@@ -13,12 +13,13 @@ import {
   faUtensils,
   faSignOutAlt,
   faExchangeAlt,
-  faClipboardList 
+  faClipboardList,
+  faHome // Added home icon
 } from "@fortawesome/free-solid-svg-icons";
 import ProfileImage from "./ProfileImage";
 import RequestMenuModal from "@/app/_components/RequestMenuModal";
 import SearchResults, { SearchResult } from "./SearchResults"; // Import the SearchResults component
-
+import Image from "next/image";
 // Define the props for the component
 interface PatronNavProps {
   className?: string;
@@ -289,14 +290,19 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
       isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm' : 'bg-transparent'
     } ${className}`}>
       <div className="container mx-auto flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center">
-          <div className="bg-[#f2d36e] rounded-full h-10 w-10 flex items-center justify-center">
-            <FontAwesomeIcon icon={faUtensils} className="text-white" />
-          </div>
-          <h3 className="ml-3 text-xl font-bold md:text-xl text-base">Chow You Doing?</h3>
-        </div>
-        
+    {/* Logo */}
+    <div className="flex items-center">
+            <div className="w-8 h-8 bg-[`#F1C84B`] rounded-full flex items-center justify-center"> 
+              <Image 
+                src="/assets/cyd_emblem.png" 
+                alt="Chow You Doing Logo"
+                width={100}
+                height={100}
+              /> 
+            </div> 
+      <h3 className="ml-3 text-xl font-bold md:text-xl text-base text-[#F1C84B]">Chow You Doing?</h3>
+    </div>
+            
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           <Link 
@@ -360,6 +366,15 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
               />
             )}
           </div>
+          
+          {/* Home Icon - Added new link to homepage */}
+          <Link 
+            href="/"
+            className="text-gray-600 hover:text-[#f3b4eb] p-2"
+            title="Go to Homepage"
+          >
+            <FontAwesomeIcon icon={faHome} />
+          </Link>
           
           {/* Request Menu Icon */}
           <button
@@ -469,6 +484,18 @@ const PatronNav: React.FC<PatronNavProps> = ({ className = "" }) => {
             </div>
             
             <nav className="flex flex-col space-y-3">
+              {/* Add Home link to mobile menu too */}
+              <Link 
+                href="/" 
+                className={`px-4 py-2 rounded ${
+                  isActivePath('/') 
+                    ? 'bg-[#faf2e5]' 
+                    : 'hover:bg-[#faf2e5]'
+                }`}
+              >
+                <FontAwesomeIcon icon={faHome} className="mr-2" />
+                Home
+              </Link>
               <Link 
                 href="/patron-dashboard" 
                 className={`px-4 py-2 rounded ${

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, ArrowRight, Star, MapPin, ExternalLink, Mail, Phone, MapIcon, ArrowRightCircle, AlertCircle } from 'lucide-react';
+import { Search, ArrowRight, Star, MapPin, ExternalLink, Mail, Phone, MapIcon, ArrowRightCircle, AlertCircle, X } from 'lucide-react';
 import Navbar from './Home-Navbar';
 import Hero from './Hero';
 import { useSession } from "next-auth/react";
@@ -43,16 +43,63 @@ type Review = {
   };
 };
 
+// Login Modal Component for Restaurants
+const RestaurantLoginModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onLogin: () => void;
+  restaurantName: string;
+}> = ({ isOpen, onClose, onLogin, restaurantName }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
+      <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full relative">
+        <button 
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+        >
+          <X size={20} />
+        </button>
+        <h3 className="text-xl font-bold mb-3">
+          Discover More About {restaurantName}!
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Want to discover more restaurants? Login or stay on the homepage to search these options without an account!
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
+            Stay on Homepage
+          </button>
+          <button 
+            onClick={onLogin}
+            className="px-4 py-2 bg-[#F1C84B] text-white rounded-lg hover:bg-[#d9a82e]"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Home(): JSX.Element {
   const router = useRouter();
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
   
-  const [activeReview, setActiveReview] = React.useState<number>(0);
-  const [reviews, setReviews] = React.useState<Review[]>([]);
-  const [isLoadingReviews, setIsLoadingReviews] = React.useState<boolean>(true);
-  const [userLocation, setUserLocation] = React.useState<string>("");
-  const [hasLocalReviews, setHasLocalReviews] = React.useState<boolean>(false);
+  const [activeReview, setActiveReview] = useState<number>(0);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(true);
+  const [userLocation, setUserLocation] = useState<string>("");
+  const [hasLocalReviews, setHasLocalReviews] = useState<boolean>(false);
+  
+  // State for restaurant modal
+  const [showRestaurantModal, setShowRestaurantModal] = useState<boolean>(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
 
   // Handler for protected routes
   const handleProtectedLink = useCallback((e: React.MouseEvent, path: string): void => {
@@ -74,6 +121,25 @@ export default function Home(): JSX.Element {
       router.push(path);
     }
   }, [isAuthenticated, router]);
+
+  // Handle restaurant card click
+  const handleRestaurantClick = (e: React.MouseEvent, restaurantName: string): void => {
+    e.preventDefault();
+    
+    if (isAuthenticated) {
+      // If authenticated, redirect to discover page
+      router.push("/discover");
+    } else {
+      // If not authenticated, show modal
+      setSelectedRestaurant(restaurantName);
+      setShowRestaurantModal(true);
+    }
+  };
+
+  // Handle login button click in modal
+  const handleLogin = (): void => {
+    router.push('/login');
+  };
 
   // Fetch mock reviews on mount
   React.useEffect(() => {
@@ -203,15 +269,19 @@ export default function Home(): JSX.Element {
         <div className="container mx-auto px-4 md:px-8">
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-3xl font-bold text-[#F1C84B]">Featured Restaurants</h2>
-            {/* Public link - no auth needed */}
-            <Link href="/login" className="text-[#FFB400] hover:text-[#D29501] font-medium flex items-center gap-1">
+            {/* View all link - will show modal if not authenticated */}
+            <a 
+              href="#"
+              onClick={(e) => handleRestaurantClick(e, "All Restaurants")}
+              className="text-[#FFB400] hover:text-[#D29501] font-medium flex items-center gap-1 cursor-pointer"
+            >
               View all
               <ArrowRight size={16} />
-            </Link>
+            </a>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Restaurant Cards - Public routes (no auth needed) */}
+            {/* Restaurant Cards */}
             {restaurants.map((restaurant, index) => {
               const gradientColors = [
                 '#f2d577',
@@ -224,10 +294,10 @@ export default function Home(): JSX.Element {
               const fallbackGradient = `linear-gradient(135deg, ${baseColor}, ${baseColor}80)`;
 
               return (
-                <Link 
+                <div 
                   key={restaurant.id} 
-                  href={`/login`} 
-                  className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+                  className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer"
+                  onClick={(e) => handleRestaurantClick(e, restaurant.name)}
                 >
                   <div className="h-48 overflow-hidden">
                     <div 
@@ -277,7 +347,7 @@ export default function Home(): JSX.Element {
                       <span className="line-clamp-1">{restaurant.address}</span>
                     </div>
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>
@@ -299,7 +369,7 @@ export default function Home(): JSX.Element {
             {/* Protected route that checks auth status */}
             <a 
               href="#"
-              onClick={(e) => handleProtectedLink(e, "/review")}
+              onClick={(e) => handleProtectedLink(e, "/patron-dashboard")}
               className="bg-white text-[#F1C84B] hover:bg-[#F8A5A5] hover:text-white transition-colors px-10 py-4 rounded-full font-medium text-lg shadow-lg flex items-center gap-2 cursor-pointer"
             >
               Write a Review
@@ -397,7 +467,7 @@ export default function Home(): JSX.Element {
                   <li>
                     <a 
                       href="#" 
-                      onClick={(e) => handleProtectedLink(e, "/review")} 
+                      onClick={(e) => handleProtectedLink(e, "/patron-dashboard")} 
                       className="text-gray-300 hover:text-white cursor-pointer"
                     >
                       Write a Review
@@ -454,6 +524,14 @@ export default function Home(): JSX.Element {
           </div>
         </div>
       </footer>
+
+      {/* Restaurant Login Modal */}
+      <RestaurantLoginModal
+        isOpen={showRestaurantModal}
+        onClose={() => setShowRestaurantModal(false)}
+        onLogin={handleLogin}
+        restaurantName={selectedRestaurant}
+      />
     </main>
   );
 }

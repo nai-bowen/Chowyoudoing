@@ -2,16 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ThumbsUp, Flag, Star } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { ThumbsUp, Flag, Star, X } from 'lucide-react';
 
 // Type definitions
-type ReviewRatings = {
+interface ReviewRatings {
   taste: number;
   value: number;
   service: number;
-};
+}
 
-type Review = {
+interface Review {
   id: string;
   restaurantId: string;
   restaurantName: string;
@@ -25,10 +27,58 @@ type Review = {
   };
   helpfulCount?: number;
   isHelpful?: boolean;
+}
+
+// Login Modal Component
+const LoginModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onLogin: () => void; 
+  isRestaurant?: boolean;
+  restaurantName?: string;
+}> = ({ isOpen, onClose, onLogin, isRestaurant = false, restaurantName = "" }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
+      <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full relative">
+        <button 
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+        >
+          <X size={20} />
+        </button>
+        <h3 className="text-xl font-bold mb-3">
+          {isRestaurant 
+            ? `Discover More About ${restaurantName}!` 
+            : "Discover More Food Adventures!"}
+        </h3>
+        <p className="text-gray-600 mb-6">
+          {isRestaurant
+            ? "Want to discover more restaurants? Login or stay on the homepage to search these options without an account!"
+            : "Log in to discover more amazing reviews and restaurants tailored to your taste preferences."}
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
+            Stay on Homepage
+          </button>
+          <button 
+            onClick={onLogin}
+            className="px-4 py-2 bg-[#F1C84B] text-white rounded-lg hover:bg-[#d9a82e]"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Component for Star Rating
-const StarRating = ({ rating, size = 16 }: { rating: number; size?: number }) => {
+const StarRating: React.FC<{ rating: number; size?: number }> = ({ rating, size = 16 }) => {
   return (
     <div className="flex">
       {[1, 2, 3, 4, 5].map((star) => (
@@ -47,7 +97,7 @@ const StarRating = ({ rating, size = 16 }: { rating: number; size?: number }) =>
 };
 
 // Avatar component
-const Avatar = ({ name, className = "" }: { name: string; className?: string }) => {
+const Avatar: React.FC<{ name: string; className?: string }> = ({ name, className = "" }) => {
   const initials = name
     .split(' ')
     .map((n) => n[0])
@@ -63,7 +113,10 @@ const Avatar = ({ name, className = "" }: { name: string; className?: string }) 
 };
 
 // Main Reviews Section Component
-const ReviewsSection = () => {
+const ReviewsSection: React.FC = () => {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(true);
   const [userLocation, setUserLocation] = useState<string>("");
@@ -123,7 +176,7 @@ const ReviewsSection = () => {
   }, []);
 
   // Function to handle marking a review as helpful
-  const handleMarkHelpful = (reviewId: string) => {
+  const handleMarkHelpful = (reviewId: string): void => {
     setReviews(reviews.map(review => 
       review.id === reviewId 
         ? { 
@@ -135,6 +188,46 @@ const ReviewsSection = () => {
           } 
         : review
     ));
+  };
+
+  // State to track modal context
+  const [modalContext, setModalContext] = useState<{
+    isRestaurant: boolean;
+    restaurantName: string;
+  }>({
+    isRestaurant: false,
+    restaurantName: ""
+  });
+
+  // Handle see more reviews click
+  const handleSeeMoreClick = (e: React.MouseEvent): void => {
+    if (!session) {
+      e.preventDefault();
+      setModalContext({
+        isRestaurant: false,
+        restaurantName: ""
+      });
+      setShowLoginModal(true);
+    }
+    // If logged in, Link will handle navigation
+  };
+
+  // Handle restaurant click
+  const handleRestaurantClick = (e: React.MouseEvent, restaurantName: string): void => {
+    if (!session) {
+      e.preventDefault();
+      setModalContext({
+        isRestaurant: true,
+        restaurantName
+      });
+      setShowLoginModal(true);
+    }
+    // If logged in, Link will handle navigation
+  };
+
+  // Handle login button click in modal
+  const handleLogin = (): void => {
+    router.push('/login');
   };
 
   // Get the average rating for a review
@@ -204,7 +297,8 @@ const ReviewsSection = () => {
                     >
                       {/* Restaurant Name Link */}
                       <Link 
-                        href={`/login`}
+                        href={session ? "/discover" : "#"}
+                        onClick={(e) => handleRestaurantClick(e, review.restaurantName)}
                         className="block text-xl font-semibold text-[#F1C84B] hover:underline mb-3"
                       >
                         {review.restaurantName}
@@ -308,7 +402,8 @@ const ReviewsSection = () => {
               {/* See More Button */}
               <div className="mt-10 text-center">
                 <Link
-                  href="/patron-search"
+                  href={session ? "/discover" : "#"}
+                  onClick={handleSeeMoreClick}
                   className="inline-flex items-center gap-2 bg-[#F1C84B] hover:bg-[#d9a82e] text-white px-6 py-3 rounded-full text-lg font-medium transition-colors shadow-md"
                 >
                   See More Reviews
@@ -325,6 +420,15 @@ const ReviewsSection = () => {
           )}
         </div>
       </div>
+
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLogin}
+        isRestaurant={modalContext.isRestaurant}
+        restaurantName={modalContext.restaurantName}
+      />
     </section>
   );
 };
