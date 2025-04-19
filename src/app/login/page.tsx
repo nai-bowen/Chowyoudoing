@@ -57,9 +57,18 @@ export default function LoginPage(): JSX.Element {
             CHOW YOU DOING
           </h1>
 
-          <p className="text-center text-[#f2d36f] mb-8">
+          <p className="text-center text-[#f2d36f] mb-2">
             SIGN IN TO YOUR FOODIE ACCOUNT
           </p>
+          
+          <div className="flex justify-center mb-6">
+            <Link href="/" className="text-sm text-[#f2d36f] hover:text-[#dbbaf8] transition-colors flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Homepage
+            </Link>
+          </div>
           
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-6">

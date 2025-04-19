@@ -125,6 +125,8 @@ interface TrendingData {
 
 
 export default function PatronDashboard(): JSX.Element {
+  
+
   const router = useRouter();
   const { data: session, status } = useSession();
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -191,7 +193,7 @@ export default function PatronDashboard(): JSX.Element {
     content: false
   });
 
-  
+
 
   //get profile photo 
   // Helper function to process profile image URL
@@ -360,6 +362,18 @@ export default function PatronDashboard(): JSX.Element {
       fetchfavourites();
     }
   };
+
+
+  // Check if user needs to complete their profile
+  useEffect(() => {
+    // Only redirect if user has the flag AND doesn't have any interests yet
+    const hasInterests = Boolean(session?.user?.interests && session.user.interests.length > 0);
+    
+    if (session?.user?.needsProfileCompletion && !hasInterests) {
+      router.push('/register?mode=complete-google-profile');
+    }
+  }, [session, router]);
+
   useEffect(() => {
     if (activeTab === 'favourites' && status === "authenticated") {
       fetchfavourites();

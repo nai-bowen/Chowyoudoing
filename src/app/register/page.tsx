@@ -1,11 +1,12 @@
+/*eslint-disable*/
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { FcGoogle } from "react-icons/fc";
-import { FaFacebookF, FaApple } from "react-icons/fa";
+import { FaCheck } from "react-icons/fa";
 import FloatingFoodEmojis from '@/app/_components/FloatingFoodEmojis';
 
 // Define interest options
@@ -32,6 +33,12 @@ interface FormData {
 
 export default function RegisterPage(): JSX.Element {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
+  
+  // Check for Google profile completion mode
+  const isGoogleProfileCompletion = searchParams.get('mode') === 'complete-google-profile';
+  
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -45,6 +52,38 @@ export default function RegisterPage(): JSX.Element {
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const [redirectCountdown, setRedirectCountdown] = useState<number>(3);
+
+  // If we're completing a Google profile, load data from session and go to step 3
+  useEffect(() => {
+    if (isGoogleProfileCompletion && session?.user) {
+      setFormData({
+        firstName: session.user.firstName || "",
+        lastName: session.user.lastName || "",
+        email: session.user.email || "",
+        password: "google-oauth-user", // This won't be used
+        confirmPassword: "google-oauth-user",
+        interests: session.user.interests || [],
+      });
+      setStep(3); // Skip to interests step
+    }
+  }, [isGoogleProfileCompletion, session]);
+
+ // In src/app/register/page.tsx
+
+  // Handle countdown for redirect
+  useEffect(() => {
+    if (isSuccess && redirectCountdown > 0) {
+      const timer = setTimeout(() => {
+        setRedirectCountdown(redirectCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (isSuccess && redirectCountdown === 0) {
+      // Always redirect to login page, regardless of completion mode
+      router.push("/login");
+    }
+  }, [isSuccess, redirectCountdown, router]);
 
   // Handle interest selection
   const handleInterestToggle = (interest: string): void => {
@@ -87,6 +126,8 @@ export default function RegisterPage(): JSX.Element {
   };
 
   const handlePrevious = (): void => {
+    // Don't allow going back if we're in Google profile completion mode
+    if (isGoogleProfileCompletion) return;
     setStep((prev) => prev - 1);
   };
 
@@ -94,6 +135,30 @@ export default function RegisterPage(): JSX.Element {
     e.preventDefault();
     setIsLoading(true);
     
+    if (isGoogleProfileCompletion) {
+      try {
+        // For Google users, we just need to update their interests
+        const response = await fetch("/api/profile/update-interests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ interests: formData.interests || [] }),
+        });
+        
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to update interests");
+        }
+        
+        setIsSuccess(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+    
+    // Regular registration process
     const payload = {
       ...formData,
       interests: formData.interests || [],  // Ensure it's always an array
@@ -111,7 +176,8 @@ export default function RegisterPage(): JSX.Element {
       if (!response.ok) {
         setError(data.error ?? "An unexpected error occurred.");
       } else {
-        router.push("/login");
+        // Show success modal instead of immediate redirect
+        setIsSuccess(true);
       }
     } catch (err) {
       setError("An unexpected error occurred.");
@@ -120,16 +186,28 @@ export default function RegisterPage(): JSX.Element {
     }
   };
   
+  // Custom title based on mode
+  const getPageTitle = (): string => {
+    if (isGoogleProfileCompletion) {
+      return "COMPLETE YOUR PROFILE";
+    }
+    return "CREATE YOUR FOODIE ACCOUNT";
+  };
+
   // Render step indicator with only circles
   const renderStepIndicator = (): JSX.Element => {
+    // For Google profile completion, show only 1 step
+    const totalSteps = isGoogleProfileCompletion ? 1 : 3;
+    
     return (
       <div className="flex justify-center mb-6 gap-6">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center">
+        {Array.from({ length: totalSteps }).map((_, i) => (
+          <div key={i} className="flex items-center">
             <div 
               className={`h-4 w-4 rounded-full ${
-                s < step ? "bg-[#f2d36f]" : 
-                s === step ? "bg-[#dbbaf8]" : 
+                isGoogleProfileCompletion ? "bg-[#dbbaf8]" :
+                i + 1 < step ? "bg-[#f2d36f]" : 
+                i + 1 === step ? "bg-[#dbbaf8]" : 
                 "bg-gray-300"
               }`}
             />
@@ -146,6 +224,38 @@ export default function RegisterPage(): JSX.Element {
       <div className="fixed bottom-0 left-0 w-64 h-64 bg-[#FFC1B5]/20 rounded-full blur-3xl"></div>
       <FloatingFoodEmojis />
       
+      {/* Success Modal */}
+      {isSuccess && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="w-full max-w-md bg-white rounded-3xl border border-white/30 
+                    shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl p-8 mx-4">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-[#f2d36f]/20 rounded-full flex items-center justify-center mb-6">
+                <FaCheck className="text-[#f2d36f] text-4xl" />
+              </div>
+              
+              <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-[#dab9f8] to-[#f2d36f] bg-clip-text text-transparent">
+                {isGoogleProfileCompletion ? "Profile Completed!" : "Registration Successful!"}
+              </h2>
+              
+              <p className="text-gray-600 mb-8">
+                {isGoogleProfileCompletion 
+                  ? "Your profile has been updated with your food preferences." 
+                  : "Your account has been created successfully."} 
+                You'll be redirected in {redirectCountdown} seconds...
+              </p>
+              
+              <Link 
+                href={isGoogleProfileCompletion ? "/login" : "/login"} 
+                className="px-6 py-3 bg-[#dbbaf8] text-white font-medium rounded-full hover:opacity-90 w-full max-w-xs"
+              >
+                {isGoogleProfileCompletion ? "Go to Login Now" : "Go to Login Now"}
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Registration Card */}
       <div className="w-full max-w-md bg-white/60 backdrop-blur-md rounded-3xl border border-white/30 
                     shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
@@ -155,27 +265,47 @@ export default function RegisterPage(): JSX.Element {
             CHOW YOU DOING
           </h1>
 
-          <p className="text-center text-[#f2d36f] mb-6">
-            CREATE YOUR FOODIE ACCOUNT
+          <p className="text-center text-[#f2d36f] mb-2">
+            {getPageTitle()}
           </p>
+          
+          {!isGoogleProfileCompletion && (
+            <div className="flex justify-center mb-4">
+              <Link href="/" className="text-sm text-[#f2d36f] hover:text-[#dbbaf8] transition-colors flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Homepage
+              </Link>
+            </div>
+          )}
           
           {/* Step Indicator */}
           {renderStepIndicator()}
           
           {/* Step text */}
           <h3 className="text-center text-[#dbbaf8] font-medium mb-6">
-            {step === 1 ? "PERSONAL INFORMATION" : 
+            {isGoogleProfileCompletion ? "FOOD PREFERENCES" : 
+             step === 1 ? "PERSONAL INFORMATION" : 
              step === 2 ? "SECURE YOUR ACCOUNT" : 
              "FOOD PREFERENCES (OPTIONAL)"}
           </h3>
           
+          {isGoogleProfileCompletion && (
+            <div className="bg-[#fdf9f5] p-4 rounded-lg mb-4 text-center">
+              <p className="text-gray-700">
+                Welcome, {formData.firstName}! Please select your food preferences to help us personalize your experience.
+              </p>
+            </div>
+          )}
+          
           {/* Form */}
           <form
-            onSubmit={step === 3 ? handleRegister : handleContinue}
+            onSubmit={step === 3 || isGoogleProfileCompletion ? handleRegister : handleContinue}
             className="space-y-6"
             noValidate
           >
-            {step === 1 && (
+            {step === 1 && !isGoogleProfileCompletion && (
               <>
                 <div>
                   <label htmlFor="firstName" className="block text-[#dbbaf8] font-medium mb-1">
@@ -230,7 +360,7 @@ export default function RegisterPage(): JSX.Element {
               </>
             )}
 
-            {step === 2 && (
+            {step === 2 && !isGoogleProfileCompletion && (
               <>
                 <div>
                   <label htmlFor="password" className="block text-[#dbbaf8] font-medium mb-1">
@@ -283,10 +413,10 @@ export default function RegisterPage(): JSX.Element {
               </>
             )}
 
-            {step === 3 && (
+            {(step === 3 || isGoogleProfileCompletion) && (
               <div>
                 <p className="text-gray-600 mb-4">
-                  Select your favorite food categories to help us recommend restaurants youll love.
+                  Select your favorite food categories to help us recommend restaurants you'll love.
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-2">
                   {interestOptions.map((interest) => {
@@ -317,8 +447,8 @@ export default function RegisterPage(): JSX.Element {
             )}
             
             {/* Navigation Buttons */}
-            <div className={`flex ${step === 1 ? 'justify-center' : 'justify-between'} mt-6`}>
-              {step > 1 && (
+            <div className={`flex ${step === 1 && !isGoogleProfileCompletion ? 'justify-center' : 'justify-between'} mt-6`}>
+              {step > 1 && !isGoogleProfileCompletion && (
                 <button
                   type="button"
                   onClick={handlePrevious}
@@ -332,22 +462,24 @@ export default function RegisterPage(): JSX.Element {
                 type="submit"
                 disabled={isLoading}
                 className={`px-6 py-3 ${
-                  step === 3 ? 'bg-[#dbbaf8]' : 'bg-[#f2d36f]'
+                  step === 3 || isGoogleProfileCompletion ? 'bg-[#dbbaf8]' : 'bg-[#f2d36f]'
                 } text-white font-medium rounded-full 
                            hover:opacity-90 focus:outline-none disabled:opacity-70 ${
-                  step === 1 ? 'w-3/4' : 'w-auto'
+                  step === 1 && !isGoogleProfileCompletion ? 'w-3/4' : 'w-auto'
                 }`}
               >
                 {isLoading 
                   ? "Processing..." 
-                  : step === 3 
-                    ? "Create Account" 
-                    : "Continue"}
+                  : isGoogleProfileCompletion
+                    ? "Complete Profile"
+                    : step === 3 
+                      ? "Create Account" 
+                      : "Continue"}
               </button>
             </div>
           </form>
           
-          {step === 1 && (
+          {step === 1 && !isGoogleProfileCompletion && (
             <>
               <div className="flex items-center justify-between my-6">
                 <hr className="w-full border-gray-300" />
@@ -368,24 +500,26 @@ export default function RegisterPage(): JSX.Element {
           )}
         </div>
         
-        <div className="py-4 text-center border-t border-gray-200 bg-white/30">
-          <div className="mb-2">
-            <p className="text-gray-400">
-              ALREADY HAVE AN ACCOUNT?{" "}
-              <Link href="/login" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
-                SIGN IN
-              </Link>
-            </p>
+        {!isGoogleProfileCompletion && (
+          <div className="py-4 text-center border-t border-gray-200 bg-white/30">
+            <div className="mb-2">
+              <p className="text-gray-400">
+                ALREADY HAVE AN ACCOUNT?{" "}
+                <Link href="/login" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
+                  SIGN IN
+                </Link>
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-400">
+                RESTAURANT OWNER?{" "}
+                <Link href="/register/restaurateur" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
+                  SIGN UP FOR A BUSINESS ACCOUNT
+                </Link>
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-gray-400">
-              RESTAURANT OWNER?{" "}
-              <Link href="/register/restaurateur" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
-                SIGN UP FOR A BUSINESS ACCOUNT
-              </Link>
-            </p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

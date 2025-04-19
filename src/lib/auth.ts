@@ -1,13 +1,20 @@
 /*eslint-disable */
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { JWT } from "next-auth/jwt";
+import { User } from "next-auth";
 
 const prisma = new PrismaClient();
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -125,31 +132,123 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        // Use Object.assign to avoid TypeScript errors with direct property access
-        Object.assign(token, {
-          id: user.id,
-          email: user.email,
-          // Use type assertion to access custom properties
-          userType: user.userType || "patron",
-          firstName: user.firstName,
-          lastName: user.lastName,
-          interests: user.interests
-        });
+    async signIn({ user, account, profile }) {
+      // Only handle OAuth providers, not credentials
+      if (account?.provider === "google" && user.email) {
+        try {
+          // Check if this email already exists as a patron
+          const existingPatron = await prisma.patron.findFirst({
+            where: {
+              email: {
+                equals: user.email,
+                mode: "insensitive"
+              }
+            }
+          });
+
+          // If user doesn't exist yet, create a new patron record
+          if (!existingPatron) {
+            // Extract name parts - handle null or undefined values
+            const nameParts = (user.name || "").split(" ");
+            const firstName = nameParts[0] || "";
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+
+            // Create a random secure password for Google users
+            const randomPassword = await bcrypt.hash(
+              Math.random().toString(36).slice(2) + Date.now().toString(36), 
+              10
+            );
+
+            try {
+              // Create the new patron account
+              const newPatron = await prisma.patron.create({
+                data: {
+                  email: user.email,
+                  firstName: firstName,
+                  lastName: lastName,
+                  password: randomPassword,
+                  interests: []
+                }
+              });
+              
+              console.log(`Created new patron for Google user: ${user.email} with ID: ${newPatron.id}`);
+              
+              // After successful creation, add the ID to the user object
+              user.id = newPatron.id;
+              (user as User).firstName = firstName;
+              (user as User).lastName = lastName;
+              (user as User).userType = "patron";
+              (user as User).interests = [];
+              (user as User).needsProfileCompletion = true; // Mark as needing completion
+            } catch (createError) {
+              console.error("Error creating patron:", createError);
+              return false; // Prevent sign in if we can't create the user
+            }
+          } else {
+            // If user exists, use their ID
+            user.id = existingPatron.id;
+            // Update the user object with patron data
+            (user as User).firstName = existingPatron.firstName;
+            (user as User).lastName = existingPatron.lastName;
+            (user as User).userType = "patron";
+            (user as User).interests = existingPatron.interests;
+            
+            // Check if the user needs to complete their profile (no interests)
+            if (!existingPatron.interests || existingPatron.interests.length === 0) {
+              (user as User).needsProfileCompletion = true;
+            }
+          }
+        } catch (error) {
+          console.error("Error handling Google sign-in:", error);
+          return false; // Prevent sign in on error
+        }
       }
+      return true; // Allow sign in
+    },
+    
+    async jwt({ token, user, account }) {
+      // Save account info to token
+      if (account) {
+        token.provider = account.provider;
+      }
+      
+      // If this is coming from a sign-in, add user data to token
+      if (user) {
+        token.id = user.id;
+        
+        // Use type assertion for custom properties
+        const typedUser = user as User;
+        token.userType = typedUser.userType || "patron";
+        
+        // Add first/last name if available
+        if (typedUser.firstName) token.firstName = typedUser.firstName;
+        if (typedUser.lastName) token.lastName = typedUser.lastName;
+        if (typedUser.interests) token.interests = typedUser.interests;
+        
+        // Add the profile completion flag
+        if (typedUser.needsProfileCompletion) {
+          token.needsProfileCompletion = true;
+        }
+      }
+      
       return token;
     },
+    
     async session({ session, token }) {
-      // Use Object.assign to avoid TypeScript errors
+      // Add user data from token to session
       if (session.user) {
-        Object.assign(session.user, {
-          id: token.id,
-          userType: token.userType || "patron",
-          firstName: token.firstName,
-          lastName: token.lastName,
-          interests: token.interests
-        });
+        session.user.id = token.id;
+        session.user.userType = token.userType || "patron";
+        
+        // Add additional fields if available
+        if (token.firstName) session.user.firstName = token.firstName;
+        if (token.lastName) session.user.lastName = token.lastName;
+        if (token.interests) session.user.interests = token.interests;
+        
+        // Add the profile completion flag to the session
+        if (token.needsProfileCompletion) {
+          session.user.needsProfileCompletion = true;
+        }
       }
       return session;
     },

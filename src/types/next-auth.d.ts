@@ -9,6 +9,7 @@ declare module "next-auth" {
       firstName?: string;
       lastName?: string;
       interests?: string[];
+      needsProfileCompletion?: boolean; // Add this line
     } & DefaultSession["user"]
   }
 
@@ -17,6 +18,7 @@ declare module "next-auth" {
     firstName?: string;
     lastName?: string;
     interests?: string[];
+    needsProfileCompletion?: boolean; // Add this line
   }
 }
 
@@ -27,5 +29,6 @@ declare module "next-auth/jwt" {
     firstName?: string;
     lastName?: string;
     interests?: string[];
+    needsProfileCompletion?: boolean; // Add this line
   }
 }
