@@ -1,0 +1,299 @@
+
+    <!DOCTYPE html>
+    <div class="mermaid">
+      erDiagram
+Post {
+	Int id
+	String name
+	DateTime createdAt
+	DateTime updatedAt
+	String createdById
+}
+Post }o--|| Patron : createdBy
+Patron {
+	String id
+	String firstName
+	String lastName
+	String email
+	String password
+	String username
+	String profileImage
+	String bio
+	String interests
+	DateTime emailVerified
+	Boolean isCertifiedFoodie
+	DateTime certificationDate
+	CertificationRequest certificationRequest
+	Account accounts
+	Session sessions
+	Post posts
+	Review reviews
+	UserVotes userVotes
+	relations New
+	Favorite favorites
+	Follow followers
+	Follow following
+}
+CertificationRequest {
+	String id
+	DateTime createdAt
+	String status
+	String justification
+	String socialMediaLink
+	DateTime reviewedAt
+	String reviewedBy
+	to Relation
+	String patronId
+}
+CertificationRequest |o--|| Patron : patron
+Favorite {
+	String id
+	DateTime createdAt
+	String patronId
+	relation Polymorphic
+	String restaurantId
+	String reviewId
+	a Ensure
+}
+Favorite }o--|| Patron : patron
+Favorite }o--o| Restaurant : restaurant
+Favorite }o--o| Review : review
+Account {
+	String id
+	String patronId
+	String type
+	String provider
+	String providerAccountId
+	String refresh_token
+	String access_token
+	Int expires_at
+	String token_type
+	String scope
+	String id_token
+	String session_state
+	Int refresh_token_expires_in
+}
+Account }o--|| Patron : patron
+Restaurateur {
+	String id
+	String email
+	String password
+	String restaurantName
+	String businessRegNumber
+	String vatNumber
+	String addressLine1
+	String addressLine2
+	String city
+	String postalCode
+	String country
+	String contactPersonName
+	String contactPersonPhone
+	String contactPersonEmail
+	VerificationStatus verificationStatus
+	DateTime submittedAt
+	DateTime approvedAt
+	documents Proof
+	String utilityBillUrl
+	String businessLicenseUrl
+	String foodHygieneCertUrl
+	String storefrontPhotoUrl
+	String receiptPhotoUrl
+	String restaurantId
+	- Authentication
+	RestaurateurAccount accounts
+	RestaurateurSession sessions
+	RestaurantConnectionRequest connectionRequests
+}
+Restaurateur }o--o| Restaurant : restaurant
+RestaurantConnectionRequest {
+	String id
+	String restaurateurId
+	String restaurantId
+	String status
+	String message
+	DateTime submittedAt
+	DateTime reviewedAt
+	String reviewedBy
+}
+RestaurantConnectionRequest }o--|| Restaurateur : restaurateur
+RestaurantConnectionRequest }o--|| Restaurant : restaurant
+RestaurateurAccount {
+	String id
+	String restaurateurId
+	fields Authentication
+	String type
+	String provider
+	String providerAccountId
+	String refresh_token
+	String access_token
+	Int expires_at
+	String token_type
+	String scope
+	String id_token
+	String session_state
+	Int refresh_token_expires_in
+	fields Added
+	String email
+	String password
+	String businessRegNumber
+	String vatNumber
+	Boolean isApproved
+}
+RestaurateurAccount }o--|| Restaurateur : restaurateur
+RestaurateurSession {
+	String id
+	String sessionToken
+	String restaurateurId
+	DateTime expires
+}
+RestaurateurSession }o--|| Restaurateur : restaurateur
+Restaurant {
+	String id
+	String title
+	String url
+	String detail
+	String rating
+	String num_reviews
+	String location
+	String category
+	String interests
+	String widerAreas
+	DateTime createdAt
+	DateTime updatedAt
+	MenuSection menuSections
+	Review reviews
+	Favorite favorites
+	Restaurateur restaurateurs
+	RestaurantConnectionRequest connectionRequests
+	ReceiptVerification receiptVerifications
+}
+MenuSection {
+	String id
+	String category
+	String restaurantId
+	MenuItem items
+	String interestId
+}
+MenuSection }o--|| Restaurant : restaurant
+MenuSection }o--o| Interest : interest
+MenuItem {
+	String id
+	String name
+	String description
+	String price
+	String img_url
+	String status
+	Int totalUpvotes
+	DateTime createdAt
+	String menuSectionId
+	Interest Inherit
+	String interestId
+	Review reviews
+}
+MenuItem }o--|| MenuSection : menuSection
+MenuItem }o--o| Interest : interest
+Session {
+	String id
+	String sessionToken
+	String patronId
+	DateTime expires
+}
+Session }o--|| Patron : patron
+VerificationToken {
+	String identifier
+	String token
+	DateTime expires
+}
+Interest {
+	String id
+	String name
+	from relations
+	MenuSection menuSections
+	MenuItem menuItems
+}
+Review {
+	String id
+	String content
+	Int rating
+	Int upvotes
+	DateTime createdAt
+	String imageUrl
+	String videoUrl
+	Int asExpected
+	Int wouldRecommend
+	Int valueForMoney
+	Float latitude
+	Float longitude
+	Boolean isAnonymous
+	Boolean isVerified
+	String restaurantResponse
+	relation Optional
+	String menuItemId
+	String patronId
+	String restaurantId
+	UserVotes votes
+	Favorite favorites
+	ReviewFlag flags
+	ReceiptVerification receipts
+}
+Review }o--o| MenuItem : menuItem
+Review }o--|| Patron : patron
+Review }o--|| Restaurant : restaurant
+Follow {
+	String id
+	DateTime createdAt
+	String followerId
+	String followingId
+	unique Ensure
+}
+Follow }o--|| Patron : follower
+Follow }o--|| Patron : following
+UserVotes {
+	String id
+	String userId
+	String reviewId
+	Boolean isUpvote
+	user Each
+}
+UserVotes }o--|| Patron : user
+UserVotes }o--|| Review : review
+TrendingCategory {
+	String id
+	String category
+	Int count
+	Float score
+	DateTime lastUpdated
+	Boolean isActive
+	String reviewIds
+	Int reviewCount
+}
+ReviewFlag {
+	String id
+	String reason
+	String details
+	DateTime createdAt
+	String flaggedBy
+	String status
+	DateTime reviewedAt
+	String reviewId
+}
+ReviewFlag }o--|| Review : review
+ReceiptVerification {
+	String id
+	String receiptImage
+	String status
+	DateTime submittedAt
+	DateTime reviewedAt
+	String reviewedBy
+	String reviewId
+	String restaurantId
+}
+ReceiptVerification }o--o| Review : review
+ReceiptVerification }o--|| Restaurant : restaurant
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ startOnLoad: true });
+    </script>
+  

@@ -1,7 +1,7 @@
 /*eslint-disable*/
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
@@ -31,7 +31,22 @@ interface FormData {
   interests: string[];
 }
 
-export default function RegisterPage(): JSX.Element {
+// Loading component to show while suspense is resolving
+function RegisterLoading(): JSX.Element {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#f9ebc2] via-[#faf0f6] to-white">
+      <div className="w-full max-w-md bg-white/60 backdrop-blur-md rounded-3xl border border-white/30 shadow-lg p-8 text-center">
+        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-[#dab9f8] to-[#f2d36f] bg-clip-text text-transparent">
+          CHOW YOU DOING
+        </h1>
+        <p className="text-gray-600">Loading registration form...</p>
+      </div>
+    </div>
+  );
+}
+
+// The actual register component that uses useSearchParams
+function RegisterContent(): JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -70,8 +85,6 @@ export default function RegisterPage(): JSX.Element {
     }
   }, [isGoogleProfileCompletion, session]);
 
- // In src/app/register/page.tsx
-
   // Handle countdown for redirect
   useEffect(() => {
     if (isSuccess && redirectCountdown > 0) {
@@ -80,7 +93,7 @@ export default function RegisterPage(): JSX.Element {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (isSuccess && redirectCountdown === 0) {
-      // Always redirect to login page, regardless of completion mode
+      // Always redirect to login page
       router.push("/login");
     }
   }, [isSuccess, redirectCountdown, router]);
@@ -246,10 +259,10 @@ export default function RegisterPage(): JSX.Element {
               </p>
               
               <Link 
-                href={isGoogleProfileCompletion ? "/login" : "/login"} 
+                href="/login" 
                 className="px-6 py-3 bg-[#dbbaf8] text-white font-medium rounded-full hover:opacity-90 w-full max-w-xs"
               >
-                {isGoogleProfileCompletion ? "Go to Login Now" : "Go to Login Now"}
+                Go to Login Now
               </Link>
             </div>
           </div>
@@ -522,5 +535,14 @@ export default function RegisterPage(): JSX.Element {
         )}
       </div>
     </div>
+  );
+}
+
+// The main component that wraps RegisterContent with Suspense
+export default function RegisterPage(): JSX.Element {
+  return (
+    <Suspense fallback={<RegisterLoading />}>
+      <RegisterContent />
+    </Suspense>
   );
 }
