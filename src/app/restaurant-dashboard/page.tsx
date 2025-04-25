@@ -31,6 +31,7 @@ import StatCard from '@/app/_components/StatCard';
 import ReviewManagement from "@/app/_components/ReviewManagement"; 
 import { faEdit } from "@fortawesome/free-regular-svg-icons";
 import ReceiptVerificationManagement from "@/app/_components/ReceiptVerificationManagement";
+import PremiumButton from "../_components/PremiumButton";
 
 // Define interfaces for the types of data we'll be working with
 interface RestaurateurData {
@@ -482,7 +483,10 @@ export default function RestaurantDashboard(): JSX.Element {
           </p>
         </div>
         
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
+          {/* Premium upgrade button */}
+          <PremiumButton />
+          
           <Link
             href="/profile/restaurateur"
             className="px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"

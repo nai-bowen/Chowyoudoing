@@ -141,6 +141,15 @@ model Restaurateur {
   foodHygieneCertUrl      String?
   storefrontPhotoUrl      String?
   receiptPhotoUrl         String?
+
+  // New premium subscription fields
+  isPremium               Boolean            @default(false)
+  premiumSince            DateTime?
+  premiumExpiresAt        DateTime?
+  stripeCustomerId        String?
+  stripeSubscriptionId    String?
+  responseQuotaReset      DateTime?          @default(now())
+  responseQuotaRemaining  Int                @default(1)
   
   // Relations
   restaurant              Restaurant?        @relation(fields: [restaurantId], references: [id])
