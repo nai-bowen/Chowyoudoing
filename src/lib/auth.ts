@@ -4,8 +4,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { JWT } from "next-auth/jwt";
-import { User } from "next-auth";
 
 const prisma = new PrismaClient();
 
@@ -20,7 +18,9 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        userType: { label: "User Type", type: "text" }
+        userType: { label: "User Type", type: "text" },
+        businessRegNumber: { label: "Business Registration Number", type: "text" },
+        vatNumber: { label: "VAT Number", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -46,6 +46,19 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (restaurateur) {
+            // Verify business registration if provided
+            if (credentials.businessRegNumber && 
+                restaurateur.businessRegNumber !== credentials.businessRegNumber) {
+              throw new Error("Invalid Business Registration Number");
+            }
+
+            // Verify VAT number if provided
+            if (credentials.vatNumber && 
+                restaurateur.vatNumber && 
+                credentials.vatNumber !== restaurateur.vatNumber) {
+              throw new Error("Invalid VAT Number");
+            }
+
             const isValidPassword = await bcrypt.compare(
               credentials.password,
               restaurateur.password
@@ -59,7 +72,10 @@ export const authOptions: NextAuthOptions = {
               id: restaurateur.id,
               email: restaurateur.email,
               name: restaurateur.contactPersonName,
-              userType: "restaurateur"
+              userType: "restaurateur",
+              restaurateurId: restaurateur.id, // Explicitly include restaurateurId
+              restaurantName: restaurateur.restaurantName,
+              contactPersonName: restaurateur.contactPersonName
             };
           }
 
@@ -75,6 +91,19 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (restaurateurAccount && restaurateurAccount.password) {
+            // Verify business registration if provided
+            if (credentials.businessRegNumber && 
+                restaurateurAccount.businessRegNumber !== credentials.businessRegNumber) {
+              throw new Error("Invalid Business Registration Number");
+            }
+
+            // Verify VAT number if provided
+            if (credentials.vatNumber && 
+                restaurateurAccount.vatNumber && 
+                credentials.vatNumber !== restaurateurAccount.vatNumber) {
+              throw new Error("Invalid VAT Number");
+            }
+
             const isValidPassword = await bcrypt.compare(
               credentials.password,
               restaurateurAccount.password
@@ -85,10 +114,13 @@ export const authOptions: NextAuthOptions = {
             }
 
             return {
-              id: restaurateurAccount.restaurateurId,
+              id: restaurateurAccount.restaurateurId, // Use the restaurateur ID as the primary ID
               email: restaurateurAccount.email,
               name: restaurateurAccount.restaurateur.contactPersonName,
-              userType: "restaurateur"
+              userType: "restaurateur",
+              restaurateurId: restaurateurAccount.restaurateurId,
+              restaurantName: restaurateurAccount.restaurateur.restaurantName,
+              contactPersonName: restaurateurAccount.restaurateur.contactPersonName
             };
           }
 
@@ -175,11 +207,11 @@ export const authOptions: NextAuthOptions = {
               
               // After successful creation, add the ID to the user object
               user.id = newPatron.id;
-              (user as User).firstName = firstName;
-              (user as User).lastName = lastName;
-              (user as User).userType = "patron";
-              (user as User).interests = [];
-              (user as User).needsProfileCompletion = true; // Mark as needing completion
+              (user as any).firstName = firstName;
+              (user as any).lastName = lastName;
+              (user as any).userType = "patron";
+              (user as any).interests = [];
+              (user as any).needsProfileCompletion = true; // Mark as needing completion
             } catch (createError) {
               console.error("Error creating patron:", createError);
               return false; // Prevent sign in if we can't create the user
@@ -188,14 +220,14 @@ export const authOptions: NextAuthOptions = {
             // If user exists, use their ID
             user.id = existingPatron.id;
             // Update the user object with patron data
-            (user as User).firstName = existingPatron.firstName;
-            (user as User).lastName = existingPatron.lastName;
-            (user as User).userType = "patron";
-            (user as User).interests = existingPatron.interests;
+            (user as any).firstName = existingPatron.firstName;
+            (user as any).lastName = existingPatron.lastName;
+            (user as any).userType = "patron";
+            (user as any).interests = existingPatron.interests;
             
             // Check if the user needs to complete their profile (no interests)
             if (!existingPatron.interests || existingPatron.interests.length === 0) {
-              (user as User).needsProfileCompletion = true;
+              (user as any).needsProfileCompletion = true;
             }
           }
         } catch (error) {
@@ -217,7 +249,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         
         // Use type assertion for custom properties
-        const typedUser = user as User;
+        const typedUser = user as any;
         token.userType = typedUser.userType || "patron";
         
         // Add first/last name if available
@@ -228,6 +260,13 @@ export const authOptions: NextAuthOptions = {
         // Add the profile completion flag
         if (typedUser.needsProfileCompletion) {
           token.needsProfileCompletion = true;
+        }
+        
+        // Add restaurateur specific fields
+        if (typedUser.userType === "restaurateur") {
+          token.restaurateurId = typedUser.restaurateurId || user.id;
+          token.restaurantName = typedUser.restaurantName;
+          token.contactPersonName = typedUser.contactPersonName;
         }
       }
       
@@ -248,6 +287,13 @@ export const authOptions: NextAuthOptions = {
         // Add the profile completion flag to the session
         if (token.needsProfileCompletion) {
           session.user.needsProfileCompletion = true;
+        }
+        
+        // Add restaurateur specific fields
+        if (token.userType === "restaurateur") {
+          session.user.restaurateurId = token.restaurateurId || token.id;
+          session.user.restaurantName = token.restaurantName;
+          session.user.contactPersonName = token.contactPersonName;
         }
       }
       return session;

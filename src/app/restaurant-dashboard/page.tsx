@@ -185,22 +185,34 @@ export default function RestaurantDashboard(): JSX.Element {
   }, [restaurateurId]);
 
 
+  // Modified useEffect for getRestaurateurId function
   useEffect(() => {
     const getRestaurateurId = async (): Promise<void> => {
-      if (status !== "authenticated" || !session?.user?.email) return;
+      if (status !== "authenticated" || !session?.user) return;
       
       try {
-        // Either fetch from session or API depending on where you store the ID
-        // Option 1: If ID is in the session
-        const id = (session.user as any).id;
+        // Try multiple sources for the ID
+        const userId = session.user.id;
+        const restaurateurIdFromSession = (session.user as any).restaurateurId;
         
-        if (id) {
-          console.log("Found restaurateur ID in session:", id);
-          setRestaurateurId(id);
+        console.log("Session user data:", session.user);
+        console.log("User ID from session:", userId);
+        console.log("Restaurateur ID from session:", restaurateurIdFromSession);
+        
+        // Prioritize restaurateurId if available, otherwise use the main id
+        if (restaurateurIdFromSession) {
+          console.log("Using restaurateurId from session:", restaurateurIdFromSession);
+          setRestaurateurId(restaurateurIdFromSession);
           return;
         }
         
-        // Option 2: Fetch minimal data just to get the ID
+        if (userId) {
+          console.log("Using user ID from session:", userId);
+          setRestaurateurId(userId);
+          return;
+        }
+        
+        // Fall back to API call if IDs not in session
         const response = await fetch("/api/auth/get-user-id");
         if (response.ok) {
           const data = await response.json();
@@ -260,25 +272,31 @@ export default function RestaurantDashboard(): JSX.Element {
 
   // Fetch connected restaurants
   useEffect(() => {
-    const fetchRestaurants = async (): Promise<void> => {
-      if (status !== "authenticated" || !restaurateurData?.id) return;
+  // Update the fetchRestaurants function
+  const fetchRestaurants = async (): Promise<void> => {
+    if (status !== "authenticated" || !restaurateurId) return;
+    
+    try {
+      setIsLoadingRestaurants(true);
+      console.log(`Fetching restaurants for restaurateurId: ${restaurateurId}`);
       
-      try {
-        setIsLoadingRestaurants(true);
-        const response = await fetch(`/api/restaurateur/restaurants?restaurateurId=${restaurateurData.id}`);
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch restaurants");
-        }
-        
-        const data = await response.json();
-        setRestaurants(data);
-      } catch (error) {
-        console.error("Error fetching restaurants:", error);
-      } finally {
-        setIsLoadingRestaurants(false);
+      const response = await fetch(`/api/restaurateur/restaurants?restaurateurId=${restaurateurId}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        throw new Error(`Failed to fetch restaurants: ${response.statusText}`);
       }
-    };
+      
+      const data = await response.json();
+      console.log("Restaurants data:", data);
+      setRestaurants(data);
+    } catch (error) {
+      console.error("Error fetching restaurants:", error);
+    } finally {
+      setIsLoadingRestaurants(false);
+    }
+  };
 
     fetchRestaurants();
   }, [restaurateurData, status]);

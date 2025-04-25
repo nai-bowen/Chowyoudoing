@@ -23,6 +23,8 @@ export default function RestaurantLoginPage(): JSX.Element {
     setIsLoading(true);
   
     try {
+      console.log("Attempting restaurateur login with:", { email, businessRegNumber, userType: "restaurateur" });
+      
       const result = await signIn("credentials", {
         redirect: false,
         email,
@@ -32,6 +34,8 @@ export default function RestaurantLoginPage(): JSX.Element {
         userType: "restaurateur" // Add this to differentiate from patron login
       });
   
+      console.log("Login result:", result);
+      
       if (result?.error) {
         setError(result.error);
       } else {
@@ -44,6 +48,7 @@ export default function RestaurantLoginPage(): JSX.Element {
       setIsLoading(false);
     }
   };
+  
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#f9ebc2] via-[#faf0f6] to-white">
       {/* Blob decorations */}

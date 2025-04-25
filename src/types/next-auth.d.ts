@@ -1,3 +1,4 @@
+// src/types/next-auth.d.ts
 import { DefaultSession, DefaultUser } from "next-auth";
 import { JWT } from "next-auth/jwt";
 
@@ -9,7 +10,9 @@ declare module "next-auth" {
       firstName?: string;
       lastName?: string;
       interests?: string[];
-      needsProfileCompletion?: boolean; // Add this line
+      restaurantName?: string;  // For restaurateurs
+      businessRegNumber?: string;  // For restaurateurs
+      vatNumber?: string;  // For restaurateurs
     } & DefaultSession["user"]
   }
 
@@ -18,7 +21,9 @@ declare module "next-auth" {
     firstName?: string;
     lastName?: string;
     interests?: string[];
-    needsProfileCompletion?: boolean; // Add this line
+    restaurantName?: string;  // For restaurateurs
+    businessRegNumber?: string;  // For restaurateurs
+    vatNumber?: string;  // For restaurateurs
   }
 }
 
@@ -29,6 +34,8 @@ declare module "next-auth/jwt" {
     firstName?: string;
     lastName?: string;
     interests?: string[];
-    needsProfileCompletion?: boolean; // Add this line
+    restaurantName?: string;  // For restaurateurs
+    businessRegNumber?: string;  // For restaurateurs
+    vatNumber?: string;  // For restaurateurs
   }
 }
