@@ -29,6 +29,7 @@ interface FormData {
   password: string;
   confirmPassword: string;
   interests: string[];
+  referralCode: string; // New field for referral code
 }
 
 // Loading component to show while suspense is resolving
@@ -54,6 +55,9 @@ function RegisterContent(): JSX.Element {
   // Check for Google profile completion mode
   const isGoogleProfileCompletion = searchParams.get('mode') === 'complete-google-profile';
   
+  // Get referral code from URL if present
+  const referralCodeFromURL = searchParams.get('ref') || '';
+  
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -61,6 +65,7 @@ function RegisterContent(): JSX.Element {
     password: "",
     confirmPassword: "",
     interests: [],
+    referralCode: referralCodeFromURL, // Initialize with code from URL
   });
   
   const [step, setStep] = useState<number>(1);
@@ -80,10 +85,11 @@ function RegisterContent(): JSX.Element {
         password: "google-oauth-user", // This won't be used
         confirmPassword: "google-oauth-user",
         interests: session.user.interests || [],
+        referralCode: referralCodeFromURL, // Keep the referral code
       });
       setStep(3); // Skip to interests step
     }
-  }, [isGoogleProfileCompletion, session]);
+  }, [isGoogleProfileCompletion, session, referralCodeFromURL]);
 
   // Handle countdown for redirect
   useEffect(() => {
@@ -150,11 +156,14 @@ function RegisterContent(): JSX.Element {
     
     if (isGoogleProfileCompletion) {
       try {
-        // For Google users, we just need to update their interests
+        // For Google users, we just need to update their interests and possibly the referral code
         const response = await fetch("/api/profile/update-interests", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ interests: formData.interests || [] }),
+          body: JSON.stringify({ 
+            interests: formData.interests || [],
+            referralCode: formData.referralCode || null
+          }),
         });
         
         if (!response.ok) {
@@ -175,6 +184,7 @@ function RegisterContent(): JSX.Element {
     const payload = {
       ...formData,
       interests: formData.interests || [],  // Ensure it's always an array
+      referredBy: formData.referralCode || null, // Set the referredBy field
     };
   
     try {
@@ -370,6 +380,28 @@ function RegisterContent(): JSX.Element {
                              focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
                   />
                 </div>
+
+                {/* Referral Code Field */}
+                <div>
+                  <label htmlFor="referralCode" className="block text-[#dbbaf8] font-medium mb-1">
+                    Referral Code <span className="text-sm font-normal text-gray-500">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="referralCode"
+                    name="referralCode"
+                    value={formData.referralCode}
+                    onChange={handleChange}
+                    placeholder="Enter referral code"
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                  {formData.referralCode && (
+                    <p className="text-xs text-green-600 mt-1 ml-3">
+                      Referral code applied
+                    </p>
+                  )}
+                </div>
               </>
             )}
 
@@ -450,6 +482,15 @@ function RegisterContent(): JSX.Element {
                     );
                   })}
                 </div>
+
+                {/* Show referral code in step 3 if completed in step 1 */}
+                {formData.referralCode && (
+                  <div className="mt-4 bg-[#fdf9f5] p-3 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Referral Code:</span> {formData.referralCode}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             

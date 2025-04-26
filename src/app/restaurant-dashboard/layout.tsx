@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import PatronNav from '@/app/_components/Patron-Navbar';
 import AnimatedBackground from "@/app/_components/AnimatedBackground";
+import RestaurateurNav from '../_components/RestaurateurNav';
 
 export default function PatronDashboardLayout({ children }: { children: ReactNode }) {
   return (
@@ -9,7 +10,7 @@ export default function PatronDashboardLayout({ children }: { children: ReactNod
       <AnimatedBackground />
       
       {/* Navigation */}
-
+      <RestaurateurNav />
       
       {/* Main Content */}
       <main>{children}</main>

@@ -1,22 +1,22 @@
+/*eslint-disable*/
 "use client";
 
-import { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import FloatingFoodEmojis from '@/app/_components/FloatingFoodEmojis';
 
-interface RestaurantRegisterResponse {
-  success?: boolean;
-  error?: string;
-}
-
-export default function RestaurantRegisterPage(): JSX.Element {
+// This component will use the searchParams hook
+function RestaurantRegisterForm(): JSX.Element {
+  // Use next/navigation hooks inside this component
   const router = useRouter();
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  
   const [step, setStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
+  const [newReferralCode, setNewReferralCode] = useState<string>("");
   
   // File input refs
   const utilityBillRef = useRef<HTMLInputElement>(null);
@@ -24,6 +24,9 @@ export default function RestaurantRegisterPage(): JSX.Element {
   const foodHygieneCertRef = useRef<HTMLInputElement>(null);
   const storefrontPhotoRef = useRef<HTMLInputElement>(null);
   const receiptPhotoRef = useRef<HTMLInputElement>(null);
+  
+  // Extract referral code from URL if present
+  const referralCodeFromURL = searchParams.get('ref');
   
   // Form data state
   const [formData, setFormData] = useState<{
@@ -48,6 +51,9 @@ export default function RestaurantRegisterPage(): JSX.Element {
     contactPersonName: string;
     contactPersonPhone: string;
     contactPersonEmail: string;
+    
+    // Referral code
+    referralCode: string;
     
     // Proof documents (will store file objects)
     utilityBillFile: File | null;
@@ -78,6 +84,9 @@ export default function RestaurantRegisterPage(): JSX.Element {
     contactPersonPhone: "",
     contactPersonEmail: "",
     
+    // Referral code
+    referralCode: referralCodeFromURL || "",
+    
     // Proof documents
     utilityBillFile: null,
     businessLicenseFile: null,
@@ -85,6 +94,16 @@ export default function RestaurantRegisterPage(): JSX.Element {
     storefrontPhotoFile: null,
     receiptPhotoFile: null,
   });
+  
+  // Set referral code from URL if available
+  useEffect(() => {
+    if (referralCodeFromURL) {
+      setFormData(prev => ({
+        ...prev,
+        referralCode: referralCodeFromURL
+      }));
+    }
+  }, [referralCodeFromURL]);
   
   // Handle text input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
@@ -233,19 +252,30 @@ export default function RestaurantRegisterPage(): JSX.Element {
         body: submitData,
       });
       
+      interface RestaurantRegisterResponse {
+        success?: boolean;
+        error?: string;
+        referralCode?: string;
+      }
+      
       const data = await response.json() as RestaurantRegisterResponse;
       
       if (!response.ok) {
         throw new Error(data.error ?? 'Failed to register restaurant');
       }
       
+      // Save the new referral code if provided
+      if (data.referralCode) {
+        setNewReferralCode(data.referralCode);
+      }
+      
       // Registration successful
       setSuccess(true);
       
-      // Redirect to login page after 3 seconds
+      // Redirect to login page after 5 seconds
       setTimeout(() => {
-        router.push('/login');
-      }, 3000);
+        router.push('/login/restaurateur');
+      }, 5000);
       
     } catch (err) {
       console.error('Registration error:', err);
@@ -296,7 +326,7 @@ export default function RestaurantRegisterPage(): JSX.Element {
           </h2>
           
           <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-            <p className="text-green-800 mb-2">
+            <p className="text-green-800 mb-4">
               Your restaurant registration has been submitted successfully!
             </p>
             <p className="text-green-600">
@@ -304,13 +334,34 @@ export default function RestaurantRegisterPage(): JSX.Element {
             </p>
           </div>
           
+          {newReferralCode && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+              <h3 className="font-bold text-blue-800 mb-2">Your Referral Code</h3>
+              <p className="text-blue-700 mb-3">
+                Share this code with other restaurant owners and earn rewards when they sign up!
+              </p>
+              <div className="bg-white p-3 rounded-md border border-blue-200 flex justify-between items-center">
+                <span className="font-bold text-blue-900">{newReferralCode}</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(newReferralCode);
+                    alert("Referral code copied to clipboard!");
+                  }}
+                  className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          )}
+          
           <p className="text-gray-600 mb-4 text-center">
             You will be redirected to the login page in a few seconds...
           </p>
           
           <div className="text-center">
             <Link 
-              href="/login" 
+              href="/login/restaurateur" 
               className="text-[15px] text-[#D29501] font-bold hover:underline"
             >
               Click here if you are not redirected
@@ -355,6 +406,15 @@ export default function RestaurantRegisterPage(): JSX.Element {
           {error && (
             <div className="bg-red-100 border border-red-200 text-red-600 p-3 rounded-lg mb-4">
               {error}
+            </div>
+          )}
+          
+          {/* Referral code from URL */}
+          {formData.referralCode && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-600 p-3 rounded-lg mb-4 text-center">
+              <p className="text-sm">
+                Referral code <span className="font-bold">{formData.referralCode}</span> applied!
+              </p>
             </div>
           )}
           
@@ -420,6 +480,25 @@ export default function RestaurantRegisterPage(): JSX.Element {
                     className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
                              focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
                   />
+                </div>
+                
+                <div>
+                  <label htmlFor="referralCode" className="block text-[#dbbaf8] font-medium mb-1">
+                    Referral Code (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    id="referralCode"
+                    name="referralCode"
+                    value={formData.referralCode}
+                    onChange={handleChange}
+                    placeholder="Have a referral code? Enter it here"
+                    className="w-full p-3 bg-white/80 border-2 border-[#FFD879]/50 rounded-full 
+                             focus:outline-none focus:ring-2 focus:ring-[#dbbaf8] focus:border-[#dbbaf8]"
+                  />
+                  <p className="text-xs text-gray-500 mt-1 ml-3">
+                    Get 1 month premium free with a valid referral code
+                  </p>
                 </div>
               </>
             )}
@@ -829,12 +908,25 @@ export default function RestaurantRegisterPage(): JSX.Element {
         <div className="py-4 text-center border-t border-gray-200 bg-white/30">
           <p className="text-gray-400">
             ALREADY HAVE AN ACCOUNT?{" "}
-            <Link href="/login" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
+            <Link href="/login/restaurateur" className="font-bold text-[#f2d36f] hover:text-[#dbbaf8]">
               SIGN IN
             </Link>
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function RestaurantRegisterPage(): JSX.Element {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#f9ebc2] via-[#faf0f6] to-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#dbbaf8]"></div>
+      </div>
+    }>
+      <RestaurantRegisterForm />
+    </Suspense>
   );
 }

@@ -48,6 +48,9 @@ model Patron {
     certificationDate DateTime? // When they became a certified foodie
     certificationRequest CertificationRequest? // Relation to certification request
 
+    // Referral System field
+    referredBy     String?   // Referral code used when signing up
+
     // Relations
     accounts      Account[]
     sessions      Session[]
@@ -150,6 +153,13 @@ model Restaurateur {
   stripeSubscriptionId    String?
   responseQuotaReset      DateTime?          @default(now())
   responseQuotaRemaining  Int                @default(1)
+    
+  // Referral System fields
+  referralCode            String?             @unique // Unique referral code
+  referralPoints          Int                @default(0) // Number of successful referrals
+  referredBy              String?            // Referral code used when signing up
+  referralBonusesEarned   Int                @default(0) // Number of premium months earned
+  referralBonusesUsed     Int                @default(0) // Number of premium months used
   
   // Relations
   restaurant              Restaurant?        @relation(fields: [restaurantId], references: [id])
@@ -399,4 +409,20 @@ model ReceiptVerification {
   reviewId      String?
   restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   restaurantId  String
+}
+
+// New model for tracking referral history
+model Referral {
+  id                String    @id @default(cuid())
+  createdAt         DateTime  @default(now())
+  referralCode      String    // The referral code used
+  referrerType      String    // "restaurateur" or "patron"
+  referrerId        String    // ID of the user who referred
+  referredType      String    // "restaurateur" or "patron"
+  referredId        String    // ID of the user who was referred
+  
+  // Indexing for faster lookups
+  @@index([referralCode])
+  @@index([referrerId])
+  @@index([referredId])
 }

@@ -1,8 +1,10 @@
+// src/app/api/auth/restaurant-register/route.ts
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { v2 as cloudinary } from "cloudinary";
 import bcrypt from "bcryptjs";
 import { VerificationStatus } from "@prisma/client";
+import { generateUniqueReferralCode, recordReferral, isValidReferralCode } from "@/lib/referral";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -31,6 +33,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const contactPersonName = formData.get("contactPersonName") as string;
     const contactPersonPhone = formData.get("contactPersonPhone") as string;
     const contactPersonEmail = formData.get("contactPersonEmail") as string;
+    // Get referral code if provided
+    const referralCode = formData.get("referralCode") as string || null;
     
     // Extract file fields
     const utilityBill = formData.get("utilityBill") as File | null;
@@ -59,6 +63,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Email already registered" }, { status: 400 });
     }
     
+    // Validate referral code if provided
+    let validReferral = false;
+    if (referralCode) {
+      validReferral = await isValidReferralCode(referralCode);
+      if (!validReferral) {
+        return NextResponse.json({ error: "Invalid referral code" }, { status: 400 });
+      }
+    }
+    
     // Upload files to Cloudinary
     const uploadPromises: Promise<string | null>[] = [];
     
@@ -79,7 +92,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             (error, result) => {
               if (error) {
                 console.error(`Error uploading ${folderName}:`, error);
-                // Fix: Reject with an Error object instead of directly passing the error
                 reject(new Error(`Failed to upload ${folderName}: ${error.message}`));
               } else {
                 resolve(result?.secure_url ?? null);
@@ -114,7 +126,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Create restaurateur record
+    // Generate a unique referral code for this new restaurateur
+    const uniqueReferralCode = await generateUniqueReferralCode();
+    
+    // Create restaurateur record with referral code and referred by fields
     const restaurateur = await db.restaurateur.create({
       data: {
         email,
@@ -136,6 +151,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         storefrontPhotoUrl,
         receiptPhotoUrl,
         verificationStatus: VerificationStatus.PENDING,
+        referralCode: uniqueReferralCode, // Unique referral code for this restaurant
+        referredBy: referralCode, // Store the referral code they signed up with
       },
     });
     
@@ -155,9 +172,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     });
     
+    // If a referral code was provided, record the referral
+    if (referralCode && validReferral) {
+      await recordReferral(referralCode, restaurateur.id, "restaurateur");
+    }
+    
     return NextResponse.json({
       success: true,
       message: "Restaurant registration submitted for review",
+      referralCode: uniqueReferralCode // Send back the referral code
     });
     
   } catch (error) {
