@@ -236,7 +236,8 @@ model Restaurant {
     category    String[]  @default([]) // Store multiple categories as an array
     interests   String[]  @default([])
     widerAreas  String[]  @default([]) // New field for wider geographical areas
-    
+    isFeatured  Boolean   @default(false) // Flag for homepage feature
+
     createdAt   DateTime  @default(now())
     updatedAt   DateTime  @updatedAt
 

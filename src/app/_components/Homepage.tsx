@@ -1,3 +1,4 @@
+/*eslint-disable*/
 "use client";
 
 import React, { useState, useCallback } from 'react';
@@ -8,21 +9,10 @@ import Navbar from './Home-Navbar';
 import Hero from './Hero';
 import { useSession } from "next-auth/react";
 import ReviewsSection from './ReviewSection';
+import FeaturedRestaurants from './FeaturedRestaurants';
 import { toast } from 'react-hot-toast'; // Make sure to install this package
 
 // Type definitions
-type Restaurant = {
-  id: string;
-  name: string;
-  imageUrl: string;
-  rating: number;
-  reviewCount: number;
-  priceLevel: string;
-  categories: string[];
-  address: string;
-  hasReviews: boolean;
-};
-
 type ReviewRatings = {
   taste: number;
   value: number;
@@ -208,54 +198,6 @@ export default function Home(): JSX.Element {
     }
   }
 
-  // Featured restaurants data
-  const restaurants: Restaurant[] = [
-    {
-      id: '1',
-      name: 'The Urban Bistro',
-      imageUrl: '/restaurant1.jpg',
-      rating: 4.5,
-      reviewCount: 347,
-      priceLevel: '$',
-      categories: ['American', 'Brunch'],
-      address: '123 Main St, San Francisco, CA',
-      hasReviews: true,
-    },
-    {
-      id: '2',
-      name: 'Coastal Kitchen',
-      imageUrl: '/restaurant2.jpg',
-      rating: 5,
-      reviewCount: 228,
-      priceLevel: '$$',
-      categories: ['Seafood', 'Bar'],
-      address: '456 Ocean Ave, Los Angeles, CA',
-      hasReviews: true,
-    },
-    {
-      id: '3',
-      name: 'Green Garden Cafe',
-      imageUrl: '/restaurant3.jpg',
-      rating: 4,
-      reviewCount: 189,
-      priceLevel: '$',
-      categories: ['Vegetarian', 'Healthy'],
-      address: '789 Market St, Portland, OR',
-      hasReviews: false,
-    },
-    {
-      id: '4',
-      name: 'Spice Route',
-      imageUrl: '/restaurant4.jpg',
-      rating: 4.5,
-      reviewCount: 275,
-      priceLevel: '$',
-      categories: ['Indian', 'Asian Fusion'],
-      address: '101 Eastern Blvd, Seattle, WA',
-      hasReviews: true,
-    },
-  ];
-
   return (
     <main className="min-h-screen">
       {/* Navbar */}
@@ -264,95 +206,11 @@ export default function Home(): JSX.Element {
       {/* Hero Section */}
       <Hero />
 
-      {/* Featured Restaurants */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="flex justify-between items-center mb-10">
-            <h2 className="text-3xl font-bold text-[#F1C84B]">Featured Restaurants</h2>
-            {/* View all link - will show modal if not authenticated */}
-            <a 
-              href="#"
-              onClick={(e) => handleRestaurantClick(e, "All Restaurants")}
-              className="text-[#FFB400] hover:text-[#D29501] font-medium flex items-center gap-1 cursor-pointer"
-            >
-              View all
-              <ArrowRight size={16} />
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Restaurant Cards */}
-            {restaurants.map((restaurant, index) => {
-              const gradientColors = [
-                '#f2d577',
-                '#dabbfa',
-                '#f5baf2',
-                '#f9c8d7',
-                '#f9ecd0',
-              ];
-              const baseColor = gradientColors[index % gradientColors.length];
-              const fallbackGradient = `linear-gradient(135deg, ${baseColor}, ${baseColor}80)`;
-
-              return (
-                <div 
-                  key={restaurant.id} 
-                  className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer"
-                  onClick={(e) => handleRestaurantClick(e, restaurant.name)}
-                >
-                  <div className="h-48 overflow-hidden">
-                    <div 
-                      className="w-full h-full bg-cover bg-center"
-                      style={{ 
-                        backgroundImage: `url(${restaurant.imageUrl}), ${fallbackGradient}`
-                      }}
-                    ></div>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-semibold text-lg text-[#4B2B10]">{restaurant.name}</h3>
-                      <div className="flex items-center gap-1 text-sm font-medium">
-                        <span className={`inline-block rounded-full w-2 h-2 ${restaurant.hasReviews ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                        <span className={restaurant.hasReviews ? 'text-green-700' : 'text-red-700'}>
-                          {restaurant.hasReviews ? 'Has Reviews' : 'No Reviews Yet'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 flex items-center gap-1">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star 
-                            key={star} 
-                            size={16} 
-                            className={star <= Math.floor(restaurant.rating) 
-                              ? "text-[#FFB400] fill-[#FFB400]" 
-                              : star <= restaurant.rating 
-                                ? "text-[#FFB400] fill-[#FFB400]/50" 
-                                : "text-gray-300"
-                            } 
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-gray-700 ml-1">({restaurant.reviewCount})</span>
-                    </div>
-
-                    <div className="mt-3 flex items-center text-sm text-gray-700">
-                      <span className="mr-2">{restaurant.priceLevel}</span>
-                      <span className="mr-2">•</span>
-                      <span>{restaurant.categories.join(', ')}</span>
-                    </div>
-
-                    <div className="mt-3 flex items-start gap-1.5 text-sm text-gray-700">
-                      <MapPin size={16} className="mt-0.5 flex-shrink-0 text-gray-500" />
-                      <span className="line-clamp-1">{restaurant.address}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      {/* Featured Restaurants - Updated to use the new component */}
+      <FeaturedRestaurants 
+        onRestaurantClick={handleRestaurantClick}
+        isAuthenticated={isAuthenticated}
+      />
 
       <ReviewsSection />
 
@@ -489,7 +347,7 @@ export default function Home(): JSX.Element {
                       Claim Business
                     </a>
                   </li>
-                  <li><Link href="/login" className="text-gray-300 hover:text-white">Business Login</Link></li>
+                  <li><Link href="/login/restaurateur" className="text-gray-300 hover:text-white">Business Login</Link></li>
                   <li><Link href="/discover" className="text-gray-300 hover:text-white">Discover Restaurants</Link></li>
                   <li>
                     <a 
