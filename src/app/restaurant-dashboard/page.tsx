@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -15,7 +15,6 @@ import {
   faBell,
   faComment,
   faChartLine,
-  faGlobe,
   faReceipt,
 } from "@fortawesome/free-solid-svg-icons";
 import RestaurantConnectionModal from "../_components/RestaurantConnectionModal";
@@ -35,7 +34,6 @@ interface RestaurateurData {
 }
 
 interface Restaurant {
-  widerAreas?: any;
   id: string;
   title: string;
   location: string;
@@ -119,22 +117,13 @@ export default function RestaurantDashboard(): JSX.Element {
       if (status !== "authenticated" || !session?.user?.email) return;
       
       try {
-        // Either fetch from session or API depending on where you store the ID
-        // Option 1: If ID is in the session
-        const id = (session.user as any).id;
+        // Get ID from session
+        const id = session.user.id;
         
         if (id) {
           console.log("Found restaurateur ID in session:", id);
           setRestaurateurId(id);
           return;
-        }
-        
-        // Option 2: Fetch minimal data just to get the ID
-        const response = await fetch("/api/auth/get-user-id");
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Fetched restaurateur ID from API:", data.id);
-          setRestaurateurId(data.id);
         }
       } catch (error) {
         console.error("Error getting restaurateur ID:", error);
@@ -190,11 +179,11 @@ export default function RestaurantDashboard(): JSX.Element {
   // Fetch connected restaurants
   useEffect(() => {
     const fetchRestaurants = async (): Promise<void> => {
-      if (status !== "authenticated" || !restaurateurData?.id) return;
+      if (status !== "authenticated" || !restaurateurId) return;
       
       try {
         setIsLoadingRestaurants(true);
-        const response = await fetch(`/api/restaurateur/restaurants?restaurateurId=${restaurateurData.id}`);
+        const response = await fetch(`/api/restaurateur/restaurants?restaurateurId=${restaurateurId}`);
         
         if (!response.ok) {
           throw new Error("Failed to fetch restaurants");
@@ -203,7 +192,7 @@ export default function RestaurantDashboard(): JSX.Element {
         const data = await response.json();
         setRestaurants(data);
 
-        // Calculate some simple stats based on restaurants
+        // Calculate stats based on restaurants
         if (Array.isArray(data) && data.length > 0) {
           let totalReviews = 0;
           let totalRating = 0;
@@ -217,10 +206,14 @@ export default function RestaurantDashboard(): JSX.Element {
             }
           });
 
+          const avgRating = data.length > 0 
+            ? parseFloat((totalRating / data.length).toFixed(1)) 
+            : 0;
+
           setReviewStats({
             totalReviews: totalReviews,
-            pendingResponses: 0, // We'll set this to 0 since the review functionality is moved
-            averageRating: data.length > 0 ? totalRating / data.length : 0
+            pendingResponses: 0, // We'll set this to 0 for now
+            averageRating: avgRating
           });
         }
       } catch (error) {
@@ -231,16 +224,16 @@ export default function RestaurantDashboard(): JSX.Element {
     };
 
     fetchRestaurants();
-  }, [restaurateurData, status]);
+  }, [restaurateurId, status]);
 
   // Fetch connection requests
   useEffect(() => {
     const fetchConnectionRequests = async (): Promise<void> => {
-      if (status !== "authenticated" || !restaurateurData?.id) return;
+      if (status !== "authenticated" || !restaurateurId) return;
       
       try {
         setIsLoadingConnectionRequests(true);
-        const response = await fetch(`/api/restaurateur/connection-requests?restaurateurId=${restaurateurData.id}`);
+        const response = await fetch(`/api/restaurateur/connection-requests?restaurateurId=${restaurateurId}`);
         
         if (!response.ok) {
           throw new Error("Failed to fetch connection requests");
@@ -256,10 +249,10 @@ export default function RestaurantDashboard(): JSX.Element {
     };
 
     // Always fetch connection requests when restaurateurData is available
-    if (restaurateurData?.id) {
+    if (restaurateurId) {
       fetchConnectionRequests();
     }
-  }, [restaurateurData, status]);
+  }, [restaurateurId, status]);
 
   // Handle search for restaurants
   useEffect(() => {
@@ -319,9 +312,9 @@ export default function RestaurantDashboard(): JSX.Element {
   // Handle successful connection request
   const handleConnectionSuccess = async (): Promise<void> => {
     // Refresh connection requests after successful submission
-    if (restaurateurData?.id) {
+    if (restaurateurId) {
       try {
-        const response = await fetch(`/api/restaurateur/connection-requests?restaurateurId=${restaurateurData.id}`);
+        const response = await fetch(`/api/restaurateur/connection-requests?restaurateurId=${restaurateurId}`);
         if (response.ok) {
           const data = await response.json();
           setConnectionRequests(data);
@@ -376,13 +369,12 @@ export default function RestaurantDashboard(): JSX.Element {
         
         <div className="flex gap-4">
           <Link
-            href="/profile/restaurateur"
+            href="restaurant-dashboard/profile"
             className="px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
           >
             Edit Profile
           </Link>
           
-          {/* Notifications bell - would implement notifications feature in future */}
           <button className="relative p-2 rounded-full bg-white border border-gray-300 hover:shadow-md transition-all">
             <FontAwesomeIcon icon={faBell} className="text-gray-600" />
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
@@ -669,7 +661,7 @@ const renderOverviewSection = (): JSX.Element => {
     <div>
       <h2 className="text-xl font-bold mb-6">Restaurant Overview</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Rating Stat */}
         <div className="bg-[#faf2e5] p-4 rounded-lg shadow-sm">
           <div className="flex justify-between items-center">
@@ -696,36 +688,7 @@ const renderOverviewSection = (): JSX.Element => {
           </div>
         </div>
         
-        {/* Menu Items Stat */}
-        <div className="bg-[#fbe9fc] p-4 rounded-lg shadow-sm">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-sm text-gray-500">Menu Items</h3>
-              <p className="text-2xl font-bold">
-                {Array.isArray(restaurants) && restaurants.length > 0 ? restaurants.length : 0}
-              </p>
-            </div>
-            <div className="bg-[#f5b7ee] p-2 rounded-full">
-              <FontAwesomeIcon icon={faUtensils} className="text-white" />
-            </div>
-          </div>
-        </div>
-        
-        {/* Areas Served */}
-        <div className="bg-[#f1eafe] p-4 rounded-lg shadow-sm">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-sm text-gray-500">Areas Served</h3>
-              <p className="text-2xl font-bold">
-                {restaurants && restaurants.length > 0 && restaurants[0]?.widerAreas ? 
-                  restaurants[0].widerAreas.length : 0}
-              </p>
-            </div>
-            <div className="bg-[#dab9f8] p-2 rounded-full">
-              <FontAwesomeIcon icon={faGlobe} className="text-white" />
-            </div>
-          </div>
-        </div>
+
       </div>
       
       {/* Quick Actions */}
@@ -734,7 +697,7 @@ const renderOverviewSection = (): JSX.Element => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link
-            href="/profile/restaurateur"
+            href="/restaurant-dashboard/profile"
             className="p-4 bg-[#faf2e5] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
           >
             <div className="bg-[#f2d36e] p-2 rounded-full">
@@ -747,7 +710,7 @@ const renderOverviewSection = (): JSX.Element => {
           </Link>
           
           <Link
-            href="/menu-management"
+            href="/restaurant-dashboard/menu"
             className="p-4 bg-[#fdedf6] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
           >
             <div className="bg-[#f9c3c9] p-2 rounded-full">
@@ -760,7 +723,7 @@ const renderOverviewSection = (): JSX.Element => {
           </Link>
           
           <Link
-            href="/reviews"
+            href="/restaurant-dashboard/reviews"
             className="p-4 bg-[#fbe9fc] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
           >
             <div className="bg-[#f5b7ee] p-2 rounded-full">
@@ -773,7 +736,7 @@ const renderOverviewSection = (): JSX.Element => {
           </Link>
           
           <Link
-            href="/receipt-verification"
+            href="/restaurant-dashboard/receipt-verifications"
             className="p-4 bg-[#f1eafe] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
           >
             <div className="bg-[#dab9f8] p-2 rounded-full">
@@ -888,7 +851,7 @@ const renderTabContent = (): JSX.Element => {
 
   // If not authenticated or loading initial data
   if (status === "unauthenticated") {
-    router.push("/login");
+    router.push("/login/restaurateur");
     return (
       <div className="flex justify-center items-center h-screen">
         <p>Please log in to access the restaurant dashboard.</p>

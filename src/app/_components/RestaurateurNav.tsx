@@ -18,6 +18,7 @@ import {
   faShareNodes
 } from "@fortawesome/free-solid-svg-icons";
 import { signOut } from "next-auth/react";
+import Image from "next/image";
 
 interface RestaurateurNavProps {
   restaurateurName?: string;
@@ -86,12 +87,19 @@ export default function RestaurateurNav({
           {/* Logo and Brand */}
           <div className="flex items-center">
             <Link href="/restaurant-dashboard" className="flex-shrink-0 flex items-center">
-              <div className="bg-[#f2d36e] rounded-full h-8 w-8 flex items-center justify-center">
-                <FontAwesomeIcon icon={faUtensils} className="text-white text-sm" />
-              </div>
-              <span className="ml-2 font-semibold text-gray-800 hidden md:block">
-                Chow You Doing?
-              </span>
+    {/* Logo */}
+    <div className="flex items-center">
+            <div className="w-8 h-8 bg-[`#F1C84B`] rounded-full flex items-center justify-center"> 
+              <Image 
+                src="/assets/cyd_emblem.png" 
+                alt="Chow You Doing Logo"
+                width={100}
+                height={100}
+              /> 
+            </div> 
+      <h3 className="ml-3 text-xl font-bold md:text-xl text-base text-[#F1C84B]">Chow You Doing?</h3>
+    </div>
+
             </Link>
           </div>
 
@@ -118,7 +126,7 @@ export default function RestaurateurNav({
             <div className="relative ml-3">
               <div className="flex items-center">
                 <Link
-                  href="/profile/restaurateur"
+                  href="/restaurant-dashboard/profile"
                   className="text-gray-600 hover:text-[#dab9f8] px-3 py-2 rounded-md text-sm font-medium"
                 >
                   <FontAwesomeIcon icon={faUser} className="mr-2" />
@@ -168,7 +176,7 @@ export default function RestaurateurNav({
             </Link>
           ))}
           <Link
-            href="/profile/restaurateur"
+            href="/restaurant-dashboard/profile"
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-[#dab9f8] hover:bg-gray-50"
             onClick={() => setIsMenuOpen(false)}
           >
