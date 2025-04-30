@@ -39,3 +39,5 @@ declare module "next-auth/jwt" {
     vatNumber?: string;  // For restaurateurs
   }
 }
+
+

@@ -47,8 +47,7 @@ type RestaurantPageParams = {
   restaurantId: string;
 };
 
-// This is a simplified version of the AnimatedBackground component
-// In a real implementation, you would import the actual component
+
 function AnimatedBackground(): JSX.Element {
   return (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">

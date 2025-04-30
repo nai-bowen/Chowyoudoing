@@ -10,10 +10,13 @@ import {
   faTrash,
   faSearch,
   faChevronDown,
-  faChevronUp
+  faChevronUp,
+  faImage,
+  faCrown
 } from "@fortawesome/free-solid-svg-icons";
 import AddEditMenuSectionModal from "./AddEditMenuSectionModal";
 import AddEditMenuItemModal from "./AddEditMenuItemModal";
+import PremiumButton from "./PremiumButton";
 
 // Define interfaces for the menu data
 interface Interest {
@@ -46,6 +49,14 @@ interface MenuManagementProps {
   restaurantId: string;
 }
 
+interface ImageUploadStatus {
+  isPremium: boolean;
+  canUpload: boolean;
+  remainingUploads: number | string;
+  totalImagesUsed?: number;
+  maxImagesAllowed?: number;
+}
+
 export default function MenuManagement({ restaurantId }: MenuManagementProps): JSX.Element {
   const [menuSections, setMenuSections] = useState<MenuSection[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
@@ -53,6 +64,7 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [imageUploadStatus, setImageUploadStatus] = useState<ImageUploadStatus | null>(null);
   
   // State for section modal
   const [isSectionModalOpen, setIsSectionModalOpen] = useState<boolean>(false);
@@ -62,6 +74,24 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
   const [isItemModalOpen, setIsItemModalOpen] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+
+  // Fetch image upload status for the restaurateur
+  const fetchImageUploadStatus = useCallback(async (): Promise<void> => {
+    try {
+      const response = await fetch("/api/restaurateur/menu-image-check");
+      
+      if (!response.ok) {
+        console.error("Failed to fetch image upload status");
+        return;
+      }
+      
+      const data = await response.json();
+      setImageUploadStatus(data);
+      console.log("Image upload status:", data);
+    } catch (error) {
+      console.error("Error fetching image upload status:", error);
+    }
+  }, []);
 
   // Fetch menu sections and items for the restaurant
   const fetchMenuData = useCallback(async (): Promise<void> => {
@@ -114,7 +144,8 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
   useEffect(() => {
     fetchMenuData();
     fetchInterests();
-  }, [fetchMenuData, fetchInterests]);
+    fetchImageUploadStatus();
+  }, [fetchMenuData, fetchInterests, fetchImageUploadStatus]);
 
   // Toggle section expansion
   const toggleSectionExpansion = (sectionId: string): void => {
@@ -238,6 +269,7 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
     description: string | null;
     price: string;
     interestId: string | null;
+    img_url?: string | null;
   }): Promise<void> => {
     try {
       if (selectedItem) {
@@ -257,6 +289,12 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
         
         if (!response.ok) {
           const errorData = await response.json();
+          
+          // Check if this is a premium required error
+          if (response.status === 429 && errorData.premiumRequired) {
+            throw new Error(errorData.message || "Image upload limit reached. Upgrade to premium for unlimited images.");
+          }
+          
           throw new Error(errorData.error || "Failed to update menu item");
         }
       } else {
@@ -274,16 +312,25 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
         
         if (!response.ok) {
           const errorData = await response.json();
+          
+          // Check if this is a premium required error
+          if (response.status === 429 && errorData.premiumRequired) {
+            throw new Error(errorData.message || "Image upload limit reached. Upgrade to premium for unlimited images.");
+          }
+          
           throw new Error(errorData.error || "Failed to create menu item");
         }
       }
       
-      // Refresh menu data
+      // Refresh menu data and image upload status
       fetchMenuData();
+      fetchImageUploadStatus();
       handleItemModalClose();
     } catch (err) {
       console.error("Error saving menu item:", err);
-      alert(err instanceof Error ? err.message : "Failed to save menu item");
+      
+      // If this is a premium error, AddEditMenuItemModal will handle showing the premium modal
+      throw err;
     }
   };
 
@@ -302,8 +349,9 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
         throw new Error("Failed to delete menu item");
       }
       
-      // Refresh menu data
+      // Refresh menu data and image upload status
       fetchMenuData();
+      fetchImageUploadStatus();
     } catch (err) {
       console.error("Error deleting menu item:", err);
       alert(err instanceof Error ? err.message : "Failed to delete menu item");
@@ -330,6 +378,17 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
     // If search query is active, only show sections with matching items
     return searchQuery === "" || section.items.length > 0;
   });
+
+  // Get total items with images
+  const getTotalItemsWithImages = (): number => {
+    let count = 0;
+    menuSections.forEach(section => {
+      section.items.forEach(item => {
+        if (item.img_url) count++;
+      });
+    });
+    return count;
+  };
 
   if (isLoading) {
     return (
@@ -378,6 +437,30 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
           </button>
         </div>
       </div>
+      
+      {/* Image Upload Status / Premium Badge */}
+      {imageUploadStatus && !imageUploadStatus.isPremium && (
+        <div className="mb-6 bg-[#faf2e5] p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="bg-[#f2d36e] p-2 rounded-full mr-3">
+                <FontAwesomeIcon icon={faImage} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-medium">Menu Item Images</h3>
+                <p className="text-sm text-gray-600">
+                {Number(imageUploadStatus.remainingUploads) > 0 
+                    ? `${imageUploadStatus.remainingUploads} of ${imageUploadStatus.maxImagesAllowed} images remaining`
+                    : `You've used all ${imageUploadStatus.maxImagesAllowed} free images`
+                  }. Upgrade to premium for unlimited images.
+
+                </p>
+              </div>
+            </div>
+            <PremiumButton feature="image_upload" />
+          </div>
+        </div>
+      )}
       
       {/* Menu Sections */}
       {filteredMenuSections.length === 0 ? (
@@ -470,6 +553,13 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
                                 </span>
                               )}
                               
+                              {item.img_url && (
+                                <span className="text-xs bg-[#fdedf6] text-[#a5628a] px-2 py-1 rounded-full flex items-center">
+                                  <FontAwesomeIcon icon={faImage} className="mr-1" />
+                                  Has image
+                                </span>
+                              )}
+                              
                               {item.totalUpvotes > 0 && (
                                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                                   {item.totalUpvotes} upvotes
@@ -477,6 +567,19 @@ export default function MenuManagement({ restaurantId }: MenuManagementProps): J
                               )}
                             </div>
                           </div>
+                          
+                          {/* Item Image Thumbnail */}
+                          {item.img_url && (
+                            <div className="mx-4 flex-shrink-0">
+                              <div className="h-12 w-12 rounded-md overflow-hidden bg-gray-100">
+                                <img 
+                                  src={item.img_url} 
+                                  alt={item.name} 
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            </div>
+                          )}
                           
                           <div className="flex items-start ml-4">
                             <button 

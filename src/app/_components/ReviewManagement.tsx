@@ -1,7 +1,7 @@
-/*eslint-disable*/
+/* eslint-disable */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
   faFileAlt,
@@ -16,6 +16,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import ReviewResponseModal from "./ReviewResponseModal";
 import FlagReviewModal from "./FlagReviewModal";
+import PremiumSubscriptionModal from "./PremiumSubscriptionModal";
 
 interface Restaurant {
   id: string;
@@ -79,12 +80,43 @@ export default function ReviewManagement({
   const [selectedFlagReview, setSelectedFlagReview] = useState<Review | null>(null);
   const [isFlagModalOpen, setIsFlagModalOpen] = useState<boolean>(false);
 
+  // Premium modal state
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState<boolean>(false);
+
   // Statistics
   const [stats, setStats] = useState({
     totalReviews: 0,
     pendingResponses: 0,
     averageRating: 0
   });
+
+  // Premium status
+  const [premiumStatus, setPremiumStatus] = useState<{
+    isPremium: boolean;
+    responseQuota: {
+      remaining: number;
+      resetAt: string | null;
+    }
+  }>({
+    isPremium: false,
+    responseQuota: {
+      remaining: 0,
+      resetAt: null
+    }
+  });
+
+  // Fetch premium status
+  const fetchPremiumStatus = useCallback(async (): Promise<void> => {
+    try {
+      const response = await fetch("/api/restaurateur/premium");
+      if (response.ok) {
+        const data = await response.json();
+        setPremiumStatus(data);
+      }
+    } catch (error) {
+      console.error("Error fetching premium status:", error);
+    }
+  }, []);
 
   // Apply filters whenever reviews or filters change
   useEffect(() => {
@@ -96,57 +128,60 @@ export default function ReviewManagement({
     calculateStats();
   }, [reviews]);
 
-// In ReviewManagement.tsx, modify the fetchReviews useEffect
-const fetchReviews = useCallback(async (): Promise<void> => {
-  if (!restaurants || restaurants.length === 0) {
-    console.warn("No restaurants provided to ReviewManagement component");
-    setReviews([]);
-    setIsLoading(false);
-    return;
-  }
-  
-  console.log("Fetching reviews for restaurants:", restaurants.map(r => r.id).join(', '));
-  setIsLoading(true);
-  setError(null);
-  
-  try {
-    // Create URL with multiple restaurantId parameters
-    const params = new URLSearchParams();
-    restaurants.forEach(restaurant => {
-      params.append("restaurantId", restaurant.id);
-    });
-    
-    const response = await fetch(`/api/restaurateur/reviews?${params.toString()}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch reviews: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log("Reviews data:", data);
-    
-    if (data && data.reviews && Array.isArray(data.reviews)) {
-      setReviews(data.reviews);
-    } else {
+  // Fetch premium status on component mount
+  useEffect(() => {
+    fetchPremiumStatus();
+  }, [fetchPremiumStatus]);
+
+  // Fetch reviews function
+  const fetchReviews = useCallback(async (): Promise<void> => {
+    if (!restaurants || restaurants.length === 0) {
+      console.warn("No restaurants provided to ReviewManagement component");
       setReviews([]);
+      setIsLoading(false);
+      return;
     }
-  } catch (err) {
-    console.error("Error fetching reviews:", err);
-    setError(err instanceof Error ? err.message : "An unknown error occurred");
-    setReviews([]);
-  } finally {
-    setIsLoading(false);
-  }
-}, [restaurants]); // Include restaurants in dependencies
+    
+    console.log("Fetching reviews for restaurants:", restaurants.map(r => r.id).join(', '));
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Create URL with multiple restaurantId parameters
+      const params = new URLSearchParams();
+      restaurants.forEach(restaurant => {
+        params.append("restaurantId", restaurant.id);
+      });
+      
+      const response = await fetch(`/api/restaurateur/reviews?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch reviews: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log("Reviews data:", data);
+      
+      if (data && data.reviews && Array.isArray(data.reviews)) {
+        setReviews(data.reviews);
+      } else {
+        setReviews([]);
+      }
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      setReviews([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [restaurants]);
 
-// Replace the existing useEffect with this one
-useEffect(() => {
-  // Only fetch when the component mounts or restaurantIds change
-  if (restaurants && restaurants.length > 0) {
-    fetchReviews();
-  }
-}, [fetchReviews]); // Only depend on the memoized fetchReviews function
-
+  // Fetch reviews when restaurants change
+  useEffect(() => {
+    if (restaurants && restaurants.length > 0) {
+      fetchReviews();
+    }
+  }, [fetchReviews]);
 
   const calculateStats = (): void => {
     // Check reviews is an array before using array methods
@@ -237,13 +272,30 @@ useEffect(() => {
   };
 
   const handleOpenResponseModal = (review: Review): void => {
-    setSelectedReview(review);
-    setIsResponseModalOpen(true);
+    // Check if user has premium or has quota remaining
+    if (!premiumStatus.isPremium && premiumStatus.responseQuota.remaining <= 0) {
+      // Show premium modal if no quota remaining
+      setIsPremiumModalOpen(true);
+    } else {
+      // Otherwise, open the response modal
+      setSelectedReview(review);
+      setIsResponseModalOpen(true);
+    }
   };
 
   const handleCloseResponseModal = (): void => {
     setIsResponseModalOpen(false);
     setSelectedReview(null);
+  };
+
+  const handleClosePremiumModal = (): void => {
+    setIsPremiumModalOpen(false);
+  };
+
+  const handlePremiumSubscribed = (): void => {
+    // Refresh premium status after subscribing
+    fetchPremiumStatus();
+    setIsPremiumModalOpen(false);
   };
 
   const handleResponseSubmit = async (reviewId: string, response: string): Promise<void> => {
@@ -263,6 +315,13 @@ useEffect(() => {
       
       if (!res.ok) {
         const errorData = await res.json();
+        
+        // Check if this is a quota exceeded error
+        if (res.status === 429 && errorData.premiumRequired) {
+          setIsPremiumModalOpen(true);
+          throw new Error("Daily response quota exceeded. Upgrade to premium for unlimited responses.");
+        }
+        
         throw new Error(errorData.error || "Failed to submit response");
       }
       
@@ -275,6 +334,9 @@ useEffect(() => {
             : review
         );
       });
+      
+      // Refresh premium status to update quota
+      fetchPremiumStatus();
       
     } catch (err) {
       console.error("Error submitting response:", err);
@@ -422,6 +484,31 @@ useEffect(() => {
         </div>
       </div>
       
+      {/* Premium Status Indicator (if not premium) */}
+      {!premiumStatus.isPremium && (
+        <div className="mb-6 bg-[#faf2e5] p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="bg-[#f2d36e] p-2 rounded-full mr-3">
+                <FontAwesomeIcon icon={faComment} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-medium">Daily Response Limit</h3>
+                <p className="text-sm text-gray-600">
+                  {premiumStatus.responseQuota.remaining} of 1 responses remaining today. Upgrade to premium for unlimited responses.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsPremiumModalOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-[#dab9f8] to-[#f2d36f] text-white rounded-full hover:opacity-90 transition-all shadow-sm"
+            >
+              Upgrade to Premium
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Reviews List */}
       {isLoading ? (
         <div className="flex justify-center py-12">
@@ -538,8 +625,8 @@ useEffect(() => {
         </div>
       )}
       
-    {/* Review Response Modal */}
-    {selectedReview && (
+      {/* Review Response Modal */}
+      {selectedReview && (
         <ReviewResponseModal
           isOpen={isResponseModalOpen}
           onClose={handleCloseResponseModal}
@@ -557,6 +644,14 @@ useEffect(() => {
           onSuccess={handleFlagSuccess}
         />
       )}
+      
+      {/* Premium Subscription Modal */}
+      <PremiumSubscriptionModal
+        isOpen={isPremiumModalOpen}
+        onClose={handleClosePremiumModal}
+        onSubscribe={handlePremiumSubscribed}
+        feature="review_response"
+      />
     </div>
   );
 }

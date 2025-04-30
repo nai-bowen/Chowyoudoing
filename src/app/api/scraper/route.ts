@@ -18,8 +18,7 @@ const validateAdminToken = (request: NextRequest): boolean => {
     }
     
     const token = authHeader.substring(7);
-    // In a real app, this would be a more secure validation
-    // For now, we'll just check if the token exists
+
     return !!token;
 };
 

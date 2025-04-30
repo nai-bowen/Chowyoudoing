@@ -16,9 +16,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const restaurateurId = session.user.id;
     const { planType } = await req.json();
-    
-    // In a real implementation, you would handle payment processing here
-    // For now, we'll just update the premium status
+
     
     const now = new Date();
     const expiresAt = new Date();

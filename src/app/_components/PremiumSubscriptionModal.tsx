@@ -170,7 +170,7 @@ export default function PremiumSubscriptionModal({
               </div>
               <div className="text-right">
                 <div className="text-2xl font-bold">
-                  {selectedPlan === "monthly" ? "$19.99" : "$191.90"}
+                  {selectedPlan === "monthly" ? "£19.99" : "£191.90"}
                 </div>
                 <div className="text-gray-500 text-sm">
                   {selectedPlan === "monthly" ? "per month" : "per year"}

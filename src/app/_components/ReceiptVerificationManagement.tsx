@@ -55,9 +55,17 @@ interface ReceiptVerificationFilter {
   sortBy: string;
 }
 
+interface ReceiptStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
+
 interface ReceiptVerificationManagementProps {
   restaurateurId: string;
   restaurants: Restaurant[];
+  onStatsUpdate?: (stats: Partial<ReceiptStats>) => void; 
 }
 
 export default function ReceiptVerificationManagement({ 

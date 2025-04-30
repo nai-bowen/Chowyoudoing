@@ -1,37 +1,25 @@
-/*eslint-disable*/
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUtensils,
   faSearch,
   faStore,
-  faFileAlt,
-  faLink,
-  faPlus,
   faMapMarkerAlt,
   faExclamationTriangle,
-  faCheckCircle,
   faStar,
-  faMessage,
   faBell,
   faComment,
   faChartLine,
   faGlobe,
-  faReceipt
+  faReceipt,
 } from "@fortawesome/free-solid-svg-icons";
 import RestaurantConnectionModal from "../_components/RestaurantConnectionModal";
-import MenuManagement from "@/app/_components/MenuManagement";
-import StatCard from '@/app/_components/StatCard';
-import ReviewManagement from "@/app/_components/ReviewManagement"; 
 import { faEdit } from "@fortawesome/free-regular-svg-icons";
-import ReceiptVerificationManagement from "@/app/_components/ReceiptVerificationManagement";
-import PremiumButton from "../_components/PremiumButton";
 
 // Define interfaces for the types of data we'll be working with
 interface RestaurateurData {
@@ -70,31 +58,6 @@ interface ConnectionRequest {
   restaurant: Restaurant;
 }
 
-interface Review {
-  id: string;
-  content: string;
-  rating: number;
-  upvotes: number;
-  createdAt: string;
-  isAnonymous: boolean;
-  restaurantResponse: string | null;
-  patron: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  } | null;
-}
-
-interface ReviewFlag {
-  id: string;
-  reason: string;
-  details: string | null;
-  createdAt: string;
-  status: string;
-  reviewId: string;
-  review: Review;
-}
-
 interface SearchResult {
   id: string;
   title: string;
@@ -130,25 +93,16 @@ export default function RestaurantDashboard(): JSX.Element {
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState<boolean>(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
 
-  // Reviews state
-  const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(true);
-  const [reviewFlags, setReviewFlags] = useState<ReviewFlag[]>([]);
-  const [isLoadingFlags, setIsLoadingFlags] = useState<boolean>(true);
-
   // Search container refs
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [restaurateurId, setRestaurateurId] = useState<string>("");
 
+  // Stats for the dashboard
   const [reviewStats, setReviewStats] = useState({
     totalReviews: 0,
     pendingResponses: 0, 
     averageRating: 0
-  });
-
-  const [receiptStats, setReceiptStats] = useState({
-    total: 0,
-    pending: 0
   });
   
   // Color scheme for UI elements
@@ -159,61 +113,23 @@ export default function RestaurantDashboard(): JSX.Element {
     card4: "#f1eafe",
     accent: "#faf2e5"
   };
-  
-  const fetchReceiptStats = async (): Promise<void> => {
-    if (!restaurateurId) return;
-    
-    try {
-      // Fetch pending stats
-      const response = await fetch(`/api/restaurateur/receipt-verifications/stats?restaurateurId=${restaurateurId}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setReceiptStats({
-          total: data.total || 0,
-          pending: data.pending || 0
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching receipt stats:", error);
-    }
-  };
 
-  useEffect(() => {
-    if (restaurateurId) {
-      fetchReceiptStats();
-    }
-  }, [restaurateurId]);
-
-
-  // Modified useEffect for getRestaurateurId function
   useEffect(() => {
     const getRestaurateurId = async (): Promise<void> => {
-      if (status !== "authenticated" || !session?.user) return;
+      if (status !== "authenticated" || !session?.user?.email) return;
       
       try {
-        // Try multiple sources for the ID
-        const userId = session.user.id;
-        const restaurateurIdFromSession = (session.user as any).restaurateurId;
+        // Either fetch from session or API depending on where you store the ID
+        // Option 1: If ID is in the session
+        const id = (session.user as any).id;
         
-        console.log("Session user data:", session.user);
-        console.log("User ID from session:", userId);
-        console.log("Restaurateur ID from session:", restaurateurIdFromSession);
-        
-        // Prioritize restaurateurId if available, otherwise use the main id
-        if (restaurateurIdFromSession) {
-          console.log("Using restaurateurId from session:", restaurateurIdFromSession);
-          setRestaurateurId(restaurateurIdFromSession);
+        if (id) {
+          console.log("Found restaurateur ID in session:", id);
+          setRestaurateurId(id);
           return;
         }
         
-        if (userId) {
-          console.log("Using user ID from session:", userId);
-          setRestaurateurId(userId);
-          return;
-        }
-        
-        // Fall back to API call if IDs not in session
+        // Option 2: Fetch minimal data just to get the ID
         const response = await fetch("/api/auth/get-user-id");
         if (response.ok) {
           const data = await response.json();
@@ -273,36 +189,51 @@ export default function RestaurantDashboard(): JSX.Element {
 
   // Fetch connected restaurants
   useEffect(() => {
-  // Update the fetchRestaurants function
-  const fetchRestaurants = async (): Promise<void> => {
-    if (status !== "authenticated" || !restaurateurId) return;
-    
-    try {
-      setIsLoadingRestaurants(true);
-      console.log(`Fetching restaurants for restaurateurId: ${restaurateurId}`);
+    const fetchRestaurants = async (): Promise<void> => {
+      if (status !== "authenticated" || !restaurateurData?.id) return;
       
-      const response = await fetch(`/api/restaurateur/restaurants?restaurateurId=${restaurateurId}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error response:", errorData);
-        throw new Error(`Failed to fetch restaurants: ${response.statusText}`);
+      try {
+        setIsLoadingRestaurants(true);
+        const response = await fetch(`/api/restaurateur/restaurants?restaurateurId=${restaurateurData.id}`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch restaurants");
+        }
+        
+        const data = await response.json();
+        setRestaurants(data);
+
+        // Calculate some simple stats based on restaurants
+        if (Array.isArray(data) && data.length > 0) {
+          let totalReviews = 0;
+          let totalRating = 0;
+
+          data.forEach((restaurant: Restaurant) => {
+            if (restaurant._count?.reviews) {
+              totalReviews += restaurant._count.reviews;
+            }
+            if (restaurant.rating) {
+              totalRating += parseFloat(restaurant.rating);
+            }
+          });
+
+          setReviewStats({
+            totalReviews: totalReviews,
+            pendingResponses: 0, // We'll set this to 0 since the review functionality is moved
+            averageRating: data.length > 0 ? totalRating / data.length : 0
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching restaurants:", error);
+      } finally {
+        setIsLoadingRestaurants(false);
       }
-      
-      const data = await response.json();
-      console.log("Restaurants data:", data);
-      setRestaurants(data);
-    } catch (error) {
-      console.error("Error fetching restaurants:", error);
-    } finally {
-      setIsLoadingRestaurants(false);
-    }
-  };
+    };
 
     fetchRestaurants();
   }, [restaurateurData, status]);
 
-  // Fetch connection requests - now always runs when restaurateurData changes
+  // Fetch connection requests
   useEffect(() => {
     const fetchConnectionRequests = async (): Promise<void> => {
       if (status !== "authenticated" || !restaurateurData?.id) return;
@@ -329,42 +260,6 @@ export default function RestaurantDashboard(): JSX.Element {
       fetchConnectionRequests();
     }
   }, [restaurateurData, status]);
-
-  // Callback to receive stats from ReviewManagement
-  const handleReviewStatsUpdate = (stats: { 
-    totalReviews: number; 
-    pendingResponses: number; 
-    averageRating: number 
-  }): void => {
-    setReviewStats(stats);
-  };
-
-  // Fetch review flags
-  useEffect(() => {
-    const fetchReviewFlags = async (): Promise<void> => {
-      if (status !== "authenticated" || !restaurateurData?.id) return;
-      
-      try {
-        setIsLoadingFlags(true);
-        const response = await fetch(`/api/restaurateur/review-flags?restaurateurId=${restaurateurData.id}`);
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch review flags");
-        }
-        
-        const data = await response.json();
-        setReviewFlags(data);
-      } catch (error) {
-        console.error("Error fetching review flags:", error);
-      } finally {
-        setIsLoadingFlags(false);
-      }
-    };
-
-    if (activeTab === "Flagged Reviews") {
-      fetchReviewFlags();
-    }
-  }, [restaurateurData, status, activeTab]);
 
   // Handle search for restaurants
   useEffect(() => {
@@ -451,13 +346,9 @@ export default function RestaurantDashboard(): JSX.Element {
     return colors[index % colors.length] ?? "#ffffff"; // fallback color
   };
   
-  // Safe stats getters that use reviewStats
+  // Safe stats getters
   const getAverageRating = (): number => {
     return reviewStats.averageRating;
-  };
-
-  const getPendingReviewsCount = (): number => {
-    return reviewStats.pendingResponses;
   };
 
   const getTotalReviewsCount = (): number => {
@@ -483,10 +374,7 @@ export default function RestaurantDashboard(): JSX.Element {
           </p>
         </div>
         
-        <div className="flex gap-4 items-center">
-          {/* Premium upgrade button */}
-          <PremiumButton />
-          
+        <div className="flex gap-4">
           <Link
             href="/profile/restaurateur"
             className="px-4 py-2 border border-gray-300 rounded-full text-gray-700 bg-white hover:shadow-md transition-all"
@@ -586,10 +474,10 @@ export default function RestaurantDashboard(): JSX.Element {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-sm text-gray-500 mb-2">Pending Responses</h3>
-                    <p className="text-2xl font-bold">{getPendingReviewsCount()}</p>
+                    <p className="text-2xl font-bold">0</p>
                   </div>
                   <div className="bg-[#f5b7ee] p-2 rounded-full">
-                    <FontAwesomeIcon icon={faMessage} className="text-white" />
+                    <FontAwesomeIcon icon={faComment} className="text-white" />
                   </div>
                 </div>
               </div>
@@ -599,9 +487,8 @@ export default function RestaurantDashboard(): JSX.Element {
       </div>
     );
   };
-  
 
-// Updated renderTabs function with Overview as first tab
+// Updated renderTabs function with only Overview and My Restaurants tabs
 const renderTabs = (): JSX.Element => {
   return (
     <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-sm p-1 mb-8 max-w-md">
@@ -625,41 +512,6 @@ const renderTabs = (): JSX.Element => {
           onClick={() => setActiveTab('My Restaurants')}
         >
           My Restaurants
-        </button>
-        <button 
-          className={`py-3 px-4 font-medium rounded-lg transition-all ${
-            activeTab === 'Reviews' 
-            ? 'bg-[#fbe9fc] text-black' 
-            : 'text-gray-600 hover:bg-white/50'
-          }`}
-          onClick={() => setActiveTab('Reviews')}
-        >
-          Reviews
-        </button>
-        <button 
-          className={`py-3 px-4 font-medium rounded-lg transition-all ${
-            activeTab === 'Menu Management' 
-            ? 'bg-[#f1eafe] text-black' 
-            : 'text-gray-600 hover:bg-white/50'
-          }`}
-          onClick={() => setActiveTab('Menu Management')}
-        >
-          Menu Management
-        </button>
-        <button 
-          className={`py-3 px-4 font-medium rounded-lg transition-all ${
-            activeTab === 'Receipt Verifications' 
-            ? 'bg-[#dcf1e5] text-black' 
-            : 'text-gray-600 hover:bg-white/50'
-          }`}
-          onClick={() => setActiveTab('Receipt Verifications')}
-        >
-          Receipt Verifications
-          {receiptStats.pending > 0 && (
-            <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-              {receiptStats.pending}
-            </span>
-          )}
         </button>
       </div>
     </div>
@@ -811,11 +663,6 @@ const renderTabs = (): JSX.Element => {
     );
   };
 
-        // Use useMemo to prevent recreating the restaurants array on every render
-        const memoizedRestaurants = useMemo(() => {
-          return restaurants.map(r => ({ id: r.id, title: r.title }));
-        }, [restaurants]);
-
 // Restaurant Dashboard Overview Section with Quick Actions
 const renderOverviewSection = (): JSX.Element => {
   return (
@@ -864,18 +711,18 @@ const renderOverviewSection = (): JSX.Element => {
           </div>
         </div>
         
-        {/* Receipt Verification Card - NEW */}
-        <div className="bg-[#dcf1e5] p-4 rounded-lg shadow-sm">
+        {/* Areas Served */}
+        <div className="bg-[#f1eafe] p-4 rounded-lg shadow-sm">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-sm text-gray-500">Receipt Verifications</h3>
-              <p className="text-2xl font-bold">{receiptStats.total}</p>
-              {receiptStats.pending > 0 && (
-                <p className="text-sm text-red-500">{receiptStats.pending} pending</p>
-              )}
+              <h3 className="text-sm text-gray-500">Areas Served</h3>
+              <p className="text-2xl font-bold">
+                {restaurants && restaurants.length > 0 && restaurants[0]?.widerAreas ? 
+                  restaurants[0].widerAreas.length : 0}
+              </p>
             </div>
-            <div className="bg-[#4ade80] p-2 rounded-full">
-              <FontAwesomeIcon icon={faReceipt} className="text-white" />
+            <div className="bg-[#dab9f8] p-2 rounded-full">
+              <FontAwesomeIcon icon={faGlobe} className="text-white" />
             </div>
           </div>
         </div>
@@ -899,8 +746,8 @@ const renderOverviewSection = (): JSX.Element => {
             </div>
           </Link>
           
-          <button
-            onClick={() => setActiveTab('Menu Management')}
+          <Link
+            href="/menu-management"
             className="p-4 bg-[#fdedf6] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
           >
             <div className="bg-[#f9c3c9] p-2 rounded-full">
@@ -910,10 +757,10 @@ const renderOverviewSection = (): JSX.Element => {
               <h4 className="font-medium">Manage Menu</h4>
               <p className="text-sm text-gray-600">Update food & drink items</p>
             </div>
-          </button>
+          </Link>
           
-          <button
-            onClick={() => setActiveTab('Reviews')}
+          <Link
+            href="/reviews"
             className="p-4 bg-[#fbe9fc] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
           >
             <div className="bg-[#f5b7ee] p-2 rounded-full">
@@ -921,39 +768,34 @@ const renderOverviewSection = (): JSX.Element => {
             </div>
             <div>
               <h4 className="font-medium">Respond to Reviews</h4>
-              <p className="text-sm text-gray-600">{getPendingReviewsCount()} pending</p>
+              <p className="text-sm text-gray-600">0 pending</p>
             </div>
-          </button>
+          </Link>
           
-          {/* Add Receipt Verification Quick Action Button - NEW */}
-          <button
-            onClick={() => setActiveTab('Receipt Verifications')}
-            className="p-4 bg-[#dcf1e5] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
+          <Link
+            href="/receipt-verification"
+            className="p-4 bg-[#f1eafe] rounded-lg flex items-center gap-3 hover:shadow-md transition-all"
           >
-            <div className="bg-[#4ade80] p-2 rounded-full">
+            <div className="bg-[#dab9f8] p-2 rounded-full">
               <FontAwesomeIcon icon={faReceipt} className="text-white" />
             </div>
             <div>
               <h4 className="font-medium">Receipt Verifications</h4>
-              <p className="text-sm text-gray-600">
-                {receiptStats.pending > 0 ? `${receiptStats.pending} pending` : "Verify receipts"}
-              </p>
+              <p className="text-sm text-gray-600">Verify receipts</p>
             </div>
-          </button>
+          </Link>
         </div>
       </div>
     </div>
   );
 };
 
-
-// Update renderTabContent to handle the new Overview tab
+// Update renderTabContent to handle the new tab structure
 const renderTabContent = (): JSX.Element => {
   // Overview tab content
   if (activeTab === "Overview") {
     return (
       <div>
-        
         {/* Overview Section */}
         {renderOverviewSection()}
       </div>
@@ -1040,112 +882,9 @@ const renderTabContent = (): JSX.Element => {
     );
   }
   
-  // Reviews tab content - ONLY ONE VERSION
-  if (activeTab === "Reviews") {
-    return (
-      <div>
-        {restaurateurData && restaurants.length > 0 ? (
-          <ReviewManagement 
-            restaurateurId={restaurateurData.id} 
-            restaurants={memoizedRestaurants}
-            onStatsUpdate={handleReviewStatsUpdate}
-          />
-        ) : (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
-          </div>
-        )}
-      </div>
-    );
-  }
-  
-  // Menu Management tab content
-  if (activeTab === "Menu Management") {
-    return (
-      <div>
-        {restaurants.length === 0 ? (
-          <div className="text-center py-12 bg-white/50 rounded-xl">
-            <FontAwesomeIcon icon={faUtensils} className="text-4xl text-gray-300 mb-4" />
-            <h3 className="text-xl font-medium text-gray-700 mb-2">No restaurants available</h3>
-            <p className="text-gray-500 mb-6">You need to connect to a restaurant before managing menus.</p>
-            <button
-              onClick={() => setActiveTab("My Restaurants")}
-              className="px-6 py-3 bg-[#f2d36e] text-white rounded-full hover:bg-[#e6c860] transition-colors"
-            >
-              Connect to Restaurants
-            </button>
-          </div>
-        ) : restaurants.length === 1 ? (
-          // If there's only one restaurant, show its menu directly
-          <MenuManagement restaurantId={restaurants[0]?.id ?? ""} />
-        ) : (
-          // If there are multiple restaurants, show a selector
-          <div>
-            <div className="mb-6">
-              <label htmlFor="restaurantSelector" className="block text-sm font-medium text-gray-700 mb-2">
-                Select Restaurant to Manage Menu
-              </label>
-              <select
-                id="restaurantSelector"
-                className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#dab9f8]"
-                onChange={(e) => {
-                  // Force a re-render when the selection changes
-                  if (e.target.value) {
-                    setActiveTab("Menu Management");
-                  }
-                }}
-                defaultValue=""
-              >
-                <option value="" disabled>Select a restaurant</option>
-                {restaurants.map((restaurant) => (
-                  <option key={restaurant.id} value={restaurant.id}>
-                    {restaurant.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Show the menu management for the selected restaurant */}
-            {document.getElementById("restaurantSelector") && 
-              (document.getElementById("restaurantSelector") as HTMLSelectElement).value ? (
-              <MenuManagement 
-                restaurantId={(document.getElementById("restaurantSelector") as HTMLSelectElement).value} 
-              />
-            ) : (
-              <div className="text-center py-12 bg-white/50 rounded-xl">
-                <p className="text-gray-500">
-                  Please select a restaurant to manage its menu.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-  
-   // Receipt Verifications Tab
-   if (activeTab === "Receipt Verifications") {
-    return (
-      <div>
-        {restaurateurData ? (
-          <ReceiptVerificationManagement 
-            restaurateurId={restaurateurData.id} 
-            restaurants={memoizedRestaurants}
-          />
-        ) : (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f2d36e]"></div>
-          </div>
-        )}
-      </div>
-    );
-  }
-  
-
-    // Default fallback
-    return <div>Select a tab to view content</div>;
-  };
+  // Default fallback
+  return <div>Select a tab to view content</div>;
+};
 
   // If not authenticated or loading initial data
   if (status === "unauthenticated") {
@@ -1223,7 +962,7 @@ const renderTabContent = (): JSX.Element => {
   return (
     <div>
       <main className="container mx-auto px-6 py-6">
-      {renderHeader()}
+        {renderHeader()}
 
         {/* User Profile Section */}
         {renderRestaurantDetails()}

@@ -1,35 +1,18 @@
-/*eslint-disable*/
+/* eslint-disable */
 import { type NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/server/db";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-
-interface JwtPayload {
-  id: string;
-  email: string;
-  restaurateurId: string;
-  role: string;
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("restaurateur_token")?.value;
+    const session = await getServerSession(authOptions);
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized: No token provided" }, { status: 401 });
+    if (!session || !session.user || session.user.userType !== "restaurateur") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-
-    if (!decoded || decoded.role !== "restaurateur") {
-      return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
-    }
-
-    const restaurateurId = decoded.restaurateurId;
-    const userEmail = decoded.email;
+    
+    const userEmail = session.user.email as string;
 
     const body = await req.json();
     const { reviewId, response } = body;
@@ -56,6 +39,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (!restaurateur) {
       return NextResponse.json({ error: "Restaurateur not found" }, { status: 404 });
+    }
+
+    // Check premium status and response quota
+    if (!restaurateur.isPremium) {
+      // Check if they've already used their daily quota
+      if (restaurateur.responseQuotaRemaining <= 0) {
+        const now = new Date();
+        const quotaReset = restaurateur.responseQuotaReset;
+
+        // If quota reset time is in the future, return quota exceeded error
+        if (quotaReset && quotaReset > now) {
+          return NextResponse.json({
+            error: "Daily response quota exceeded",
+            premiumRequired: true,
+            resetTime: quotaReset.toISOString()
+          }, { status: 429 }); // 429 Too Many Requests
+        } else {
+          // If quota reset time is in the past, reset the quota
+          await db.restaurateur.update({
+            where: { id: restaurateur.id },
+            data: {
+              responseQuotaRemaining: 1,
+              responseQuotaReset: new Date(now.setHours(24, 0, 0, 0)) // Reset at midnight
+            }
+          });
+        }
+      }
     }
 
     const review = await db.review.findUnique({
@@ -89,12 +99,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "You are not authorized to respond to this review" }, { status: 403 });
     }
 
+    // Update the review with the response
     const updatedReview = await db.review.update({
       where: { id: reviewId },
       data: {
         restaurantResponse: response.trim(),
       },
     });
+
+    // Decrement quota if not premium
+    if (!restaurateur.isPremium) {
+      await db.restaurateur.update({
+        where: { id: restaurateur.id },
+        data: {
+          responseQuotaRemaining: restaurateur.responseQuotaRemaining - 1
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,
