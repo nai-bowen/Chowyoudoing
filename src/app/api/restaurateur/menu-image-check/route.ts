@@ -14,7 +14,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // Get restaurateur ID from session or query
-    const restaurateurId = session.user.restaurateurId || session.user.id;
+    const restaurateurId = session.user.restaurateurId ?? session.user.id;
     
     if (!restaurateurId) {
       return NextResponse.json({ error: "Restaurateur ID not found" }, { status: 400 });

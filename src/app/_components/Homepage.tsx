@@ -207,10 +207,8 @@ export default function Home(): JSX.Element {
       <Hero />
 
       {/* Featured Restaurants - Updated to use the new component */}
-      <FeaturedRestaurants 
-        onRestaurantClick={handleRestaurantClick}
-        isAuthenticated={isAuthenticated}
-      />
+      <FeaturedRestaurants onRestaurantClick={handleRestaurantClick} />
+
 
       <ReviewsSection />
 

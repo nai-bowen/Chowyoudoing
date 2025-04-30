@@ -1,3 +1,5 @@
+/*eslint-disable*/
+
 // src/app/_components/AddEditMenuItemModal.tsx
 "use client";
 

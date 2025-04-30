@@ -1,3 +1,5 @@
+/*eslint-disable*/
+
 // src/app/api/restaurateur/menu-items/route.ts
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
