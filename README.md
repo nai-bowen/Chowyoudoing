@@ -1,925 +1,127 @@
-# Create T3 App
+# Chow You Doing? – Restaurant Review Web App
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+A full-stack web application where patrons can review meals, upload images/videos, and get responses from restaurants. Built using the T3 Stack: **Next.js (App Router)**, **TypeScript**, **TailwindCSS**, **tRPC**, **Prisma**, and **PostgreSQL (via Neon)**.
 
-## What's next? How do I make an app with this?
+---
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+## 🚀 Getting Started
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+### ✅ Prerequisites
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+Make sure you have the following installed:
 
-## Learn More
+- Node.js 
+- npm
+- Git
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+---
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+### 🧩 Clone the Repository
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
-
-## How do I deploy this?
-
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
-
+```bash
+git clone https://campus.cs.le.ac.uk/gitlab/nib3/final-year-project.git
+cd master (optional can run from main)
 ```
-```
-```
-fyp_cyd
-├─ .eslintrc.cjs
-├─ next.config.js
-├─ package-lock.json
-├─ package.json
-├─ postcss.config.js
-├─ prettier.config.js
-├─ prisma
-│  ├─ migrations
-│  │  ├─ 20250116211614_rename_user_to_patron
-│  │  │  └─ migration.sql
-│  │  ├─ 20250203180657_add_restaurant_menu_models
-│  │  │  └─ migration.sql
-│  │  ├─ 20250205201227_add_interests_array
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207124526_add_interest_to_menu
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207125429_add_url_to_restaurant
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207131132_add_reviews_and_upvotes
-│  │  │  └─ migration.sql
-│  │  ├─ 20250225175045_add_category_to_restaurant
-│  │  │  └─ migration.sql
-│  │  ├─ 20250225182424_update_restaurant_categories
-│  │  │  └─ migration.sql
-│  │  ├─ 20250226134538_add_review_fields
-│  │  │  └─ migration.sql
-│  │  ├─ 20250227161946_add_menu_item_id
-│  │  │  └─ migration.sql
-│  │  ├─ 20250303131850_add_longlat_formaps
-│  │  │  └─ migration.sql
-│  │  ├─ 20250303163442_add_votes
-│  │  │  └─ migration.sql
-│  │  ├─ 20250316151937_add_profile_features
-│  │  │  └─ migration.sql
-│  │  ├─ 20250319200314_add_certified_foodie
-│  │  │  └─ migration.sql
-│  │  ├─ 20250321145333_add_restaurateur_model
-│  │  │  └─ migration.sql
-│  │  ├─ 20250327172936_add_restaurateur_model
-│  │  │  └─ migration.sql
-│  │  ├─ 20250329181926_add_restaurant_interests
-│  │  │  └─ migration.sql
-│  │  └─ migration_lock.toml
-│  └─ schema.prisma
-├─ public
-│  ├─ assets
-│  │  ├─ &kith.jpg
-│  │  ├─ background_3blur.png
-│  │  ├─ background_cta.svg
-│  │  ├─ background_ssr.svg
-│  │  ├─ chickanos.jpg
-│  │  ├─ cyd_emblem.png
-│  │  ├─ cyd_fullLogo.png
-│  │  ├─ default-profile.png
-│  │  ├─ eat.png
-│  │  ├─ fast-food.png
-│  │  ├─ good-review.png
-│  │  ├─ home_layer1.svg
-│  │  ├─ home_layer2.svg
-│  │  ├─ meal.png
-│  │  ├─ popeyes.jpg
-│  │  └─ rating.png
-│  └─ favicon.ico
-├─ README.md
-├─ src
-│  ├─ app
-│  │  ├─ admin
-│  │  │  ├─ category-mapping
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ category-test
-│  │  │  │  └─ page.tsx
-│  │  │  └─ certification-requests
-│  │  │     └─ page.tsx
-│  │  ├─ api
-│  │  │  ├─ admin
-│  │  │  │  ├─ category-mapping
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ category-test
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ certification-requests
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  └─ test-mapping
-│  │  │  │     └─ route.ts
-│  │  │  ├─ auth
-│  │  │  │  ├─ login
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ register
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ restaurant-register
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ [...nextauth]
-│  │  │  │     └─ route.ts
-│  │  │  ├─ certification-requests
-│  │  │  │  └─ route.ts
-│  │  │  ├─ profile
-│  │  │  │  ├─ certification
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ favourites
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ follow
-│  │  │  │  │  ├─ check
-│  │  │  │  │  │  └─ route.ts
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ following
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ patron
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ route.ts
-│  │  │  ├─ restaurants
-│  │  │  │  ├─ discover
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ [restaurantId]
-│  │  │  │     ├─ menu-items
-│  │  │  │     │  └─ route.ts
-│  │  │  │     └─ route.ts
-│  │  │  ├─ review
-│  │  │  │  ├─ route.ts
-│  │  │  │  └─ [id]
-│  │  │  │     ├─ edit
-│  │  │  │     │  └─ route.ts
-│  │  │  │     └─ route.ts
-│  │  │  ├─ scraper
-│  │  │  │  └─ route.ts
-│  │  │  ├─ search
-│  │  │  │  └─ route.ts
-│  │  │  ├─ send-email
-│  │  │  │  └─ route.ts
-│  │  │  ├─ trpc
-│  │  │  │  └─ [trpc]
-│  │  │  │     └─ route.ts
-│  │  │  └─ upload
-│  │  │     └─ route.ts
-│  │  ├─ discover
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ layout.tsx
-│  │  ├─ login
-│  │  │  └─ page.tsx
-│  │  ├─ page.tsx
-│  │  ├─ patron-dashboard
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ patron-search
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ profile
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ register
-│  │  │  ├─ page.tsx
-│  │  │  └─ restaurateur
-│  │  │     └─ page.tsx
-│  │  ├─ restaurants
-│  │  │  └─ [restaurantId]
-│  │  │     └─ page.tsx
-│  │  ├─ review
-│  │  │  └─ edit
-│  │  │     └─ [id]
-│  │  │        └─ page.tsx
-│  │  ├─ scraper-input
-│  │  │  └─ page.tsx
-│  │  └─ _components
-│  │     ├─ AnimatedBackground.tsx
-│  │     ├─ CeritficationRequestForm.tsx
-│  │     ├─ CertificationButton.tsx
-│  │     ├─ CertificationModal.tsx
-│  │     ├─ CertifiedFoodieBadge.tsx
-│  │     ├─ EditReviewModal.tsx
-│  │     ├─ FloatingFoodEmojis.tsx
-│  │     ├─ FollowButton.tsx
-│  │     ├─ FollowingList.tsx
-│  │     ├─ Footer.tsx
-│  │     ├─ Hero.tsx
-│  │     ├─ Home-Navbar.tsx
-│  │     ├─ Homepage.tsx
-│  │     ├─ Patron-Navbar.tsx
-│  │     ├─ PatronProfileModal.tsx
-│  │     ├─ post.tsx
-│  │     ├─ RequestMenuModal.tsx
-│  │     ├─ RestaurantCard.tsx
-│  │     ├─ ReviewCard.tsx
-│  │     ├─ ReviewModal.tsx
-│  │     ├─ ReviewSection.tsx
-│  │     ├─ SearchResults.tsx
-│  │     ├─ SessionProvider.tsx
-│  │     ├─ SortDropdown.tsx
-│  │     ├─ ui
-│  │     │  ├─ button.tsx
-│  │     │  └─ input.tsx
-│  │     └─ WriteReviewModal.tsx
-│  ├─ env.js
-│  ├─ lib
-│  │  ├─ auth.ts
-│  │  ├─ jwt.ts
-│  │  ├─ locationService.ts
-│  │  ├─ useSortHook.ts
-│  │  └─ utils.ts
-│  ├─ server
-│  │  ├─ api
-│  │  │  ├─ menu
-│  │  │  │  └─ top.ts
-│  │  │  ├─ restaurants
-│  │  │  │  └─ location.ts
-│  │  │  ├─ reviews
-│  │  │  │  └─ route.ts
-│  │  │  ├─ root.ts
-│  │  │  ├─ routers
-│  │  │  │  └─ post.ts
-│  │  │  └─ trpc.ts
-│  │  ├─ auth
-│  │  │  ├─ config.ts
-│  │  │  ├─ custom-prisma-adapter.ts
-│  │  │  └─ index.ts
-│  │  ├─ db.ts
-│  │  └─ services
-│  │     ├─ scraper
-│  │     │  ├─ menuScraper.ts
-│  │     │  ├─ restaurantScraper.ts
-│  │     │  └─ uberEatsScraper.ts
-│  │     └─ scraperService.ts
-│  ├─ styles
-│  │  ├─ dashboard.css
-│  │  ├─ globals.css
-│  │  ├─ index.css
-│  │  ├─ location.css
-│  │  ├─ navbar.css
-│  │  └─ tailwind.css
-│  ├─ trpc
-│  │  ├─ query-client.ts
-│  │  ├─ react.tsx
-│  │  └─ server.ts
-│  ├─ types
-│  │  └─ next-auth.d.ts
-│  └─ utils
-│     ├─ categoryMappingService.client.ts
-│     ├─ categoryMappingService.ts
-│     ├─ embeddingUtils.client.ts
-│     └─ embeddingUtils.ts
-├─ start-database.sh
-├─ tailwind.config.ts
-└─ tsconfig.json
 
+### 📦 Install Dependencies
+``` bash
+npm install 
 ```
-```
-fyp_cyd
-├─ .eslintrc.cjs
-├─ next.config.js
-├─ package-lock.json
-├─ package.json
-├─ postcss.config.js
-├─ prettier.config.js
-├─ prisma
-│  ├─ migrations
-│  │  ├─ 20250116211614_rename_user_to_patron
-│  │  │  └─ migration.sql
-│  │  ├─ 20250203180657_add_restaurant_menu_models
-│  │  │  └─ migration.sql
-│  │  ├─ 20250205201227_add_interests_array
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207124526_add_interest_to_menu
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207125429_add_url_to_restaurant
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207131132_add_reviews_and_upvotes
-│  │  │  └─ migration.sql
-│  │  ├─ 20250225175045_add_category_to_restaurant
-│  │  │  └─ migration.sql
-│  │  ├─ 20250225182424_update_restaurant_categories
-│  │  │  └─ migration.sql
-│  │  ├─ 20250226134538_add_review_fields
-│  │  │  └─ migration.sql
-│  │  ├─ 20250227161946_add_menu_item_id
-│  │  │  └─ migration.sql
-│  │  ├─ 20250303131850_add_longlat_formaps
-│  │  │  └─ migration.sql
-│  │  ├─ 20250303163442_add_votes
-│  │  │  └─ migration.sql
-│  │  ├─ 20250316151937_add_profile_features
-│  │  │  └─ migration.sql
-│  │  ├─ 20250319200314_add_certified_foodie
-│  │  │  └─ migration.sql
-│  │  ├─ 20250321145333_add_restaurateur_model
-│  │  │  └─ migration.sql
-│  │  ├─ 20250327172936_add_restaurateur_model
-│  │  │  └─ migration.sql
-│  │  ├─ 20250329181926_add_restaurant_interests
-│  │  │  └─ migration.sql
-│  │  ├─ 20250404102839_add_anonymous_reviews
-│  │  │  └─ migration.sql
-│  │  ├─ 20250406181721_add_trending_categories
-│  │  │  └─ migration.sql
-│  │  ├─ 20250408213006_add_wider_areas_to_restaurants
-│  │  │  └─ migration.sql
-│  │  ├─ 20250408232051_add_restaurant_connections
-│  │  │  └─ migration.sql
-│  │  └─ migration_lock.toml
-│  └─ schema.prisma
-├─ public
-│  ├─ assets
-│  │  ├─ &kith.jpg
-│  │  ├─ background_3blur.png
-│  │  ├─ background_cta.svg
-│  │  ├─ background_ssr.svg
-│  │  ├─ chickanos.jpg
-│  │  ├─ cyd_emblem.png
-│  │  ├─ cyd_fullLogo.png
-│  │  ├─ default-profile.png
-│  │  ├─ eat.png
-│  │  ├─ fast-food.png
-│  │  ├─ good-review.png
-│  │  ├─ home_layer1.svg
-│  │  ├─ home_layer2.svg
-│  │  ├─ meal.png
-│  │  ├─ popeyes.jpg
-│  │  └─ rating.png
-│  └─ favicon.ico
-├─ README.md
-├─ src
-│  ├─ app
-│  │  ├─ admin
-│  │  │  ├─ category-mapping
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ category-test
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ certification-requests
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ restaurant-connection-requests
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ restaurant-requests
-│  │  │  │  └─ page.tsx
-│  │  │  └─ scraper-input
-│  │  │     └─ page.tsx
-│  │  ├─ api
-│  │  │  ├─ admin
-│  │  │  │  ├─ category-mapping
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ category-test
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ certification-requests
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ restaurant-connection-requests
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ restaurant-requests
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  └─ test-mapping
-│  │  │  │     └─ route.ts
-│  │  │  ├─ auth
-│  │  │  │  ├─ login
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ register
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ restaurant-login
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ restaurant-register
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ [...nextauth]
-│  │  │  │     └─ route.ts
-│  │  │  ├─ certification-requests
-│  │  │  │  └─ route.ts
-│  │  │  ├─ cron
-│  │  │  │  └─ update-trending
-│  │  │  │     ├─ calculate.ts
-│  │  │  │     └─ route.ts
-│  │  │  ├─ profile
-│  │  │  │  ├─ certification
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ favourites
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ follow
-│  │  │  │  │  ├─ check
-│  │  │  │  │  │  └─ route.ts
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ following
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ patron
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ route.ts
-│  │  │  │  └─ search
-│  │  │  │     └─ route.ts
-│  │  │  ├─ restaurants
-│  │  │  │  ├─ discover
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ [restaurantId]
-│  │  │  │     ├─ menu-items
-│  │  │  │     │  └─ route.ts
-│  │  │  │     └─ route.ts
-│  │  │  ├─ restaurateur
-│  │  │  │  ├─ connection-requests
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ profile
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ restaurants
-│  │  │  │     └─ route.ts
-│  │  │  ├─ review
-│  │  │  │  ├─ route.ts
-│  │  │  │  └─ [id]
-│  │  │  │     ├─ edit
-│  │  │  │     │  └─ route.ts
-│  │  │  │     └─ route.ts
-│  │  │  ├─ scraper
-│  │  │  │  └─ route.ts
-│  │  │  ├─ search
-│  │  │  │  └─ route.ts
-│  │  │  ├─ send-email
-│  │  │  │  └─ route.ts
-│  │  │  ├─ trending
-│  │  │  │  └─ route.ts
-│  │  │  ├─ trpc
-│  │  │  │  └─ [trpc]
-│  │  │  │     └─ route.ts
-│  │  │  └─ upload
-│  │  │     └─ route.ts
-│  │  ├─ discover
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ layout.tsx
-│  │  ├─ login
-│  │  │  ├─ page.tsx
-│  │  │  └─ restaurateur
-│  │  │     └─ page.tsx
-│  │  ├─ page.tsx
-│  │  ├─ patron-dashboard
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ patron-search
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ profile
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ register
-│  │  │  ├─ page.tsx
-│  │  │  └─ restaurateur
-│  │  │     └─ page.tsx
-│  │  ├─ restaurant-dashboard
-│  │  │  └─ page.tsx
-│  │  ├─ restaurants
-│  │  │  └─ [restaurantId]
-│  │  │     └─ page.tsx
-│  │  ├─ review
-│  │  │  └─ edit
-│  │  │     └─ [id]
-│  │  │        └─ page.tsx
-│  │  └─ _components
-│  │     ├─ AnimatedBackground.tsx
-│  │     ├─ CeritficationRequestForm.tsx
-│  │     ├─ CertificationButton.tsx
-│  │     ├─ CertificationModal.tsx
-│  │     ├─ CertifiedFoodieBadge.tsx
-│  │     ├─ EditReviewModal.tsx
-│  │     ├─ FloatingFoodEmojis.tsx
-│  │     ├─ FollowButton.tsx
-│  │     ├─ FollowingList.tsx
-│  │     ├─ Footer.tsx
-│  │     ├─ Hero.tsx
-│  │     ├─ Home-Navbar.tsx
-│  │     ├─ Homepage.tsx
-│  │     ├─ Patron-Navbar.tsx
-│  │     ├─ PatronProfileModal.tsx
-│  │     ├─ post.tsx
-│  │     ├─ ProfileImage.tsx
-│  │     ├─ RequestMenuModal.tsx
-│  │     ├─ RestaurantCard.tsx
-│  │     ├─ RestaurantConnectionModal.tsx
-│  │     ├─ ReviewCard.tsx
-│  │     ├─ ReviewModal.tsx
-│  │     ├─ ReviewSection.tsx
-│  │     ├─ SearchResults.tsx
-│  │     ├─ SessionProvider.tsx
-│  │     ├─ SortDropdown.tsx
-│  │     ├─ StatCard.tsx
-│  │     ├─ TrendingCategories.tsx
-│  │     ├─ ui
-│  │     │  ├─ button.tsx
-│  │     │  └─ input.tsx
-│  │     └─ WriteReviewModal.tsx
-│  ├─ env.js
-│  ├─ lib
-│  │  ├─ auth.ts
-│  │  ├─ jwt.ts
-│  │  ├─ locationService.ts
-│  │  ├─ useSortHook.ts
-│  │  └─ utils.ts
-│  ├─ server
-│  │  ├─ api
-│  │  │  ├─ menu
-│  │  │  │  └─ top.ts
-│  │  │  ├─ restaurants
-│  │  │  │  └─ location.ts
-│  │  │  ├─ reviews
-│  │  │  │  └─ route.ts
-│  │  │  ├─ root.ts
-│  │  │  ├─ routers
-│  │  │  │  └─ post.ts
-│  │  │  └─ trpc.ts
-│  │  ├─ auth
-│  │  │  ├─ config.ts
-│  │  │  ├─ custom-prisma-adapter.ts
-│  │  │  └─ index.ts
-│  │  ├─ db.ts
-│  │  └─ services
-│  │     ├─ scraper
-│  │     │  ├─ menuScraper.ts
-│  │     │  ├─ restaurantScraper.ts
-│  │     │  └─ uberEatsScraper.ts
-│  │     └─ scraperService.ts
-│  ├─ styles
-│  │  ├─ dashboard.css
-│  │  ├─ globals.css
-│  │  ├─ index.css
-│  │  ├─ location.css
-│  │  ├─ navbar.css
-│  │  └─ tailwind.css
-│  ├─ trpc
-│  │  ├─ query-client.ts
-│  │  ├─ react.tsx
-│  │  └─ server.ts
-│  ├─ types
-│  │  └─ next-auth.d.ts
-│  └─ utils
-│     ├─ categoryMappingService.client.ts
-│     ├─ categoryMappingService.ts
-│     ├─ embeddingUtils.client.ts
-│     └─ embeddingUtils.ts
-├─ start-database.sh
-├─ tailwind.config.ts
-├─ tsconfig.json
-└─ vercel.json
+### ⚙️ Environment Setup
+Environment has to be set up manually as it cannot be stored on git.
+Create a file named .env and populate it with the following information
+```env
+# When adding additional environment variables, the schema in "/src/env.js"
+# should be updated accordingly.
 
-```
-```
-fyp_cyd
-├─ .eslintrc.cjs
-├─ next.config.js
-├─ package-lock.json
-├─ package.json
-├─ postcss.config.js
-├─ prettier.config.js
-├─ prisma
-│  ├─ migrations
-│  │  ├─ 20250116211614_rename_user_to_patron
-│  │  │  └─ migration.sql
-│  │  ├─ 20250203180657_add_restaurant_menu_models
-│  │  │  └─ migration.sql
-│  │  ├─ 20250205201227_add_interests_array
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207124526_add_interest_to_menu
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207125429_add_url_to_restaurant
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207131132_add_reviews_and_upvotes
-│  │  │  └─ migration.sql
-│  │  ├─ 20250225175045_add_category_to_restaurant
-│  │  │  └─ migration.sql
-│  │  ├─ 20250225182424_update_restaurant_categories
-│  │  │  └─ migration.sql
-│  │  ├─ 20250226134538_add_review_fields
-│  │  │  └─ migration.sql
-│  │  ├─ 20250227161946_add_menu_item_id
-│  │  │  └─ migration.sql
-│  │  ├─ 20250303131850_add_longlat_formaps
-│  │  │  └─ migration.sql
-│  │  ├─ 20250303163442_add_votes
-│  │  │  └─ migration.sql
-│  │  ├─ 20250316151937_add_profile_features
-│  │  │  └─ migration.sql
-│  │  ├─ 20250319200314_add_certified_foodie
-│  │  │  └─ migration.sql
-│  │  ├─ 20250321145333_add_restaurateur_model
-│  │  │  └─ migration.sql
-│  │  ├─ 20250327172936_add_restaurateur_model
-│  │  │  └─ migration.sql
-│  │  ├─ 20250329181926_add_restaurant_interests
-│  │  │  └─ migration.sql
-│  │  ├─ 20250404102839_add_anonymous_reviews
-│  │  │  └─ migration.sql
-│  │  ├─ 20250406181721_add_trending_categories
-│  │  │  └─ migration.sql
-│  │  ├─ 20250408213006_add_wider_areas_to_restaurants
-│  │  │  └─ migration.sql
-│  │  ├─ 20250408232051_add_restaurant_connections
-│  │  │  └─ migration.sql
-│  │  └─ migration_lock.toml
-│  └─ schema.prisma
-├─ public
-│  ├─ assets
-│  │  ├─ &kith.jpg
-│  │  ├─ background_3blur.png
-│  │  ├─ background_cta.svg
-│  │  ├─ background_ssr.svg
-│  │  ├─ chickanos.jpg
-│  │  ├─ cyd_emblem.png
-│  │  ├─ cyd_fullLogo.png
-│  │  ├─ default-profile.png
-│  │  ├─ eat.png
-│  │  ├─ fast-food.png
-│  │  ├─ good-review.png
-│  │  ├─ home_layer1.svg
-│  │  ├─ home_layer2.svg
-│  │  ├─ meal.png
-│  │  ├─ popeyes.jpg
-│  │  └─ rating.png
-│  └─ favicon.ico
-├─ README.md
-├─ src
-│  ├─ app
-│  │  ├─ admin
-│  │  │  ├─ category-mapping
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ certification-requests
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ restaurant-connection-requests
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ restaurant-requests
-│  │  │  │  └─ page.tsx
-│  │  │  ├─ review-flags
-│  │  │  │  └─ page.tsx
-│  │  │  └─ scraper-input
-│  │  │     └─ page.tsx
-│  │  ├─ api
-│  │  │  ├─ admin
-│  │  │  │  ├─ category-mapping
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ category-test
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ certification-requests
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ restaurant-connection-requests
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ restaurant-requests
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ review-flags
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  └─ test-mapping
-│  │  │  │     └─ route.ts
-│  │  │  ├─ auth
-│  │  │  │  ├─ login
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ register
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ restaurant-login
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ restaurant-register
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ [...nextauth]
-│  │  │  │     └─ route.ts
-│  │  │  ├─ certification-requests
-│  │  │  │  └─ route.ts
-│  │  │  ├─ cron
-│  │  │  │  └─ update-trending
-│  │  │  │     ├─ calculate.ts
-│  │  │  │     └─ route.ts
-│  │  │  ├─ patron
-│  │  │  │  └─ receipt-verification
-│  │  │  │     └─ route.ts
-│  │  │  ├─ profile
-│  │  │  │  ├─ certification
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ favourites
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ follow
-│  │  │  │  │  ├─ check
-│  │  │  │  │  │  └─ route.ts
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ following
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ patron
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ route.ts
-│  │  │  │  └─ search
-│  │  │  │     └─ route.ts
-│  │  │  ├─ restaurants
-│  │  │  │  ├─ discover
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ [restaurantId]
-│  │  │  │     ├─ edit
-│  │  │  │     │  └─ route.ts
-│  │  │  │     ├─ menu-items
-│  │  │  │     │  └─ route.ts
-│  │  │  │     ├─ receipt-verifications
-│  │  │  │     │  ├─ route.ts
-│  │  │  │     │  └─ stats
-│  │  │  │     │     └─ route.ts
-│  │  │  │     ├─ route.ts
-│  │  │  │     └─ update
-│  │  │  │        └─ route.ts
-│  │  │  ├─ restaurateur
-│  │  │  │  ├─ connection-requests
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ interests
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ menu-items
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ menu-sections
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ profile
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ update
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ receipt-verifications
-│  │  │  │  │  ├─ route.ts
-│  │  │  │  │  └─ [id]
-│  │  │  │  │     └─ route.ts
-│  │  │  │  ├─ restaurants
-│  │  │  │  │  └─ route.ts
-│  │  │  │  └─ reviews
-│  │  │  │     ├─ respond
-│  │  │  │     │  └─ route.ts
-│  │  │  │     └─ route.ts
-│  │  │  ├─ review
-│  │  │  │  ├─ flag
-│  │  │  │  │  └─ route.ts
-│  │  │  │  ├─ route.ts
-│  │  │  │  └─ [id]
-│  │  │  │     ├─ edit
-│  │  │  │     │  └─ route.ts
-│  │  │  │     └─ route.ts
-│  │  │  ├─ scraper
-│  │  │  │  └─ route.ts
-│  │  │  ├─ search
-│  │  │  │  └─ route.ts
-│  │  │  ├─ send-email
-│  │  │  │  └─ route.ts
-│  │  │  ├─ trending
-│  │  │  │  └─ route.ts
-│  │  │  ├─ trpc
-│  │  │  │  └─ [trpc]
-│  │  │  │     └─ route.ts
-│  │  │  └─ upload
-│  │  │     └─ route.ts
-│  │  ├─ discover
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ layout.tsx
-│  │  ├─ login
-│  │  │  ├─ page.tsx
-│  │  │  └─ restaurateur
-│  │  │     └─ page.tsx
-│  │  ├─ page.tsx
-│  │  ├─ patron-dashboard
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ patron-search
-│  │  │  ├─ layout.tsx
-│  │  │  └─ page.tsx
-│  │  ├─ profile
-│  │  │  ├─ layout.tsx
-│  │  │  ├─ page.tsx
-│  │  │  └─ restaurateur
-│  │  │     └─ page.tsx
-│  │  ├─ register
-│  │  │  ├─ page.tsx
-│  │  │  └─ restaurateur
-│  │  │     └─ page.tsx
-│  │  ├─ restaurant-dashboard
-│  │  │  ├─ page.tsx
-│  │  │  └─ [restaurantId]
-│  │  │     ├─ edit
-│  │  │     │  └─ page.tsx
-│  │  │     ├─ menu
-│  │  │     │  └─ page.tsx
-│  │  │     └─ receipt-verifications
-│  │  │        └─ page.tsx
-│  │  ├─ restaurants
-│  │  │  └─ [restaurantId]
-│  │  │     └─ page.tsx
-│  │  ├─ review
-│  │  │  └─ edit
-│  │  │     └─ [id]
-│  │  │        └─ page.tsx
-│  │  └─ _components
-│  │     ├─ AddEditMenuItemModal.tsx
-│  │     ├─ AddEditMenuSectionModal.tsx
-│  │     ├─ AnimatedBackground.tsx
-│  │     ├─ CeritficationRequestForm.tsx
-│  │     ├─ CertificationButton.tsx
-│  │     ├─ CertificationModal.tsx
-│  │     ├─ CertifiedFoodieBadge.tsx
-│  │     ├─ EditReviewModal.tsx
-│  │     ├─ FlagReviewModal.tsx
-│  │     ├─ FloatingFoodEmojis.tsx
-│  │     ├─ FollowButton.tsx
-│  │     ├─ FollowingList.tsx
-│  │     ├─ Footer.tsx
-│  │     ├─ Hero.tsx
-│  │     ├─ Home-Navbar.tsx
-│  │     ├─ Homepage.tsx
-│  │     ├─ MenuManagement.tsx
-│  │     ├─ Patron-Navbar.tsx
-│  │     ├─ PatronProfileModal.tsx
-│  │     ├─ post.tsx
-│  │     ├─ ProfileImage.tsx
-│  │     ├─ ReceiptVerificationManagement.tsx
-│  │     ├─ ReceiptVerificationModal.tsx
-│  │     ├─ RequestMenuModal.tsx
-│  │     ├─ RestaurantCard.tsx
-│  │     ├─ RestaurantConnectionModal.tsx
-│  │     ├─ RestaurantProfile.tsx
-│  │     ├─ ReviewCard.tsx
-│  │     ├─ ReviewManagement.tsx
-│  │     ├─ ReviewModal.tsx
-│  │     ├─ ReviewResponseModal.tsx
-│  │     ├─ ReviewSection.tsx
-│  │     ├─ SearchResults.tsx
-│  │     ├─ SessionProvider.tsx
-│  │     ├─ SortDropdown.tsx
-│  │     ├─ StatCard.tsx
-│  │     ├─ SubmitReceiptModal.tsx
-│  │     ├─ TrendingCategories.tsx
-│  │     ├─ ui
-│  │     │  ├─ button.tsx
-│  │     │  └─ input.tsx
-│  │     ├─ VerificationBadge.tsx
-│  │     └─ WriteReviewModal.tsx
-│  ├─ env.js
-│  ├─ lib
-│  │  ├─ auth.ts
-│  │  ├─ jwt.ts
-│  │  ├─ locationService.ts
-│  │  ├─ useSortHook.ts
-│  │  └─ utils.ts
-│  ├─ server
-│  │  ├─ api
-│  │  │  ├─ menu
-│  │  │  │  └─ top.ts
-│  │  │  ├─ restaurants
-│  │  │  │  └─ location.ts
-│  │  │  ├─ reviews
-│  │  │  │  └─ route.ts
-│  │  │  ├─ root.ts
-│  │  │  ├─ routers
-│  │  │  │  └─ post.ts
-│  │  │  └─ trpc.ts
-│  │  ├─ auth
-│  │  │  ├─ config.ts
-│  │  │  ├─ custom-prisma-adapter.ts
-│  │  │  └─ index.ts
-│  │  ├─ db.ts
-│  │  └─ services
-│  │     ├─ scraper
-│  │     │  ├─ menuScraper.ts
-│  │     │  ├─ restaurantScraper.ts
-│  │     │  └─ uberEatsScraper.ts
-│  │     └─ scraperService.ts
-│  ├─ styles
-│  │  ├─ dashboard.css
-│  │  ├─ globals.css
-│  │  ├─ index.css
-│  │  ├─ location.css
-│  │  ├─ navbar.css
-│  │  └─ tailwind.css
-│  ├─ trpc
-│  │  ├─ query-client.ts
-│  │  ├─ react.tsx
-│  │  └─ server.ts
-│  ├─ types
-│  │  └─ next-auth.d.ts
-│  └─ utils
-│     ├─ categoryMappingService.client.ts
-│     ├─ categoryMappingService.ts
-│     ├─ embeddingUtils.client.ts
-│     └─ embeddingUtils.ts
-├─ start-database.sh
-├─ tailwind.config.ts
-├─ tsconfig.json
-└─ vercel.json
+# Next Auth
+# You can generate a new secret on the command line with:
+# npx auth secret
+# https://next-auth.js.org/configuration/options#secret
+AUTH_SECRET="g2PpNQmcfAar8nUT/I5Irh/6DoSbbicQSbKhQmgr8TI=" # Generated by create-t3-app.
 
+# Next Auth Discord Provider
+AUTH_DISCORD_ID=""
+AUTH_DISCORD_SECRET=""
+
+# Prisma
+# https://www.prisma.io/docs/reference/database-reference/connection-urls#env
+DATABASE_URL="postgresql://neondb_owner:npg_a3YeZkNi5EyC@ep-aged-violet-abzg8pez-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+JWT_SECRET=admin
+
+GOOGLE_CLIENT_ID="80321810331-m0e5r22akd41ne5oj3hdflc6gl7sm7fv.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="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"
+NEXTAUTH_URL=http://localhost:3000
+
+CLOUDINARY_CLOUD_NAME=dtdhqtykq
+CLOUDINARY_API_KEY=767348279623979
+CLOUDINARY_API_SECRET=nF9Y5VDVPN6hhPdmQjVMa6hS5r4
+
+# Google Maps API Key - Get from Google Cloud Console
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyBZ5-_PxSu_r1bAQskg6-fObzhfW2TJANw
+
+#SMTP Settings 
+EMAIL_SERVER=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=chowyd.business@gmail.com
+EMAIL_PASSWORD=wmzj tacn frgi disn
+EMAIL_FROM=chowyd.business@gmail.com
+
+ADMIN_PASSWORD=AIzaSyBZ5-_PxSu_r1bAQskg6-fObzhfW2TJANw
+
+#Stripe Settings
+STRIPE_SECRET_KEY=sk_test_51RHrPAR89eR7ByogHSk6ITlRJTAkdzPhi9OhHr1ogijqX7kUfVOd5fhi5iX1o3FNAIBCVE8KbkhOkCDqa13Kuv1X001TPZOErR
+NEXT_PUBLIC_STRIPE_PUBLIC_KEY=pk_test_51RHrPAR89eR7ByogQ4ME5XX5fp7JosS8Xx8q5a6ZGFOEMtfPAr7hKVFWg9Tgx9pnwGFZkLN3kD3pyHDF8eyVZ5ZV00AZIhhjjJ
+NEXT_PUBLIC_APP_URL=http://chowyoudoing.co.uk
 ```
+⚠️ Important: The application will not run without these environment variables. Be sure to provide valid values.
+
+## 🗄️ Database Setup (No Configuration Needed)
+
+This project uses a **cloud-hosted PostgreSQL database via [Neon](https://neon.tech/)**.
+
+You **do not need to set up your own database**.
+
+A `.env` file containing a valid `DATABASE_URL` is provided. It points to a live Neon database that’s already configured with the correct schema.
+
+As long as the `.env` file is present and the `DATABASE_URL` is unchanged, the app will connect automatically.
+
+> ⚠️ **Do not run any Prisma migrations** unless instructed, as this may alter the shared database schema.
+
+---
+
+## 🧪 Run the App Locally
+```
+npm run dev
+```
+## 🌍 Try the App Live
+
+The application works best in a deployed environment with full functionality enabled.
+
+You can try it out directly at:
+
+👉 **[chowyoudoing.co.uk](https://chowyoudoing.co.uk)**
+
+No setup required — just visit the site and explore the features as a patron or restaurant.
+
+## 🔒 Extra Details
+
+- **Admin Pages**  
+  Admin features can be accessed using the password found in your `.env` file under:
+
+  ```env
+  ADMIN_PASSWORD=your_admin_password_here
+  ```
+Paste this password when prompted on admin routes to gain access.
+
+Scraper Tool
+The Uber Eats scraper is designed to run only on localhost for security reasons.
+To test or use the scraper, make sure the app is running locally on:
+http://localhost:3000
+
+## 🌲 Project Tree
+
 ```
 fyp_cyd
 ├─ .eslintrc.cjs
@@ -930,56 +132,6 @@ fyp_cyd
 ├─ postcss.config.js
 ├─ prettier.config.js
 ├─ prisma
-│  ├─ migrations
-│  │  ├─ 20250116211614_rename_user_to_patron
-│  │  │  └─ migration.sql
-│  │  ├─ 20250203180657_add_restaurant_menu_models
-│  │  │  └─ migration.sql
-│  │  ├─ 20250205201227_add_interests_array
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207124526_add_interest_to_menu
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207125429_add_url_to_restaurant
-│  │  │  └─ migration.sql
-│  │  ├─ 20250207131132_add_reviews_and_upvotes
-│  │  │  └─ migration.sql
-│  │  ├─ 20250225175045_add_category_to_restaurant
-│  │  │  └─ migration.sql
-│  │  ├─ 20250225182424_update_restaurant_categories
-│  │  │  └─ migration.sql
-│  │  ├─ 20250226134538_add_review_fields
-│  │  │  └─ migration.sql
-│  │  ├─ 20250227161946_add_menu_item_id
-│  │  │  └─ migration.sql
-│  │  ├─ 20250303131850_add_longlat_formaps
-│  │  │  └─ migration.sql
-│  │  ├─ 20250303163442_add_votes
-│  │  │  └─ migration.sql
-│  │  ├─ 20250316151937_add_profile_features
-│  │  │  └─ migration.sql
-│  │  ├─ 20250319200314_add_certified_foodie
-│  │  │  └─ migration.sql
-│  │  ├─ 20250321145333_add_restaurateur_model
-│  │  │  └─ migration.sql
-│  │  ├─ 20250327172936_add_restaurateur_model
-│  │  │  └─ migration.sql
-│  │  ├─ 20250329181926_add_restaurant_interests
-│  │  │  └─ migration.sql
-│  │  ├─ 20250404102839_add_anonymous_reviews
-│  │  │  └─ migration.sql
-│  │  ├─ 20250406181721_add_trending_categories
-│  │  │  └─ migration.sql
-│  │  ├─ 20250408213006_add_wider_areas_to_restaurants
-│  │  │  └─ migration.sql
-│  │  ├─ 20250408232051_add_restaurant_connections
-│  │  │  └─ migration.sql
-│  │  ├─ 20250425184728_add_premium_features
-│  │  │  └─ migration.sql
-│  │  ├─ 20250425190957_add_premium_subscription
-│  │  │  └─ migration.sql
-│  │  ├─ 20250425235730_add_referral_code
-│  │  │  └─ migration.sql
-│  │  └─ migration_lock.toml
 │  └─ schema.prisma
 ├─ public
 │  ├─ assets
@@ -1010,6 +162,8 @@ fyp_cyd
 │  │  │  │  └─ page.tsx
 │  │  │  ├─ certification-requests
 │  │  │  │  └─ page.tsx
+│  │  │  ├─ premium-restaurants
+│  │  │  │  └─ page.tsx
 │  │  │  ├─ restaurant-connection-requests
 │  │  │  │  └─ page.tsx
 │  │  │  ├─ restaurant-requests
@@ -1030,6 +184,8 @@ fyp_cyd
 │  │  │  │  │  ├─ route.ts
 │  │  │  │  │  └─ [id]
 │  │  │  │  │     └─ route.ts
+│  │  │  │  ├─ premium-restaurants
+│  │  │  │  │  └─ route.ts
 │  │  │  │  ├─ restaurant-connection-requests
 │  │  │  │  │  ├─ route.ts
 │  │  │  │  │  └─ [id]
@@ -1087,6 +243,8 @@ fyp_cyd
 │  │  │  ├─ restaurants
 │  │  │  │  ├─ discover
 │  │  │  │  │  └─ route.ts
+│  │  │  │  ├─ featured
+│  │  │  │  │  └─ route.ts
 │  │  │  │  └─ [restaurantId]
 │  │  │  │     ├─ edit
 │  │  │  │     │  └─ route.ts
@@ -1103,6 +261,8 @@ fyp_cyd
 │  │  │  │  ├─ connection-requests
 │  │  │  │  │  └─ route.ts
 │  │  │  │  ├─ interests
+│  │  │  │  │  └─ route.ts
+│  │  │  │  ├─ menu-image-check
 │  │  │  │  │  └─ route.ts
 │  │  │  │  ├─ menu-items
 │  │  │  │  │  ├─ route.ts
@@ -1182,17 +342,25 @@ fyp_cyd
 │  │  │  └─ page.tsx
 │  │  ├─ profile
 │  │  │  ├─ layout.tsx
-│  │  │  ├─ page.tsx
-│  │  │  └─ restaurateur
-│  │  │     └─ page.tsx
+│  │  │  └─ page.tsx
 │  │  ├─ register
 │  │  │  ├─ page.tsx
 │  │  │  └─ restaurateur
 │  │  │     └─ page.tsx
 │  │  ├─ restaurant-dashboard
+│  │  │  ├─ analytics
+│  │  │  │  └─ page.tsx
 │  │  │  ├─ layout.tsx
+│  │  │  ├─ menu
+│  │  │  │  └─ page.tsx
 │  │  │  ├─ page.tsx
+│  │  │  ├─ profile
+│  │  │  │  └─ page.tsx
+│  │  │  ├─ receipt-verifications
+│  │  │  │  └─ page.tsx
 │  │  │  ├─ referrals
+│  │  │  │  └─ page.tsx
+│  │  │  ├─ reviews
 │  │  │  │  └─ page.tsx
 │  │  │  └─ [restaurantId]
 │  │  │     ├─ edit
@@ -1211,12 +379,14 @@ fyp_cyd
 │  │  └─ _components
 │  │     ├─ AddEditMenuItemModal.tsx
 │  │     ├─ AddEditMenuSectionModal.tsx
+│  │     ├─ AnalyticsLoader.tsx
 │  │     ├─ AnimatedBackground.tsx
 │  │     ├─ CeritficationRequestForm.tsx
 │  │     ├─ CertificationButton.tsx
 │  │     ├─ CertificationModal.tsx
 │  │     ├─ CertifiedFoodieBadge.tsx
 │  │     ├─ EditReviewModal.tsx
+│  │     ├─ FeaturedRestaurants.tsx
 │  │     ├─ FlagReviewModal.tsx
 │  │     ├─ FloatingFoodEmojis.tsx
 │  │     ├─ FollowButton.tsx
@@ -1238,6 +408,7 @@ fyp_cyd
 │  │     ├─ ReferralCodeInput.tsx
 │  │     ├─ ReferralDashboard.tsx
 │  │     ├─ RequestMenuModal.tsx
+│  │     ├─ RestaurantAnalytics.tsx
 │  │     ├─ RestaurantCard.tsx
 │  │     ├─ RestaurantConnectionModal.tsx
 │  │     ├─ RestaurantProfile.tsx
@@ -1305,14 +476,30 @@ fyp_cyd
 │  │  └─ server.ts
 │  ├─ types
 │  │  └─ next-auth.d.ts
-│  └─ utils
-│     ├─ categoryMappingService.client.ts
-│     ├─ categoryMappingService.ts
-│     ├─ embeddingUtils.client.ts
-│     └─ embeddingUtils.ts
+│  ├─ utils
+│  │  ├─ categoryMappingService.client.ts
+│  │  ├─ categoryMappingService.ts
+│  │  ├─ embeddingUtils.client.ts
+│  │  └─ embeddingUtils.ts
+│  └─ __tests__
+│     ├─ api
+│     │  ├─ restaurant.test.ts
+│     │  └─ review.test.ts
+│     ├─ components
+│     │  ├─ Navbar.test.tsx
+│     │  ├─ RequestMenuModal.test.tsx
+│     │  ├─ RestaurantCard.test.tsx
+│     │  ├─ ReviewManagement.test.tsx
+│     │  ├─ ReviewModal.test.tsx
+│     │  └─ TrendingCategories.test.tsx
+│     └─ pages
+│        ├─ LoginPage.test.tsx
+│        └─ RegisterPage.test.tsx
 ├─ start-database.sh
 ├─ tailwind.config.ts
 ├─ tsconfig.json
-└─ vercel.json
+├─ vercel.json
+├─ vitest.config.ts
+└─ vitest.setup.ts
 
 ```
