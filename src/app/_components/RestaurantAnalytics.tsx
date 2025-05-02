@@ -332,7 +332,7 @@ export function RestaurantAnalytics({ restaurantId }: RestaurantAnalyticsProps):
       const simplePositiveWords = [
         "good", "great", "excellent", "amazing", "delicious", "fantastic", 
         "best", "wonderful", "perfect", "enjoyed", "recommend", "tasty", "fresh",
-        "friendly", "attentive", "clean", "reasonable", "value", "love", "favorite"
+        "friendly", "attentive", "clean", "reasonable", "value", "love", "favourite"
       ];
       
       const simpleNegativeWords = [

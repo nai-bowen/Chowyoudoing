@@ -596,7 +596,7 @@ export default function AdminAdvertsDashboard(): JSX.Element {
                           My Reviews
                         </button>
                         <button className="py-2 px-4 font-medium rounded-lg text-gray-600">
-                          Favorites
+                          Favourites
                         </button>
                         <button className="py-2 px-4 font-medium rounded-lg text-gray-600">
                           Following

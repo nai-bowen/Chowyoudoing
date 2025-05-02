@@ -273,7 +273,7 @@ export default function ReviewManagement({
 
   const handleOpenResponseModal = (review: Review): void => {
     // Check if user has premium or has quota remaining
-    if (!premiumStatus.isPremium && premiumStatus.responseQuota.remaining <= 0) {
+    if (!premiumStatus?.isPremium && (premiumStatus?.responseQuota?.remaining ?? 0) === 0) {
       // Show premium modal if no quota remaining
       setIsPremiumModalOpen(true);
     } else {
@@ -495,7 +495,7 @@ export default function ReviewManagement({
               <div>
                 <h3 className="font-medium">Daily Response Limit</h3>
                 <p className="text-sm text-gray-600">
-                  {premiumStatus.responseQuota.remaining} of 1 responses remaining today. Upgrade to premium for unlimited responses.
+                {premiumStatus.responseQuota?.remaining ?? 0} of 1 responses remaining today
                 </p>
               </div>
             </div>
